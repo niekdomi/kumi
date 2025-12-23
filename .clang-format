@@ -1,0 +1,23 @@
+---
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Left
+AlignEscapedNewlines: Left
+AlignOperands: AlignAfterOperator
+AlwaysBreakAfterDefinitionReturnType: None
+AllowShortCaseLabelsOnASingleLine: true
+BasedOnStyle: Mozilla
+BinPackParameters: false
+BreakAfterAttributes: Always
+BreakAfterReturnType: None
+BreakBeforeBinaryOperators: true
+BreakBinaryOperations: OnePerLine
+BreakConstructorInitializers: AfterColon
+ColumnLimit: 100
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IndentPPDirectives: BeforeHash
+IndentWidth: 4
+PackConstructorInitializers: CurrentLine
+PointerAlignment: Right
+QualifierAlignment: Left
+TabWidth: 4

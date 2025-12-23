@@ -1,0 +1,13 @@
+---
+CompileFlags:
+  CompilationDatabase: build/Debug
+  Add:
+    - -xc++
+    - -std=c++23
+    - -D_GNU_SOURCE
+    - -Ibuild/generated
+  Compiler: clang
+
+# The following options should render Doxygen properly, requeries clangd-22, the current release is 20.1.8
+# Documentation:
+#   CommentFormat: Doxygen
