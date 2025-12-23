@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <format>
 #include <string>
+
 namespace kumi {
 
 struct ParseError

@@ -43,12 +43,11 @@ enum class TokenType : std::uint8_t
     IMPORT,   // import: mylib;
 
     // Keywords - Control Flow
-    AT,             // @ (prefix for directives)
     IF,             // @if condition { }
     ELSE_IF,        // @else-if condition { }
     ELSE,           // @else { }
     FOR,            // @for item in list { }
-    IN,             // for item in list
+    IN,             // @for item in list
     BREAK,          // @break;
     CONTINUE,       // @continue;
     ERROR,          // @error "message";
@@ -105,7 +104,7 @@ enum class TokenType : std::uint8_t
     // Literals
     IDENTIFIER, // foo, bar_baz
     STRING,     // "hello"
-    NUMBER,     // 123, 3.14
+    NUMBER,     // 123
     TRUE,       // true
     FALSE,      // false
 
