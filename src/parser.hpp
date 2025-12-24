@@ -25,7 +25,7 @@ class Parser final
     }
 
   private:
-    const std::span<const Token> tokens_;
+    std::span<const Token> tokens_;
     std::size_t line_{ 1 };
     std::size_t column_{ 1 };
     std::size_t position_{ 0 };

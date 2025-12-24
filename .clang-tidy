@@ -6,7 +6,6 @@ Checks: >
   *,
   -altera-*,
   -bugprone-easily-swappable-parameters,
-  -cppcoreguidelines-avoid-const-or-ref-data-members,
   -cppcoreguidelines-avoid-magic-numbers,
   -fuchsia-default-arguments-calls,
   -fuchsia-trailing-return,
@@ -25,6 +24,11 @@ CheckOptions:
 
   - key: readability-implicit-bool-conversion.AllowIntegerConditions
     value: true
+
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: true
+
+  # ----- Identifier naming conventions -----
 
   # Template parameter names use PascalCase: InputIterator
   - key: readability-identifier-naming.TemplateParameterCase

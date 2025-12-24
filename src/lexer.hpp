@@ -51,7 +51,7 @@ class Lexer final
     }
 
   private:
-    const std::string_view input_; ///< Source text being tokenized
+    std::string_view input_; ///< Source text being tokenized
 
     std::size_t line_{ 1 };     ///< Current line number
     std::size_t column_{ 1 };   ///< Current column number
