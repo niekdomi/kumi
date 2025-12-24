@@ -1,3 +1,9 @@
+/// @file lexer.hpp
+/// @brief Lexical analyzer
+///
+/// @see Token for token definitions
+/// @see TokenType for all token types
+
 #pragma once
 
 #include "error.hpp"
@@ -8,14 +14,116 @@
 #include <expected>
 #include <format>
 #include <string_view>
+#include <vector>
 
 namespace kumi {
 
+/// @brief Lexical analyzer that converts source text into tokens
 class Lexer final
 {
   public:
+    /// @brief Constructs a lexer for the given input
+    /// @param input Source text to tokenize
     explicit Lexer(std::string_view input) : input_(input) {};
 
+    /// @brief Tokenizes the entire input into a vector of tokens
+    /// @return Vector of tokens on success, ParseError on failure
+    [[nodiscard]]
+    auto tokenize() -> std::expected<std::vector<Token>, ParseError>
+    {
+        std::vector<Token> tokens{};
+        tokens.reserve(256);
+
+        while (true) {
+            auto token = next_token();
+            if (!token) {
+                return std::unexpected(token.error());
+            }
+
+            tokens.push_back(std::move(*token));
+
+            if (token->type == TokenType::END_OF_FILE) {
+                break;
+            }
+        }
+
+        return tokens;
+    }
+
+  private:
+    const std::string_view input_; ///< Source text being tokenized
+
+    std::size_t line_{ 1 };     ///< Current line number
+    std::size_t column_{ 1 };   ///< Current column number
+    std::size_t position_{ 0 }; ///< Current position in input
+
+    /// @brief Advances to next character and updates position/line/column
+    /// @return Current character before advancing, or '\0' if at EOF
+    /// @note Handles Unix (\n), Windows (\r\n), and old Mac (\r) line endings
+    auto advance() noexcept -> char
+    {
+        if (at_end()) {
+            return '\0';
+        }
+
+        const char c = input_[position_];
+        ++position_;
+
+        if (c == '\n') {
+            ++line_;
+            column_ = 1;
+        } else if (c == '\r') {
+            ++line_;
+            column_ = 1;
+            if (peek() == '\n') {
+                ++position_;
+            }
+        } else {
+            ++column_;
+        }
+
+        return c;
+    }
+
+    /// @brief Checks if lexer has reached end of input
+    /// @return true if at EOF, false otherwise
+    [[nodiscard]]
+    auto at_end() const noexcept -> bool
+    {
+        return position_ >= input_.size();
+    }
+
+    /// @brief Creates a ParseError at current position
+    /// @tparam T Expected return type
+    /// @param message Error message
+    /// @return Unexpected ParseError
+    template<typename T>
+    [[nodiscard]]
+    auto error(std::string_view message) const -> std::expected<T, ParseError>
+    {
+        return std::unexpected(ParseError{
+          .message = std::string(message),
+          .line = line_,
+          .column = column_,
+        });
+    }
+
+    /// @brief Matches and consumes a string if it appears at current position
+    /// @param str String to match
+    /// @return true if matched and consumed, false otherwise
+    auto match_string(std::string_view str) noexcept -> bool
+    {
+        // TODO(domi): Assumes no newlines in str; column tracking need verification + tests
+        if (input_.substr(position_).starts_with(str)) {
+            position_ += str.size();
+            column_ += str.size();
+            return true;
+        }
+        return false;
+    }
+
+    /// @brief Reads and returns the next token from input
+    /// @return Token on success, ParseError on failure
     [[nodiscard]]
     auto next_token() -> std::expected<Token, ParseError>
     {
@@ -55,96 +163,30 @@ class Lexer final
         }
     }
 
-  private:
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-    const std::string_view input_;
-
-    std::size_t line_{ 1 };
-    std::size_t column_{ 1 };
-    std::size_t position_{ 0 };
-
-    // NOTE: This function is not marked as nodiscard, since this is an
-    // idiomatic pattern and we often need to call this function without
-    // using its return value (function is allowed to have side effects)
-    //
-    // Unix:    \n
-    // Windows: \r\n
-    // Old Mac: \r
-    auto advance() noexcept -> char
-    {
-        if (at_end()) {
-            return '\0';
-        }
-
-        const char c = input_[position_];
-        ++position_;
-
-        if (c == '\n') {
-            ++line_;
-            column_ = 1;
-        } else if (c == '\r') {
-            ++line_;
-            column_ = 1;
-            if (peek() == '\n') {
-                ++position_;
-            }
-        } else {
-            ++column_;
-        }
-
-        return c;
-    }
-
-    [[nodiscard]]
-    auto at_end() const noexcept -> bool
-    {
-        return position_ >= input_.size();
-    }
-
-    template<typename T>
-    [[nodiscard]]
-    auto error(std::string_view message) const -> std::expected<T, ParseError>
-    {
-        return std::unexpected(ParseError{
-          .message = std::string(message),
-          .line = line_,
-          .column = column_,
-        });
-    }
-
-    // TODO(domi): This is quite optimized but assumes that there is no new
-    // line so we need to create some test cases to verify that column_ is
-    // correctly updated
-    auto match_string(std::string_view str) noexcept -> bool
-    {
-        if (input_.substr(position_).starts_with(str)) {
-            position_ += str.size();
-            column_ += str.size();
-            return true;
-        }
-        return false;
-    }
-
+    /// @brief Peeks at next character without advancing
+    /// @return Next character, or '\0' if at EOF
     [[nodiscard]]
     auto peek() const noexcept -> char
     {
         return at_end() ? '\0' : input_[position_ + 1];
     }
 
+    /// @brief Skips whitespace characters (space, tab, newline, ...)
     auto skip_whitespace() noexcept -> void
     {
         while (!at_end()) {
             if (std::isspace(peek())) {
                 advance();
-            } else {
-                break;
+                continue;
             }
+            break;
         }
     }
 
     //===---------------------------------------------------------------------===//
     // Lexing Helpers
     //===---------------------------------------------------------------------===//
+
     [[nodiscard]]
     auto lex_at() -> std::expected<Token, ParseError>
     {
@@ -161,6 +203,7 @@ class Lexer final
             std::pair{ "continue", TokenType::CONTINUE       },
             std::pair{ "error",    TokenType::ERROR          },
             std::pair{ "warning",  TokenType::WARNING        },
+            std::pair{ "info",     TokenType::INFO           },
             std::pair{ "import",   TokenType::IMPORT_KEYWORD },
             std::pair{ "apply",    TokenType::APPLY_KEYWORD  },
         };
@@ -330,15 +373,6 @@ class Lexer final
         return error<Token>(std::format("unexpected character after '-': '{}'", peek()));
     }
 
-    // NOTE: Kumi only supports integer numbers
-    // This makes it simpler and there is also no real benefit to support:
-    // - floating point numbers
-    // - scientific notation
-    // - hex, octal, binary numbers
-    // - negative numbers (or prefixed with + or -)
-    //
-    // This only adds complexity in configuration and parsing without any real
-    // benefit.
     [[nodiscard]]
     auto lex_number() -> std::expected<Token, ParseError>
     {
@@ -443,7 +477,6 @@ class Lexer final
             std::pair{ "workspace",    TokenType::WORKSPACE    },
             std::pair{ "target",       TokenType::TARGET       },
             std::pair{ "dependencies", TokenType::DEPENDENCIES },
-            std::pair{ "deps",         TokenType::DEPS         },
             std::pair{ "options",      TokenType::OPTIONS      },
             std::pair{ "global",       TokenType::GLOBAL       },
             std::pair{ "mixin",        TokenType::MIXIN        },
