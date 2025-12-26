@@ -31,7 +31,7 @@ target("kumi")
         add_defines("DEBUG")
     else
         set_symbols("hidden")
-        set_optimize("aggressive")
+        add_cxflags("-O3", {force = true})
         add_defines("NDEBUG")
     end
     
@@ -78,3 +78,41 @@ target("kumi")
         {force = true}
     )
 target_end()
+
+task("lint")
+    set_menu {
+        usage = "xmake lint",
+        description = "Run clang-tidy on all source files",
+        options = {
+            {'e', "errors", "k", nil, "Treat warnings as errors"}
+        }
+    }
+    
+    on_run(function ()
+        import("core.base.option")
+        import("lib.detect.find_tool")
+        
+        local clang_tidy = find_tool("clang-tidy")
+        if not clang_tidy then
+            raise("clang-tidy not found!")
+        end
+        
+        -- Check if compile_commands.json exists
+        if not os.isfile("compile_commands.json") then
+            print("compile_commands.json not found, building first...")
+            os.exec("xmake")
+        end
+        
+        local warnings_flag = option.get("errors") and "-warnings-as-errors='*'" or ""
+        
+        print("Running clang-tidy...")
+        local files = os.iorun("find src -name '*.cpp' -o -name '*.hpp'")
+        for _, file in ipairs(files:split('\n')) do
+            if file ~= "" then
+                print("Checking: " .. file)
+                os.execv(clang_tidy.program, {warnings_flag, file})
+            end
+        end
+        print("Done!")
+    end)
+task_end()
