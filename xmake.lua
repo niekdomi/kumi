@@ -72,7 +72,7 @@ target("kumi")
         "-Wunused",
         "-Wzero-as-null-pointer-constant",
 
-        -- Suppress specific pedantic warnings for GNU extensions we intentionally use
+        -- Suppress specific warnings for GNU extensions we intentionally use
         "-Wno-gnu-statement-expression",
         "-Wno-gnu-case-range",
         {force = true}
