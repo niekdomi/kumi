@@ -37,7 +37,7 @@ struct ParseError
 /// @return Unexpected ParseError
 template<typename T>
 [[nodiscard]]
-inline auto error(std::string_view message, std::size_t line, std::size_t column)
+auto error(std::string_view message, std::size_t line, std::size_t column)
   -> std::expected<T, ParseError>
 {
     return std::unexpected(ParseError{

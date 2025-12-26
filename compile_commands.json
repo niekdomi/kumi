@@ -1,6 +1,0 @@
-[
-{
-  "directory": "/home/domi/Documents/Kumi",
-  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-std=c++23", "-Isrc", "-DDEBUG", "-fsanitize=address,undefined", "-Wall", "-Wextra", "-Werror", "-Wcast-align", "-Wconversion", "-Wcovered-switch-default", "-Wdeprecated", "-Wdouble-promotion", "-Wfloat-conversion", "-Wfloat-equal", "-Wfor-loop-analysis", "-Wformat=2", "-Winvalid-utf8", "-Wmisleading-indentation", "-Wnon-virtual-dtor", "-Wold-style-cast", "-Woverloaded-virtual", "-Wpedantic", "-Wpoison-system-directories", "-Wshadow-all", "-Wsign-conversion", "-Wsuggest-destructor-override", "-Wsuggest-override", "-Wsuper-class-method-mismatch", "-Wthread-safety", "-Wunreachable-code-aggressive", "-Wunused", "-Wzero-as-null-pointer-constant", "-Wno-gnu-statement-expression", "-Wno-gnu-case-range", "-o", "build/.objs/kumi/linux/x86_64/debug/src/main.cpp.o", "src/main.cpp"],
-  "file": "src/main.cpp"
-}]
