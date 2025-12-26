@@ -93,27 +93,13 @@ class Lexer final
         return position_ >= input_.size();
     }
 
-    /// @brief Creates a ParseError at current position
-    /// @tparam T Expected return type
-    /// @param message Error message
-    /// @return Unexpected ParseError
-    template<typename T>
-    [[nodiscard]]
-    auto error(std::string_view message) const -> std::expected<T, ParseError>
-    {
-        return std::unexpected(ParseError{
-          .message = std::string(message),
-          .line = line_,
-          .column = column_,
-        });
-    }
-
     /// @brief Matches and consumes a string if it appears at current position
     /// @param str String to match
     /// @return true if matched and consumed, false otherwise
     auto match_string(std::string_view str) noexcept -> bool
     {
-        // TODO(domi): Assumes no newlines in str; column tracking need verification + tests
+        // TODO(domi): Assumes no newlines in str; column tracking need verification
+        // + tests
         if (input_.substr(position_).starts_with(str)) {
             position_ += str.size();
             column_ += str.size();
@@ -127,7 +113,7 @@ class Lexer final
     [[nodiscard]]
     auto next_token() -> std::expected<Token, ParseError>
     {
-        skip_whitespace();
+        skip_whitespace_and_comment();
 
         if (at_end()) {
             return Token{
@@ -166,19 +152,48 @@ class Lexer final
     /// @brief Peeks at next character without advancing
     /// @return Next character, or '\0' if at EOF
     [[nodiscard]]
-    auto peek() const noexcept -> char
+    auto peek(std::size_t look_ahead = 0) const noexcept -> char
     {
-        return at_end() ? '\0' : input_[position_ + 1];
+        const auto pos = position_ + look_ahead;
+        return pos >= input_.size() ? '\0' : input_[pos];
     }
 
     /// @brief Skips whitespace characters (space, tab, newline, ...)
-    auto skip_whitespace() noexcept -> void
+    auto skip_whitespace_and_comment() noexcept -> void
     {
         while (!at_end()) {
             if (std::isspace(peek())) {
                 advance();
                 continue;
             }
+
+            // Line comment: '//'
+            if (peek() == '/' && peek(1) == '/') {
+                advance();
+                advance();
+
+                while (!at_end() && peek() != '\n') {
+                    advance();
+                }
+                continue;
+            }
+
+            // Block comment: '/* ... */'
+            if (peek() == '/' && peek(1) == '*') {
+                advance();
+                advance();
+
+                while (!at_end()) {
+                    if (peek() == '*' && peek(1) == '/') {
+                        advance();
+                        advance();
+                        break;
+                    }
+                    advance();
+                }
+                continue;
+            }
+
             break;
         }
     }
@@ -219,11 +234,12 @@ class Lexer final
             }
         }
 
-        return error<Token>(std::format("unexpected character after '@': '{}'", peek()));
+        return error<Token>(
+          std::format("unexpected character after '@': '{}'", peek()), line_, column_);
     }
 
     [[nodiscard]]
-    auto lex_bang() -> std::expected<Token, ParseError>
+    auto lex_bang() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -246,7 +262,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_dot() -> std::expected<Token, ParseError>
+    auto lex_dot() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -278,7 +294,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_equal() -> std::expected<Token, ParseError>
+    auto lex_equal() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -301,7 +317,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_greater() -> std::expected<Token, ParseError>
+    auto lex_greater() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -324,7 +340,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_less() -> std::expected<Token, ParseError>
+    auto lex_less() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -370,11 +386,12 @@ class Lexer final
             };
         }
 
-        return error<Token>(std::format("unexpected character after '-': '{}'", peek()));
+        return error<Token>(
+          std::format("unexpected character after '-': '{}'", peek()), line_, column_);
     }
 
     [[nodiscard]]
-    auto lex_number() -> std::expected<Token, ParseError>
+    auto lex_number() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -394,8 +411,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_single_char(TokenType token, std::string_view value)
-      -> std::expected<Token, ParseError>
+    auto lex_single_char(TokenType token, std::string_view value) noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
@@ -422,12 +438,12 @@ class Lexer final
         str.reserve(32);
         while (peek() != '"') {
             if (at_end()) {
-                return error<Token>("unterminated string literal (EOF)");
+                return error<Token>("unterminated string literal (EOF)", line_, column_);
             }
 
             const char c = peek();
             if (c == '\n' || c == '\r') {
-                return error<Token>("unterminated string literal (EOL)");
+                return error<Token>("unterminated string literal (EOL)", line_, column_);
             }
 
             if (peek() == '\\') {
@@ -435,12 +451,13 @@ class Lexer final
 
                 switch (peek()) {
                     case '"': str += '"'; break;
-                    case '\\': str += '\\'; break;
                     case 'n': str += '\n'; break;
                     case 't': str += '\t'; break;
                     case 'r': str += '\r'; break;
+                    case '\\': str += '\\'; break;
                     default:
-                        return error<Token>(std::format("invalid escape sequence: '\\{}'", peek()));
+                        return error<Token>(
+                          std::format("invalid escape sequence: '\\{}'", peek()), line_, column_);
                 }
                 advance();
             } else {
@@ -459,7 +476,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_identifier_or_keyword() -> std::expected<Token, ParseError>
+    auto lex_identifier_or_keyword() noexcept -> Token
     {
         const auto start_line = line_;
         const auto start_column = column_;
