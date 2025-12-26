@@ -1,0 +1,36 @@
+// Valid example: Simple C++ project
+project myapp {
+    version: "1.0.0";
+    language: "c++";
+    author: "John Doe";
+}
+
+target myapp {
+    type: executable;
+    sources: "main.cpp", "utils.cpp";
+    cxx_standard: 20;
+    
+    public {
+        include_dirs: "include";
+    }
+    
+    private {
+        defines: "DEBUG_MODE";
+        warnings: "all";
+    }
+}
+
+dependencies {
+    fmt: "10.0.0";
+    spdlog: "1.12.0";
+}
+
+@if platform(windows) {
+    target myapp {
+        sources: "windows_main.cpp";
+    }
+} @else {
+    target myapp {
+        sources: "unix_main.cpp";
+    }
+}

@@ -1,0 +1,25 @@
+// INVALID: Missing semicolons and unterminated string
+project broken {
+    version: "1.0.0"  // ERROR: Missing semicolon
+    name: "test
+}
+
+target app {
+    type: executable
+    sources: "main.cpp"  // ERROR: Missing semicolon
+    
+    @if platform(windows {  // ERROR: Missing closing paren
+        defines: "WINDOWS";
+    }
+}
+
+// ERROR: Invalid escape sequence
+target test {
+    message: "Hello\xWorld";
+}
+
+// ERROR: Unexpected character
+target bad {
+    sources: main.cpp;  // ERROR: Unquoted string
+    #invalid: "value";  // ERROR: Invalid character '#'
+}
