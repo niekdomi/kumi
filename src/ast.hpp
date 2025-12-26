@@ -55,8 +55,8 @@ struct WorkspaceDecl;
 /// in the source file for error reporting and debugging.
 struct NodeBase
 {
-    std::size_t line{};   ///< Line number in source file
-    std::size_t column{}; ///< Column number in source file
+    std::size_t line;   ///< Line number in source file
+    std::size_t column; ///< Column number in source file
 };
 
 //===---------------------------------------------------------------------===//
@@ -70,7 +70,7 @@ struct NodeBase
 ///
 /// Example:
 /// ```css
-/// name: "myapp";        // String value
+/// name: "kumi";         // String value
 /// version: 42;          // Integer value
 /// enabled: true;        // Boolean value
 /// ```

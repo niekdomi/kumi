@@ -2,7 +2,8 @@
 
 namespace kumi {
 
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
+
 #define TRY(expr__)                                   \
     ({                                                \
         auto &&result__ = (expr__);                   \
@@ -10,5 +11,7 @@ namespace kumi {
             return std::unexpected(result__.error()); \
         std::move(result__).value();                  \
     })
+
+// NOLINTEND(cppcoreguidelines-macro-usage)
 
 } // namespace kumi

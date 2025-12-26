@@ -5,6 +5,10 @@ AlignEscapedNewlines: Left
 AlignOperands: AlignAfterOperator
 AlwaysBreakAfterDefinitionReturnType: None
 AllowShortCaseLabelsOnASingleLine: true
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
 BasedOnStyle: Mozilla
 BinPackParameters: false
 BreakAfterAttributes: Always

@@ -8,6 +8,7 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   -cppcoreguidelines-avoid-magic-numbers,
   -fuchsia-default-arguments-calls,
+  -fuchsia-default-arguments-declarations,
   -fuchsia-trailing-return,
   -llvm-header-guard,
   -llvm-prefer-static-over-anonymous-namespace,

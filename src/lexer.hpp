@@ -7,6 +7,7 @@
 #pragma once
 
 #include "error.hpp"
+#include "macros.hpp"
 #include "token.hpp"
 
 #include <cctype>
@@ -35,14 +36,10 @@ class Lexer final
         tokens.reserve(256);
 
         while (true) {
-            auto token = next_token();
-            if (!token) {
-                return std::unexpected(token.error());
-            }
+            auto token = TRY(next_token());
+            tokens.push_back(std::move(token));
 
-            tokens.push_back(std::move(*token));
-
-            if (token->type == TokenType::END_OF_FILE) {
+            if (token.type == TokenType::END_OF_FILE) {
                 break;
             }
         }
@@ -55,7 +52,7 @@ class Lexer final
 
     std::size_t line_{ 1 };     ///< Current line number
     std::size_t column_{ 1 };   ///< Current column number
-    std::size_t position_{ 0 }; ///< Current position in input
+    std::size_t position_{ 0 }; ///< Current position in input_
 
     /// @brief Advances to next character and updates position/line/column
     /// @return Current character before advancing, or '\0' if at EOF
@@ -125,27 +122,27 @@ class Lexer final
         }
 
         switch (peek()) {
-            case '{': return lex_single_char(TokenType::LEFT_BRACE, "{");
-            case '}': return lex_single_char(TokenType::RIGHT_BRACE, "}");
-            case '[': return lex_single_char(TokenType::LEFT_BRACKET, "[");
-            case ']': return lex_single_char(TokenType::RIGHT_BRACKET, "]");
-            case '(': return lex_single_char(TokenType::LEFT_PAREN, "(");
-            case ')': return lex_single_char(TokenType::RIGHT_PAREN, ")");
-            case ':': return lex_single_char(TokenType::COLON, ":");
-            case ';': return lex_single_char(TokenType::SEMICOLON, ";");
-            case ',': return lex_single_char(TokenType::COMMA, ",");
-            case '?': return lex_single_char(TokenType::QUESTION, "?");
-            case '$': return lex_single_char(TokenType::DOLLAR, "$");
-            case '.': return lex_dot();
-            case '!': return lex_bang();
-            case '=': return lex_equal();
-            case '<': return lex_less();
-            case '>': return lex_greater();
-            case '-': return lex_minus();
-            case '"': return lex_string();
-            case '@': return lex_at();
+            case '{':         return lex_single_char(TokenType::LEFT_BRACE, "{");
+            case '}':         return lex_single_char(TokenType::RIGHT_BRACE, "}");
+            case '[':         return lex_single_char(TokenType::LEFT_BRACKET, "[");
+            case ']':         return lex_single_char(TokenType::RIGHT_BRACKET, "]");
+            case '(':         return lex_single_char(TokenType::LEFT_PAREN, "(");
+            case ')':         return lex_single_char(TokenType::RIGHT_PAREN, ")");
+            case ':':         return lex_single_char(TokenType::COLON, ":");
+            case ';':         return lex_single_char(TokenType::SEMICOLON, ";");
+            case ',':         return lex_single_char(TokenType::COMMA, ",");
+            case '?':         return lex_single_char(TokenType::QUESTION, "?");
+            case '$':         return lex_single_char(TokenType::DOLLAR, "$");
+            case '.':         return lex_dot();
+            case '!':         return lex_bang();
+            case '=':         return lex_equal();
+            case '<':         return lex_less();
+            case '>':         return lex_greater();
+            case '-':         return lex_minus();
+            case '"':         return lex_string();
+            case '@':         return lex_at();
             case '0' ... '9': return lex_number();
-            default: return lex_identifier_or_keyword();
+            default:          return lex_identifier_or_keyword();
         }
     }
 
@@ -450,10 +447,10 @@ class Lexer final
                 advance(); // Consume '\'
 
                 switch (peek()) {
-                    case '"': str += '"'; break;
-                    case 'n': str += '\n'; break;
-                    case 't': str += '\t'; break;
-                    case 'r': str += '\r'; break;
+                    case '"':  str += '"'; break;
+                    case 'n':  str += '\n'; break;
+                    case 't':  str += '\t'; break;
+                    case 'r':  str += '\r'; break;
                     case '\\': str += '\\'; break;
                     default:
                         return error<Token>(

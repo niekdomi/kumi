@@ -110,7 +110,7 @@ enum class TokenType : std::uint8_t
 
     // Literals
     IDENTIFIER, ///< Identifier (e.g., `foo`, `bar_baz`)
-    STRING,     ///< String literal (e.g., `"hello"`)
+    STRING,     ///< String literal (e.g., `"kumi"`)
     NUMBER,     ///< Numeric literal (e.g., `123`, `3.14`)
     TRUE,       ///< Boolean literal `true`
     FALSE,      ///< Boolean literal `false`
