@@ -1,0 +1,30 @@
+# ---------------------------
+# Build artifacts
+# ---------------------------
+/build/
+CMakeCache.txt
+CMakeFiles/
+/.cache/
+CMakeUserPresets.json
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.exe
+*.xmake
+
+# ---------------------------
+# Test output
+# ---------------------------
+*.log
+
+# ---------------------------
+# Editor
+# ---------------------------
+.vscode/
+.idea/
+
+# ---------------------------
+# Benchmark output
+# ---------------------------
+tests/benchmarks/.results

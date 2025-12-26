@@ -14,9 +14,12 @@ Checks: >
   -llvm-prefer-static-over-anonymous-namespace,
   -llvmlibc-*,
   -misc-no-recursion,
+  -portability-avoid-pragma-once,
   -readability-function-cognitive-complexity,
   -readability-identifier-length,
   -readability-magic-numbers,
+  -clang-diagnostic-gnu-statement-expression-from-macro-expansion,
+  -clang-diagnostic-gnu-case-range,
 
 CheckOptions:
   # Linter rule options

@@ -4,6 +4,10 @@ namespace kumi {
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage)
 
+/// @brief Macro for propagating errors in std::expected contexts
+///
+/// Usage: `auto result = TRY(function_that_returns_expected());`
+/// If the expected contains an error, it returns early with that error.
 #define TRY(expr__)                                   \
     ({                                                \
         auto &&result__ = (expr__);                   \

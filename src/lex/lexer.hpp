@@ -6,15 +6,18 @@
 
 #pragma once
 
-#include "error.hpp"
-#include "macros.hpp"
-#include "token.hpp"
+#include "lex/token.hpp"
+#include "support/error.hpp"
+#include "support/macros.hpp"
 
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <expected>
 #include <format>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace kumi {
@@ -33,13 +36,17 @@ class Lexer final
     auto tokenize() -> std::expected<std::vector<Token>, ParseError>
     {
         std::vector<Token> tokens{};
-        tokens.reserve(256);
+        // Heuristic: average token is ~4 characters, reserve accordingly
+        // Add 16 to handle edge cases and avoid reallocation for small inputs
+        tokens.reserve((input_.size() / 4) + 16);
 
         while (true) {
             auto token = TRY(next_token());
+
+            const bool is_eof = token.type == TokenType::END_OF_FILE;
             tokens.push_back(std::move(token));
 
-            if (token.type == TokenType::END_OF_FILE) {
+            if (is_eof) {
                 break;
             }
         }
@@ -95,8 +102,7 @@ class Lexer final
     /// @return true if matched and consumed, false otherwise
     auto match_string(std::string_view str) noexcept -> bool
     {
-        // TODO(domi): Assumes no newlines in str; column tracking need verification
-        // + tests
+        // TODO(niekdomi): Assumes no newlines in str; column tracking needs verification
         if (input_.substr(position_).starts_with(str)) {
             position_ += str.size();
             column_ += str.size();
@@ -220,7 +226,7 @@ class Lexer final
             std::pair{ "apply",    TokenType::APPLY_KEYWORD  },
         };
 
-        for (const auto [keyword, type] : KEYWORDS) {
+        for (const auto &[keyword, type] : KEYWORDS) {
             if (match_string(keyword)) {
                 return Token{
                     .type = type,
@@ -540,7 +546,7 @@ class Lexer final
             std::pair{ "system",       TokenType::SYSTEM       },
         };
 
-        for (const auto [keyword, type] : KEYWORDS) {
+        for (const auto &[keyword, type] : KEYWORDS) {
             if (text == keyword) {
                 return Token{
                     .type = type,

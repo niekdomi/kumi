@@ -236,7 +236,7 @@ using Statement = std::variant<
 ///
 /// Example:
 /// ```css
-/// project myapp {
+/// project myproject {
 ///     version: "1.0.0";
 ///     language: "C++";
 /// }
@@ -466,7 +466,7 @@ struct ToolchainDecl final : NodeBase
 /// ```css
 /// :root {
 ///     --version: "1.0.0";
-///     --author: "John Doe";
+///     --author: "niekdomi";
 /// }
 /// ```
 struct RootDecl final : NodeBase

@@ -6,14 +6,17 @@
 
 #pragma once
 
-#include "ast.hpp"
-#include "error.hpp"
-#include "macros.hpp"
-#include "token.hpp"
+#include "ast/ast.hpp"
+#include "lex/token.hpp"
+#include "support/error.hpp"
+#include "support/macros.hpp"
 
+#include <cstddef>
 #include <expected>
 #include <format>
 #include <span>
+#include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -577,11 +580,13 @@ class Parser final
     auto parse_toolchain() -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::TOOLCHAIN));
+        const auto identifier = TRY(expect(TokenType::IDENTIFIER));
         TRY(expect(TokenType::LEFT_BRACE));
         auto properties = TRY(parse_properties());
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return ToolchainDecl{
+            .name = identifier.value,
             .properties = std::move(properties),
         };
     }
