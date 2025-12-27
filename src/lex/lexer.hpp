@@ -80,6 +80,7 @@ class Lexer final
     /// @brief Matches and consumes a string if it appears at current position
     /// @param str String to match
     /// @return true if matched and consumed, false otherwise
+    [[nodiscard]]
     auto match_string(std::string_view str) noexcept -> bool
     {
         if (input_.substr(position_).starts_with(str)) {
