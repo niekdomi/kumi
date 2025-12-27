@@ -40,7 +40,7 @@ class Parser final
     {
         AST ast{};
 
-        while (peek().type != TokenType::END_OF_FILE) {
+        while (peek().type != TokenType::END_OF_FILE) [[likely]] {
             ast.statements.push_back(TRY(parse_statement()));
         }
 
@@ -61,7 +61,7 @@ class Parser final
     [[nodiscard]]
     auto expect(TokenType type) -> std::expected<Token, ParseError>
     {
-        if (peek().type != type) {
+        if (peek().type != type) [[unlikely]] {
             std::string expected_type_str;
 
             switch (type) {
@@ -74,8 +74,7 @@ class Parser final
 
             return error<Token>(
               std::format("expected '{}', got '{}'", expected_type_str, peek().value),
-              peek().line,
-              peek().column);
+              peek().position);
         }
 
         return advance();
@@ -101,26 +100,15 @@ class Parser final
     auto peek(std::size_t look_ahead = 0) const noexcept -> const Token &
     {
         const auto pos = position_ + look_ahead;
-        return pos >= tokens_.size() ? tokens_.back() : tokens_[pos];
+        if (pos >= tokens_.size()) [[unlikely]] {
+            return tokens_.back();
+        }
+        return tokens_[pos];
     }
 
     //===---------------------------------------------------------------------===//
     // Parsing Helpers
     //===---------------------------------------------------------------------===//
-
-    [[nodiscard]]
-    auto parse_statement_block(std::size_t reserve_size)
-      -> std::expected<std::vector<Statement>, ParseError>
-    {
-        std::vector<Statement> statements{};
-        statements.reserve(reserve_size);
-
-        while (peek().type != TokenType::RIGHT_BRACE) {
-            statements.push_back(TRY(parse_statement()));
-        }
-
-        return statements;
-    }
 
     [[nodiscard]]
     auto parse_apply() -> std::expected<Statement, ParseError>
@@ -148,8 +136,7 @@ class Parser final
 
         return error<Statement>(
           std::format("expected function call after @apply, got '{}'", peek().value),
-          peek().line,
-          peek().column);
+          peek().position);
     }
 
     [[nodiscard]]
@@ -176,11 +163,10 @@ class Parser final
             level = DiagnosticLevel::WARNING;
         } else if (match(TokenType::INFO)) {
             level = DiagnosticLevel::INFO;
-        } else {
+        } else [[unlikely]] {
             return error<Statement>(
               std::format("expected @error, @warning, or @info, got '{}'", peek().value),
-              peek().line,
-              peek().column);
+              peek().position);
         }
 
         const auto message = TRY(expect(TokenType::STRING));
@@ -195,7 +181,6 @@ class Parser final
     [[nodiscard]]
     auto parse_expression() -> std::expected<Expression, ParseError>
     {
-        // Handle later for conditionals (@if platform(windows))
         if (peek().type == TokenType::IDENTIFIER && peek(1).type == TokenType::LEFT_PAREN) {
             return parse_function_call();
         }
@@ -322,11 +307,9 @@ class Parser final
             control = LoopControl::BREAK;
         } else if (match(TokenType::CONTINUE)) {
             control = LoopControl::CONTINUE;
-        } else {
+        } else [[unlikely]] {
             return error<Statement>(
-              std::format("expected @break or @continue, got '{}'", peek().value),
-              peek().line,
-              peek().column);
+              std::format("expected @break or @continue, got '{}'", peek().value), peek().position);
         }
 
         TRY(expect(TokenType::SEMICOLON));
@@ -432,11 +415,10 @@ class Parser final
 
             if (const auto *property = std::get_if<Property>(&statement)) {
                 properties.push_back(*property);
-            } else {
+            } else [[unlikely]] {
                 return error<std::vector<Property>>(
                   std::format("expected property (key: value;), got '{}'", peek().value),
-                  peek().line,
-                  peek().column);
+                  peek().position);
             }
         }
 
@@ -533,18 +515,31 @@ class Parser final
 
             // Properties (identifier followed by colon)
             case TokenType::IDENTIFIER:
-                if (peek(1).type == TokenType::COLON) {
+                if (peek(1).type == TokenType::COLON) [[likely]] {
                     return parse_property();
                 }
                 [[fallthrough]];
 
             default:
-                return error<Statement>(
+                [[unlikely]] return error<Statement>(
                   std::format("unexpected token '{}' - expected a declaration or statement",
                               peek().value),
-                  peek().line,
-                  peek().column);
+                  peek().position);
         }
+    }
+
+    [[nodiscard]]
+    auto parse_statement_block(std::size_t reserve_size)
+      -> std::expected<std::vector<Statement>, ParseError>
+    {
+        std::vector<Statement> statements{};
+        statements.reserve(reserve_size);
+
+        while (peek().type != TokenType::RIGHT_BRACE) {
+            statements.push_back(TRY(parse_statement()));
+        }
+
+        return statements;
     }
 
     [[nodiscard]]
@@ -595,14 +590,25 @@ class Parser final
     {
         switch (peek().type) {
             case TokenType::STRING:
-            case TokenType::IDENTIFIER: return Value{ advance().value };
-            case TokenType::NUMBER:     return Value{ std::stoi(advance().value) };
-            case TokenType::TRUE:       advance(); return Value{ true };
-            case TokenType::FALSE:      advance(); return Value{ false };
+            case TokenType::IDENTIFIER: {
+                auto token = advance();
+                return Value{ std::move(token.value) };
+            }
+            case TokenType::NUMBER: {
+                const auto token = advance();
+                int val = 0;
+                const auto [_, ec] = std::from_chars(
+                  token.value.data(), token.value.data() + token.value.size(), val);
+                if (ec != std::errc{}) [[unlikely]] {
+                    return error<Value>("invalid integer literal", token.position);
+                }
+                return Value{ val };
+            }
+            case TokenType::TRUE:  advance(); return Value{ true };
+            case TokenType::FALSE: advance(); return Value{ false };
             default:
-                return error<Value>(std::format("expected a value, got '{}'", peek().value),
-                                    peek().line,
-                                    peek().column);
+                [[unlikely]] return error<Value>(
+                  std::format("expected a value, got '{}'", peek().value), peek().position);
         }
     }
 
@@ -617,10 +623,9 @@ class Parser final
             visibility = Visibility::PRIVATE;
         } else if (match(TokenType::INTERFACE)) {
             visibility = Visibility::INTERFACE;
-        } else {
+        } else [[unlikely]] {
             return error<Statement>("expected visibility level (public, private, or interface)",
-                                    peek().line,
-                                    peek().column);
+                                    peek().position);
         }
 
         TRY(expect(TokenType::LEFT_BRACE));

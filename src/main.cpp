@@ -3,6 +3,7 @@
 
 #include "lex/lexer.hpp"
 #include "parse/parser.hpp"
+#include "support/diagnostic.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -34,14 +35,8 @@ auto main(int argc, char **argv) -> int
 
     if (!tokens_result) {
         const auto &error = tokens_result.error();
-        std::cerr
-          << "Lexer error at "
-          << error.line
-          << ":"
-          << error.column
-          << ": "
-          << error.message
-          << "\n";
+        kumi::DiagnosticPrinter printer(source);
+        printer.print_error(error);
         return 1;
     }
 
@@ -54,14 +49,8 @@ auto main(int argc, char **argv) -> int
 
     if (!ast_result) {
         const auto &error = ast_result.error();
-        std::cerr
-          << "Parser error at "
-          << error.line
-          << ":"
-          << error.column
-          << ": "
-          << error.message
-          << "\n";
+        kumi::DiagnosticPrinter printer(source);
+        printer.print_error(error);
         return 1;
     }
 

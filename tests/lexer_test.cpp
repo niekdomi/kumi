@@ -1,8 +1,6 @@
 /// @file lexer_test.cpp
 /// @brief Comprehensive unit tests for the Kumi lexer
 
-#include "catch2/catch_message.hpp"
-#include "catch2/catch_test_macros.hpp"
 #include "lex/lexer.hpp"
 #include "lex/token.hpp"
 
@@ -365,7 +363,7 @@ TEST_CASE("Lexer: single-character punctuation", "[lexer][punctuation]")
 }
 
 //===---------------------------------------------------------------------===//
-// Whitespace and Line Tracking
+// Whitespace and Position Tracking
 //===---------------------------------------------------------------------===//
 
 TEST_CASE("Lexer: whitespace handling", "[lexer][whitespace]")
@@ -373,28 +371,28 @@ TEST_CASE("Lexer: whitespace handling", "[lexer][whitespace]")
     SECTION("spaces ignored")
     {
         const auto tokens = lex_tokens("  target  ");
-        CHECK(tokens[0].type == TokenType::TARGET);
+        CHECK(tokens[0].position == 2);
     }
 
     SECTION("tabs ignored")
     {
         const auto tokens = lex_tokens("\ttarget\t");
-        CHECK(tokens[0].type == TokenType::TARGET);
+        CHECK(tokens[0].position == 1);
     }
 
-    SECTION("newlines update line tracking")
+    SECTION("position tracking for newlines")
     {
         const auto tokens = lex_tokens("target\nproject");
-        CHECK(tokens[0].line == 1);
-        CHECK(tokens[1].line == 2);
+        CHECK(tokens[0].position == 0);
+        CHECK(tokens[1].position == 7);
     }
 
-    SECTION("multiple tokens on one line")
+    SECTION("position tracking for multiple tokens")
     {
         const auto tokens = lex_tokens("target myapp {");
-        CHECK(tokens[0].line == 1);
-        CHECK(tokens[1].line == 1);
-        CHECK(tokens[2].line == 1);
+        CHECK(tokens[0].position == 0);
+        CHECK(tokens[1].position == 7);
+        CHECK(tokens[2].position == 13);
     }
 }
 
@@ -591,5 +589,62 @@ TEST_CASE("Lexer: edge cases", "[lexer][edge]")
     {
         auto tokens = lex_tokens("projects");
         CHECK(tokens[0].type == TokenType::IDENTIFIER);
+    }
+}
+
+TEST_CASE("Lexer: match_string edge cases", "[lexer][edge-cases]")
+{
+    SECTION("partial keyword at EOF")
+    {
+        const auto error = lex_error("@els");
+        CHECK(error.message.contains("unexpected"));
+    }
+
+    SECTION("exact keyword at EOF")
+    {
+        const auto tokens = lex_tokens("@else");
+        REQUIRE(tokens.size() == 2);
+        CHECK(tokens[0].type == TokenType::ELSE);
+    }
+
+    SECTION("@ at EOF")
+    {
+        const auto error = lex_error("@");
+        CHECK(error.message.contains("unexpected"));
+    }
+
+    SECTION("two-char operator at EOF")
+    {
+        const auto tokens = lex_tokens("target myapp ==");
+        CHECK(tokens[2].type == TokenType::EQUAL);
+        CHECK(tokens[2].value == "==");
+    }
+
+    SECTION("ellipsis at EOF")
+    {
+        const auto tokens = lex_tokens("...");
+        CHECK(tokens[0].type == TokenType::ELLIPSIS);
+        CHECK(tokens[0].value == "...");
+    }
+
+    SECTION("line comment at EOF")
+    {
+        const auto tokens = lex_tokens("target // comment");
+        REQUIRE(tokens.size() == 2);
+        CHECK(tokens[0].type == TokenType::TARGET);
+    }
+
+    SECTION("unclosed block comment at EOF")
+    {
+        const auto tokens = lex_tokens("target /* comment");
+        REQUIRE(tokens.size() == 2);
+        CHECK(tokens[0].type == TokenType::TARGET);
+    }
+
+    SECTION("substr safety - position at end")
+    {
+        const auto tokens = lex_tokens("target");
+        CHECK(tokens[0].type == TokenType::TARGET);
+        CHECK(tokens[1].type == TokenType::END_OF_FILE);
     }
 }

@@ -20,12 +20,9 @@ Checks: >
   -readability-magic-numbers,
 
 CheckOptions:
-  # Linter rule options
+  # ----- Linter rule options -----
   - key: modernize-use-trailing-return-type.TransformLambdas
     value: all_except_auto
-
-  - key: readability-implicit-bool-conversion.AllowIntegerConditions
-    value: true
 
   - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
     value: true

@@ -125,10 +125,9 @@ enum class TokenType : std::uint8_t
 /// for error reporting and debugging.
 struct Token final
 {
-    TokenType type;     ///< Type of the token
-    std::string value;  ///< Textual value
-    std::size_t line;   ///< Line number in source file
-    std::size_t column; ///< Column number in source file
+    std::string value;    ///< Textual value
+    std::size_t position; ///< Starting position in source text
+    TokenType type;       ///< Type of the token
 };
 
 } // namespace kumi

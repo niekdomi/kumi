@@ -6,12 +6,12 @@
 
 #pragma once
 
+#include "lex/char_class.hpp"
 #include "lex/token.hpp"
 #include "support/error.hpp"
 #include "support/macros.hpp"
 
 #include <array>
-#include <cctype>
 #include <cstddef>
 #include <expected>
 #include <format>
@@ -41,12 +41,12 @@ class Lexer final
         tokens.reserve((input_.size() / 4) + 16);
 
         while (true) {
-            auto token = TRY(next_token());
+            const auto token = TRY(next_token());
 
             const bool is_eof = token.type == TokenType::END_OF_FILE;
-            tokens.push_back(std::move(token));
+            tokens.push_back(token);
 
-            if (is_eof) {
+            if (is_eof) [[unlikely]] {
                 break;
             }
         }
@@ -55,38 +55,18 @@ class Lexer final
     }
 
   private:
-    std::string_view input_; ///< Source text being tokenized
-
-    std::size_t line_{ 1 };     ///< Current line number
-    std::size_t column_{ 1 };   ///< Current column number
+    std::string_view input_;    ///< Source text being tokenized
     std::size_t position_{ 0 }; ///< Current position in input_
 
-    /// @brief Advances to next character and updates position/line/column
+    /// @brief Advances to next character and updates position
     /// @return Current character before advancing, or '\0' if at EOF
-    /// @note Handles Unix (\n), Windows (\r\n), and old Mac (\r) line endings
     auto advance() noexcept -> char
     {
-        if (at_end()) {
+        if (at_end()) [[unlikely]] {
             return '\0';
         }
 
-        const char c = input_[position_];
-        ++position_;
-
-        if (c == '\n') {
-            ++line_;
-            column_ = 1;
-        } else if (c == '\r') {
-            ++line_;
-            column_ = 1;
-            if (peek() == '\n') {
-                ++position_;
-            }
-        } else {
-            ++column_;
-        }
-
-        return c;
+        return input_[position_++];
     }
 
     /// @brief Checks if lexer has reached end of input
@@ -102,10 +82,8 @@ class Lexer final
     /// @return true if matched and consumed, false otherwise
     auto match_string(std::string_view str) noexcept -> bool
     {
-        // TODO(niekdomi): Assumes no newlines in str; column tracking needs verification
         if (input_.substr(position_).starts_with(str)) {
             position_ += str.size();
-            column_ += str.size();
             return true;
         }
         return false;
@@ -118,12 +96,12 @@ class Lexer final
     {
         skip_whitespace_and_comment();
 
-        if (at_end()) {
+        if (at_end()) [[unlikely]] {
+            const auto start_pos = position_;
             return Token{
-                .type = TokenType::END_OF_FILE,
                 .value = "",
-                .line = line_,
-                .column = column_,
+                .position = start_pos,
+                .type = TokenType::END_OF_FILE,
             };
         }
 
@@ -158,35 +136,47 @@ class Lexer final
     auto peek(std::size_t look_ahead = 0) const noexcept -> char
     {
         const auto pos = position_ + look_ahead;
-        return pos >= input_.size() ? '\0' : input_[pos];
+        if (pos >= input_.size()) [[unlikely]] {
+            return '\0';
+        }
+        return input_[pos];
     }
 
     /// @brief Skips whitespace characters (space, tab, newline, ...)
     auto skip_whitespace_and_comment() noexcept -> void
     {
-        while (!at_end()) {
-            if (std::isspace(peek())) {
-                advance();
+        while (!at_end()) [[likely]] {
+            const char c = peek();
+
+            if (is_space(c)) {
+                position_++;
                 continue;
             }
 
-            // Line comment: '//'
-            if (match_string("//")) {
-                while (!at_end() && peek() != '\n') {
-                    advance();
-                }
-                continue;
-            }
+            if (c == '/') {
+                const char next = peek(1);
 
-            // Block comment: '/* ... */'
-            if (match_string("/*")) {
-                while (!at_end()) {
-                    if (match_string("*/")) {
-                        break;
+                // Line comment: '//'
+                if (next == '/') {
+                    position_ += 2;
+                    while (!at_end() && peek() != '\n') {
+                        position_++;
                     }
-                    advance();
+                    continue;
                 }
-                continue;
+
+                // Block comment: '/* ... */'
+                if (next == '*') {
+                    position_ += 2;
+                    while (!at_end()) {
+                        if (peek() == '*' && peek(1) == '/') {
+                            position_ += 2;
+                            break;
+                        }
+                        position_++;
+                    }
+                    continue;
+                }
             }
 
             break;
@@ -200,8 +190,7 @@ class Lexer final
     [[nodiscard]]
     auto lex_at() -> std::expected<Token, ParseError>
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         static constexpr std::array KEYWORDS = {
             std::pair{ "@if",       TokenType::IF             },
@@ -220,228 +209,200 @@ class Lexer final
         for (const auto &[keyword, type] : KEYWORDS) {
             if (match_string(keyword)) {
                 return Token{
+                    .value = std::string(keyword),
+                    .position = start_pos,
                     .type = type,
-                    .value = std::format("{}", keyword),
-                    .line = start_line,
-                    .column = start_column,
                 };
             }
         }
 
-        return error<Token>(
-          std::format("unexpected character after '@': '{}'", peek()), line_, column_);
+        return error<Token>(std::format("unexpected character after '@': '{}'", peek()), position_);
     }
 
     [[nodiscard]]
     auto lex_bang() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         if (match_string("!=")) {
             return Token{
-                .type = TokenType::NOT_EQUAL,
                 .value = "!=",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::NOT_EQUAL,
             };
         }
 
         advance();
         return Token{
-            .type = TokenType::EXCLAMATION,
             .value = "!",
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::EXCLAMATION,
         };
     }
 
     [[nodiscard]]
     auto lex_dot() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         if (match_string("...")) {
             return Token{
-                .type = TokenType::ELLIPSIS,
                 .value = "...",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::ELLIPSIS,
             };
         }
 
         if (match_string("..")) {
             return Token{
-                .type = TokenType::RANGE,
                 .value = "..",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::RANGE,
             };
         }
 
         advance();
         return Token{
-            .type = TokenType::DOT,
             .value = ".",
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::DOT,
         };
     }
 
     [[nodiscard]]
     auto lex_equal() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         if (match_string("==")) {
             return Token{
-                .type = TokenType::EQUAL,
                 .value = "==",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::EQUAL,
             };
         }
 
         advance();
         return Token{
-            .type = TokenType::ASSIGN,
             .value = "=",
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::ASSIGN,
         };
     }
 
     [[nodiscard]]
     auto lex_greater() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         if (match_string(">=")) {
             return Token{
-                .type = TokenType::GREATER_EQUAL,
                 .value = ">=",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::GREATER_EQUAL,
             };
         }
 
         advance();
         return Token{
-            .type = TokenType::GREATER,
             .value = ">",
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::GREATER,
         };
     }
 
     [[nodiscard]]
     auto lex_less() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         if (match_string("<=")) {
             return Token{
-                .type = TokenType::LESS_EQUAL,
                 .value = "<=",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::LESS_EQUAL,
             };
         }
 
         advance();
         return Token{
-            .type = TokenType::LESS,
             .value = "<",
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::LESS,
         };
     }
 
     [[nodiscard]]
     auto lex_minus() -> std::expected<Token, ParseError>
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         if (match_string("->")) {
             return Token{
-                .type = TokenType::ARROW,
                 .value = "->",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::ARROW,
             };
         }
 
         if (match_string("--")) {
             return Token{
-                .type = TokenType::MINUS_MINUS,
                 .value = "--",
-                .line = start_line,
-                .column = start_column,
+                .position = start_pos,
+                .type = TokenType::MINUS_MINUS,
             };
         }
 
-        return error<Token>(
-          std::format("unexpected character after '-': '{}'", peek()), line_, column_);
+        return error<Token>(std::format("unexpected character after '-': '{}'", peek()), position_);
     }
 
     [[nodiscard]]
     auto lex_number() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
-        const auto start_position = position_;
+        const auto start_pos = position_;
 
-        while (std::isdigit(peek())) {
+        while (is_digit(peek())) {
             advance();
         }
 
-        const auto num_str = input_.substr(start_position, position_ - start_position);
+        const auto num_str = input_.substr(start_pos, position_ - start_pos);
         return Token{
-            .type = TokenType::NUMBER,
             .value = std::string(num_str),
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::NUMBER,
         };
     }
 
     [[nodiscard]]
     auto lex_single_char(TokenType token, std::string_view value) noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         advance();
         return Token{
-            .type = token,
             .value = std::string(value),
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = token,
         };
     }
 
     [[nodiscard]]
     auto lex_string() -> std::expected<Token, ParseError>
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
+        const auto start_pos = position_;
 
         advance(); // Consume opening "
 
         std::string str{};
         str.reserve(32);
         while (peek() != '"') {
-            if (at_end()) {
-                return error<Token>("unterminated string literal (EOF)", line_, column_);
+            if (at_end()) [[unlikely]] {
+                return error<Token>("unterminated string literal (EOF)", position_);
             }
 
             const char c = peek();
-            if (c == '\n' || c == '\r') {
-                return error<Token>("unterminated string literal (EOL)", line_, column_);
+            if (c == '\n' || c == '\r') [[unlikely]] {
+                return error<Token>("unterminated string literal (EOL)", position_);
             }
 
             if (peek() == '\\') {
@@ -453,9 +414,10 @@ class Lexer final
                     case 't':  str += '\t'; break;
                     case 'r':  str += '\r'; break;
                     case '\\': str += '\\'; break;
-                    default:
-                        return error<Token>(
-                          std::format("invalid escape sequence: '\\{}'", peek()), line_, column_);
+                    default:   {
+                        return error<Token>(std::format("invalid escape sequence: '\\{}'", peek()),
+                                            position_);
+                    }
                 }
                 advance();
             } else {
@@ -466,27 +428,35 @@ class Lexer final
         advance(); // Consume closing "
 
         return Token{
-            .type = TokenType::STRING,
             .value = str,
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::STRING,
         };
     }
 
     [[nodiscard]]
     auto lex_identifier_or_keyword() noexcept -> Token
     {
-        const auto start_line = line_;
-        const auto start_column = column_;
-        const auto start_position = position_;
+        const auto start_pos = position_;
 
-        while (std::isalnum(peek()) || peek() == '_' || peek() == '-') {
+        if (!is_alpha(peek()) && peek() != '_') [[unlikely]] {
+            // Invalid identifier, will be handled as an error in the parser
+            return Token{
+                .value = std::string(1, advance()),
+                .position = start_pos,
+                .type = TokenType::IDENTIFIER,
+            };
+        }
+
+        advance();
+
+        while (is_ident(peek())) {
             advance();
         }
 
-        const auto text = input_.substr(start_position, position_ - start_position);
+        const auto text = input_.substr(start_pos, position_ - start_pos);
 
-        static constexpr std::array KEYWORDS = {
+        static constexpr std::array<std::pair<std::string_view, TokenType>, 46> KEYWORDS = {
             // Keywords - Top level
             std::pair{ "project",      TokenType::PROJECT      },
             std::pair{ "workspace",    TokenType::WORKSPACE    },
@@ -509,6 +479,10 @@ class Lexer final
             std::pair{ "public",       TokenType::PUBLIC       },
             std::pair{ "private",      TokenType::PRIVATE      },
             std::pair{ "interface",    TokenType::INTERFACE    },
+
+            // Keywords - Values
+            std::pair{ "true",         TokenType::TRUE         },
+            std::pair{ "false",        TokenType::FALSE        },
 
             // Keywords - Properties
             std::pair{ "type",         TokenType::TYPE         },
@@ -545,20 +519,18 @@ class Lexer final
         for (const auto &[keyword, type] : KEYWORDS) {
             if (text == keyword) {
                 return Token{
-                    .type = type,
                     .value = std::string(text),
-                    .line = start_line,
-                    .column = start_column,
+                    .position = start_pos,
+                    .type = type,
                 };
             }
         }
 
         // If it's not a keyword, it's an identifier
         return Token{
-            .type = TokenType::IDENTIFIER,
             .value = std::string(text),
-            .line = start_line,
-            .column = start_column,
+            .position = start_pos,
+            .type = TokenType::IDENTIFIER,
         };
     }
 };
