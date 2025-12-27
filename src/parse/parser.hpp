@@ -41,8 +41,7 @@ class Parser final
         AST ast{};
 
         while (peek().type != TokenType::END_OF_FILE) {
-            auto statement = TRY(parse_statement());
-            ast.statements.push_back(std::move(statement));
+            ast.statements.push_back(TRY(parse_statement()));
         }
 
         return ast;

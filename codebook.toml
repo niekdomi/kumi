@@ -1,9 +1,12 @@
 words = [
+    "cppcoreguidelines",
     "cxx",
     "kumi",
     "mylib",
     "myproject",
     "niekdomi",
+    "nolintbegin",
+    "nolintend",
     "nolintnextline",
     "nullptr",
     "spdlog",

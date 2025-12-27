@@ -171,10 +171,7 @@ class Lexer final
             }
 
             // Line comment: '//'
-            if (peek() == '/' && peek(1) == '/') {
-                advance();
-                advance();
-
+            if (match_string("//")) {
                 while (!at_end() && peek() != '\n') {
                     advance();
                 }
@@ -182,14 +179,9 @@ class Lexer final
             }
 
             // Block comment: '/* ... */'
-            if (peek() == '/' && peek(1) == '*') {
-                advance();
-                advance();
-
+            if (match_string("/*")) {
                 while (!at_end()) {
-                    if (peek() == '*' && peek(1) == '/') {
-                        advance();
-                        advance();
+                    if (match_string("*/")) {
                         break;
                     }
                     advance();
@@ -212,25 +204,24 @@ class Lexer final
         const auto start_column = column_;
 
         static constexpr std::array KEYWORDS = {
-            std::pair{ "if",       TokenType::IF             },
-            std::pair{ "else-if",  TokenType::ELSE_IF        },
-            std::pair{ "else",     TokenType::ELSE           },
-            std::pair{ "for",      TokenType::FOR            },
-            std::pair{ "in",       TokenType::IN             },
-            std::pair{ "break",    TokenType::BREAK          },
-            std::pair{ "continue", TokenType::CONTINUE       },
-            std::pair{ "error",    TokenType::ERROR          },
-            std::pair{ "warning",  TokenType::WARNING        },
-            std::pair{ "info",     TokenType::INFO           },
-            std::pair{ "import",   TokenType::IMPORT_KEYWORD },
-            std::pair{ "apply",    TokenType::APPLY_KEYWORD  },
+            std::pair{ "@if",       TokenType::IF             },
+            std::pair{ "@else-if",  TokenType::ELSE_IF        },
+            std::pair{ "@else",     TokenType::ELSE           },
+            std::pair{ "@for",      TokenType::FOR            },
+            std::pair{ "@break",    TokenType::BREAK          },
+            std::pair{ "@continue", TokenType::CONTINUE       },
+            std::pair{ "@error",    TokenType::ERROR          },
+            std::pair{ "@warning",  TokenType::WARNING        },
+            std::pair{ "@info",     TokenType::INFO           },
+            std::pair{ "@import",   TokenType::IMPORT_KEYWORD },
+            std::pair{ "@apply",    TokenType::APPLY_KEYWORD  },
         };
 
         for (const auto &[keyword, type] : KEYWORDS) {
             if (match_string(keyword)) {
                 return Token{
                     .type = type,
-                    .value = std::format("@{}", keyword),
+                    .value = std::format("{}", keyword),
                     .line = start_line,
                     .column = start_column,
                 };
@@ -256,6 +247,7 @@ class Lexer final
             };
         }
 
+        advance();
         return Token{
             .type = TokenType::EXCLAMATION,
             .value = "!",
@@ -288,6 +280,7 @@ class Lexer final
             };
         }
 
+        advance();
         return Token{
             .type = TokenType::DOT,
             .value = ".",
@@ -311,6 +304,7 @@ class Lexer final
             };
         }
 
+        advance();
         return Token{
             .type = TokenType::ASSIGN,
             .value = "=",
@@ -334,6 +328,7 @@ class Lexer final
             };
         }
 
+        advance();
         return Token{
             .type = TokenType::GREATER,
             .value = ">",
@@ -357,6 +352,7 @@ class Lexer final
             };
         }
 
+        advance();
         return Token{
             .type = TokenType::LESS,
             .value = "<",
@@ -420,7 +416,6 @@ class Lexer final
         const auto start_column = column_;
 
         advance();
-
         return Token{
             .type = token,
             .value = std::string(value),
@@ -508,6 +503,7 @@ class Lexer final
             std::pair{ "scripts",      TokenType::SCRIPTS      },
             std::pair{ "toolchain",    TokenType::TOOLCHAIN    },
             std::pair{ "root",         TokenType::ROOT         },
+            std::pair{ "in",           TokenType::IN           },
 
             // Keywords - Visibility
             std::pair{ "public",       TokenType::PUBLIC       },

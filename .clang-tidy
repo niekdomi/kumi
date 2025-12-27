@@ -18,8 +18,6 @@ Checks: >
   -readability-function-cognitive-complexity,
   -readability-identifier-length,
   -readability-magic-numbers,
-  -clang-diagnostic-gnu-statement-expression-from-macro-expansion,
-  -clang-diagnostic-gnu-case-range,
 
 CheckOptions:
   # Linter rule options
