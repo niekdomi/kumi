@@ -37,14 +37,12 @@ struct InputEvent
     [[nodiscard]]
     constexpr auto is_arrow() const noexcept -> bool
     {
-        return key
-            == Key::ARROW_UP
-            || key
-            == Key::ARROW_DOWN
-            || key
-            == Key::ARROW_LEFT
-            || key
-            == Key::ARROW_RIGHT;
+        // clang-format off
+        return key == Key::ARROW_UP   || key
+                   == Key::ARROW_DOWN || key
+                   == Key::ARROW_LEFT || key
+                   == Key::ARROW_RIGHT;
+        // clang-format on
     }
 };
 

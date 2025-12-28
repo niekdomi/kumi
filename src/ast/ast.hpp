@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -275,8 +276,9 @@ struct WorkspaceDecl final : NodeBase
 /// ```
 struct TargetDecl final : NodeBase
 {
-    std::string name;            ///< Target name
-    std::vector<Statement> body; ///< Target body (properties, visibility blocks, etc.)
+    std::string name;                        ///< Target name
+    std::optional<std::string> extends_from; ///< Optional base target to extend from
+    std::vector<Statement> body;             ///< Target body (properties, visibility blocks, ...)
 };
 
 /// @brief Represents a dependencies declaration
@@ -342,6 +344,8 @@ struct MixinDecl final : NodeBase
 {
     std::string name;                 ///< Mixin name
     std::vector<Property> properties; ///< Mixin properties
+    std::vector<VisibilityBlock>
+      visibility_blocks; ///< Visibility blocks (public, private, interface)
 };
 
 /// @brief Represents a preset declaration

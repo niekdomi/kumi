@@ -7,7 +7,7 @@ project broken {
 target app {
     type: executable
     sources: "main.cpp"  // ERROR: Missing semicolon
-    
+
     @if platform(windows {  // ERROR: Missing closing paren
         defines: "WINDOWS";
     }

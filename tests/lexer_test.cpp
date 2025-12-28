@@ -121,8 +121,7 @@ TEST_CASE("Lexer: operators", "[lexer][operators]")
         { "<=",  TokenType::LESS_EQUAL,    "<="  },
         { "<",   TokenType::LESS,          "<"   },
 
-        // Arrow/minus operators
-        { "->",  TokenType::ARROW,         "->"  },
+        // minus operators
         { "--",  TokenType::MINUS_MINUS,   "--"  },
     }));
     CAPTURE(input);

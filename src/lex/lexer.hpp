@@ -193,7 +193,7 @@ class Lexer final
     {
         const auto start_pos = position_;
 
-        static constexpr std::array KEYWORDS = {
+        static constexpr std::array<std::pair<std::string_view, TokenType>, 11> KEYWORDS = {
             std::pair{ "@if",       TokenType::IF             },
             std::pair{ "@else-if",  TokenType::ELSE_IF        },
             std::pair{ "@else",     TokenType::ELSE           },
@@ -217,7 +217,9 @@ class Lexer final
             }
         }
 
-        return error<Token>(std::format("unexpected character after '@': '{}'", peek()), position_);
+        return error<Token>(std::format("unexpected character after '@': '{}'", peek()),
+                            position_,
+                            "expected @if, @for, @error, @warning, @info, @import, or @apply");
     }
 
     [[nodiscard]]
@@ -338,23 +340,23 @@ class Lexer final
     {
         const auto start_pos = position_;
 
-        if (match_string("->")) {
+        // Check for variable: --identifier
+        if (match_string("--") && is_alpha(peek())) {
+            advance();
+
+            while (is_identifier(peek())) {
+                advance();
+            }
+
             return Token{
-                .value = "->",
+                .value = std::string(input_.substr(start_pos, position_ - start_pos)),
                 .position = start_pos,
-                .type = TokenType::ARROW,
+                .type = TokenType::VARIABLE,
             };
         }
 
-        if (match_string("--")) {
-            return Token{
-                .value = "--",
-                .position = start_pos,
-                .type = TokenType::MINUS_MINUS,
-            };
-        }
-
-        return error<Token>(std::format("unexpected character after '-': '{}'", peek()), position_);
+        return error<Token>(
+          "unexpected '-' character", position_, "did you mean a variable like --name?");
     }
 
     [[nodiscard]]
@@ -398,12 +400,13 @@ class Lexer final
         str.reserve(32);
         while (peek() != '"') {
             if (at_end()) [[unlikely]] {
-                return error<Token>("unterminated string literal (EOF)", position_);
+                return error<Token>("unterminated string literal", position_, "missing closing \"");
             }
 
             const char c = peek();
             if (c == '\n' || c == '\r') [[unlikely]] {
-                return error<Token>("unterminated string literal (EOL)", position_);
+                return error<Token>(
+                  "unterminated string literal", position_, "strings cannot span multiple lines");
             }
 
             if (peek() == '\\') {
@@ -417,7 +420,8 @@ class Lexer final
                     case '\\': str += '\\'; break;
                     default:   {
                         return error<Token>(std::format("invalid escape sequence: '\\{}'", peek()),
-                                            position_);
+                                            position_,
+                                            R"(valid escapes: \", \n, \t, \r, \\)");
                     }
                 }
                 advance();
@@ -451,7 +455,7 @@ class Lexer final
 
         advance();
 
-        while (is_ident(peek())) {
+        while (is_identifier(peek())) {
             advance();
         }
 

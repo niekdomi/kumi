@@ -47,6 +47,7 @@ enum class TokenType : std::uint8_t
     EXTENDS,  ///< `extends base-target { }` - Extend a target with additional properties
     EXPORT,   ///< `export: true;`           - Export target for external use
     IMPORT,   ///< `import: mylib;`          - Import a library or module
+    VARIABLE, ///< `--myvar`                 - Custom property definition
 
     // Keywords - Control Flow
     IF,             ///< `@if condition { }`      - If branch
@@ -106,7 +107,6 @@ enum class TokenType : std::uint8_t
     GREATER_EQUAL, ///< `>=`  - Greater than or equal comparison
     DOLLAR,        ///< `$`   - Variable interpolation prefix (e.g., `${--var}`)
     MINUS_MINUS,   ///< `--`  - Custom property prefix (e.g., `--version`)
-    ARROW,         ///< `->`  - Arrow operator
 
     // Literals
     IDENTIFIER, ///< Identifier (e.g., `foo`, `bar_baz`)

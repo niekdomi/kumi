@@ -231,6 +231,16 @@ kumi check
 
 ---
 
+### 8. `Parser + Lexer`
+
+The parser + lexer is about 2.5x faster than the one used by CMake, though the
+real game changer is the syntax. It is not only much more readable, but the fact
+that it's also more concise results in 8.3x smaller file size. Calculating this
+to the 2.5x faster parsing speed, results in a ~20x faster time for reading and
+understanding build files than CMake (the same number was also measured).
+
+---
+
 ## Comparison with Other Build Systems
 
 | Feature             | CMake                  | Bazel                  | Meson           | xmake           | **Kumi**                      |

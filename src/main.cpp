@@ -3,10 +3,11 @@
 
 #include "lex/lexer.hpp"
 #include "parse/parser.hpp"
-#include "support/diagnostic.hpp"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
+#include <print>
 #include <sstream>
 
 auto main(int argc, char **argv) -> int
@@ -31,32 +32,52 @@ auto main(int argc, char **argv) -> int
 
     // Lex
     kumi::Lexer lexer(source);
+
+    auto start_lex = std::chrono::high_resolution_clock::now();
     auto tokens_result = lexer.tokenize();
 
-    if (!tokens_result) {
-        const auto &error = tokens_result.error();
-        kumi::DiagnosticPrinter printer(source);
-        printer.print_error(error);
-        return 1;
-    }
+    auto end_lex = std::chrono::high_resolution_clock::now();
 
+    auto duration_lex_us
+      = std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
+
+    // Display file info
     const auto &tokens = *tokens_result;
-    std::cout << "Lexed " << tokens.size() << " tokens\n";
+    double size_mb = static_cast<double>(source.size()) / 1000000.0;
+
+    std::println("╭─────────────────────────────────────────╮");
+    std::println("│ File Analysis                           │");
+    std::println("├─────────────────────────────────────────┤");
+    std::println("│ File:       {:<28}│", filename);
+    std::println("│ Size:       {:<7.2f} MB{:<18}│", size_mb, "");
+    std::println("│ Tokens:     {:<28}│", tokens.size());
+    std::println("╰─────────────────────────────────────────╯");
 
     // Parse
     kumi::Parser parser(tokens);
+    const auto start_parse = std::chrono::high_resolution_clock::now();
     auto ast_result = parser.parse();
+    const auto end_parse = std::chrono::high_resolution_clock::now();
+    const auto duration_parse_us
+      = std::chrono::duration_cast<std::chrono::microseconds>(end_parse - start_parse);
 
-    if (!ast_result) {
-        const auto &error = ast_result.error();
-        kumi::DiagnosticPrinter printer(source);
-        printer.print_error(error);
-        return 1;
-    }
+    // Display performance metrics
+    double duration_lex_ms = static_cast<double>(duration_lex_us.count()) / 1000.0;
+    double duration_parse_ms = static_cast<double>(duration_parse_us.count()) / 1000.0;
+    double lex_throughput = size_mb / (duration_lex_ms / 1000.0);
+    double parse_throughput = size_mb / (duration_parse_ms / 1000.0);
+
+    std::println("\n╭─────────────────────────────────────────╮");
+    std::println("│ Performance Metrics                     │");
+    std::println("├─────────────────────────────────────────┤");
+    std::println("│ Lexing:  {:>10.4f} ms {:>10.2f} MB/s  │", duration_lex_ms, lex_throughput);
+    std::println("│ Parsing: {:>10.4f} ms {:>10.2f} MB/s  │", duration_parse_ms, parse_throughput);
+    std::println("│ Total:   {:>10.4f} ms {:>10.2f} MB/s  │",
+                 duration_lex_ms + duration_parse_ms,
+                 size_mb / ((duration_lex_ms + duration_parse_ms) / 1000.0));
+    std::println("╰─────────────────────────────────────────╯");
 
     const auto &ast = *ast_result;
-    std::cout << "Parsed " << ast.statements.size() << " statements\n";
-    std::cout << "Success!\n";
-
+    std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
     return 0;
 }

@@ -56,6 +56,7 @@ if is_mode("debug") then
 else
 	set_symbols("hidden")
 	add_cxflags("-O3", { force = true })
+	add_cxflags("-march=native", { force = true })
 	add_defines("NDEBUG")
 end
 
@@ -78,6 +79,7 @@ if is_mode("debug") then
 else
 	set_symbols("hidden")
 	add_cxflags("-O3", { force = true })
+	add_cxflags("-march=native", { force = true })
 	add_defines("NDEBUG")
 end
 
