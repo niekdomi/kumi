@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cli/template_loader.hpp"
+
 #include <expected>
 #include <filesystem>
 #include <format>
@@ -10,7 +12,6 @@ namespace kumi {
 
 namespace fs = std::filesystem;
 
-// Project generator for creating new C++ projects
 class ProjectGenerator
 {
   public:
@@ -19,19 +20,16 @@ class ProjectGenerator
         std::string name;
         std::string type;         // "executable", "library", "header-only"
         std::string cpp_standard; // "17", "20", "23"
-        std::string license;      // "MIT", "Apache-2.0", "GPL-3.0"
         bool use_git;
     };
 
     explicit ProjectGenerator(Config config) : config_(std::move(config)) {}
 
-    // Generate the project
     auto generate(const fs::path &base_path = fs::current_path())
       -> std::expected<void, std::string>
     {
         project_path_ = base_path / config_.name;
 
-        // Create project directory
         if (fs::exists(project_path_)) {
             return std::unexpected(std::format("Directory '{}' already exists", config_.name));
         }
@@ -48,11 +46,7 @@ class ProjectGenerator
                 fs::create_directories(project_path_ / "include" / config_.name);
             }
 
-            // Generate files
             generate_kumi_build_file();
-            if (config_.license != "None") {
-                generate_license();
-            }
             generate_gitignore();
 
             if (config_.type == "executable") {
@@ -63,7 +57,6 @@ class ProjectGenerator
                 generate_header_only_files();
             }
 
-            // Initialize git repository
             if (config_.use_git) {
                 initialize_git();
             }
@@ -84,201 +77,106 @@ class ProjectGenerator
   private:
     void generate_kumi_build_file()
     {
-        auto path = project_path_ / "kumi.build";
-        std::ofstream file(path);
-
-        // Generate project section
-        file << std::format("project {} {{\n", config_.name);
-        file << "  version: \"0.1.0\";\n";
-        if (config_.license != "None") {
-            file << std::format("  license: \"{}\";\n", config_.license);
+        auto template_result = TemplateLoader::load_template("kumi_build.template");
+        if (!template_result) {
+            throw std::runtime_error(template_result.error());
         }
-        file << "}\n\n";
 
-        // Generate target section
-        file << std::format("target {} {{\n", config_.name);
+        std::map<std::string, std::string> vars = {
+            { "PROJECT_NAME", config_.name         },
+            { "TARGET_TYPE",  config_.type         },
+            { "CPP_STANDARD", config_.cpp_standard }
+        };
 
-        if (config_.type == "executable") {
-            file << "  type: executable;\n";
-            file << "  sources: \"src/**/*.cpp\";\n";
-        } else if (config_.type == "library") {
-            file << "  type: library;\n";
-            file << "  sources: \"src/**/*.cpp\";\n";
-            file << std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
+        if (config_.type == "library") {
+            vars["HEADERS_LINE"]
+              = std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
         } else if (config_.type == "header-only") {
-            file << "  type: header-only;\n";
-            file << std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
+            vars["HEADERS_LINE"]
+              = std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
+        } else {
+            vars["HEADERS_LINE"] = "";
         }
 
-        file << "\n  public {\n";
-        file << std::format("    cpp-standard: \"{}\";\n", config_.cpp_standard);
-        file << "  }\n";
-        file << "}\n";
-    }
+        const auto content = TemplateLoader::substitute(*template_result, vars);
 
-    void generate_license()
-    {
-        auto path = project_path_ / "LICENSE";
-        std::ofstream file(path);
-
-        if (config_.license == "MIT") {
-            file << R"(MIT License
-
-Copyright (c) 2025
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-)";
-        } else if (config_.license == "Apache-2.0") {
-            file << R"(Apache License
-Version 2.0, January 2004
-http://www.apache.org/licenses/
-
-[Full Apache 2.0 license text would go here]
-)";
-        } else if (config_.license == "GPL-3.0") {
-            file << R"(GNU GENERAL PUBLIC LICENSE
-Version 3, 29 June 2007
-
-[Full GPL 3.0 license text would go here]
-)";
-        }
+        std::ofstream file(project_path_ / "kumi.build");
+        file << content;
     }
 
     void generate_gitignore()
     {
-        auto path = project_path_ / ".gitignore";
-        std::ofstream file(path);
+        auto template_result = TemplateLoader::load_template("gitignore.template");
+        if (!template_result) {
+            throw std::runtime_error(template_result.error());
+        }
 
-        file << R"(# Xmake
-.xmake/
-build/
-
-# Build artifacts
-*.o
-*.a
-*.so
-*.dylib
-*.exe
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-)";
+        std::ofstream file(project_path_ / ".gitignore");
+        file << *template_result;
     }
 
     void generate_main_cpp()
     {
-        auto path = project_path_ / "src" / "main.cpp";
-        std::ofstream file(path);
+        const auto template_name
+          = (config_.cpp_standard == "23") ? "main_cpp23.template" : "main_cpp_legacy.template";
 
-        file << std::format(R"(#include <print>
+        auto template_result = TemplateLoader::load_template(template_name);
+        if (!template_result) {
+            throw std::runtime_error(template_result.error());
+        }
 
-int main() {{
-    std::println("Hello from {}!");
-    return 0;
-}}
-)",
-                            config_.name);
+        std::map<std::string, std::string> vars = {
+            { "PROJECT_NAME", config_.name }
+        };
+
+        const auto content = TemplateLoader::substitute(*template_result, vars);
+
+        std::ofstream file(project_path_ / "src" / "main.cpp");
+        file << content;
     }
 
     void generate_library_files()
     {
-        // Generate header
-        auto header_path = project_path_ / "include" / config_.name / (config_.name + ".hpp");
-        std::ofstream header(header_path);
+        auto header_template = TemplateLoader::load_template("library_header.template");
+        auto source_template = TemplateLoader::load_template("library_source.template");
 
-        header << std::format(R"(#pragma once
+        if (!header_template || !source_template) {
+            throw std::runtime_error("Failed to load library templates");
+        }
 
-#include <string>
+        std::map<std::string, std::string> vars = {
+            { "PROJECT_NAME", config_.name }
+        };
 
-namespace {} {{
+        const auto header_content = TemplateLoader::substitute(*header_template, vars);
+        const auto source_content = TemplateLoader::substitute(*source_template, vars);
 
-class Example {{
-public:
-    Example() = default;
-    
-    std::string greet() const {{
-        return "Hello from {}!";
-    }}
-}};
+        std::ofstream header(project_path_ / "include" / config_.name / (config_.name + ".hpp"));
+        header << header_content;
 
-}} // namespace {}
-)",
-                              config_.name,
-                              config_.name,
-                              config_.name);
-
-        // Generate source
-        auto src_path = project_path_ / "src" / (config_.name + ".cpp");
-        std::ofstream src(src_path);
-
-        src << std::format(R"(#include "{}/{}.hpp"
-
-namespace {} {{
-
-// Implementation goes here
-
-}} // namespace {}
-)",
-                           config_.name,
-                           config_.name,
-                           config_.name,
-                           config_.name);
+        std::ofstream source(project_path_ / "src" / (config_.name + ".cpp"));
+        source << source_content;
     }
 
     void generate_header_only_files()
     {
-        auto header_path = project_path_ / "include" / config_.name / (config_.name + ".hpp");
-        std::ofstream header(header_path);
+        auto template_result = TemplateLoader::load_template("library_header.template");
+        if (!template_result) {
+            throw std::runtime_error(template_result.error());
+        }
 
-        header << std::format(R"(#pragma once
+        std::map<std::string, std::string> vars = {
+            { "PROJECT_NAME", config_.name }
+        };
 
-#include <string>
+        const auto content = TemplateLoader::substitute(*template_result, vars);
 
-namespace {} {{
-
-class Example {{
-public:
-    Example() = default;
-    
-    std::string greet() const {{
-        return "Hello from {}!";
-    }}
-}};
-
-}} // namespace {}
-)",
-                              config_.name,
-                              config_.name,
-                              config_.name);
+        std::ofstream header(project_path_ / "include" / config_.name / (config_.name + ".hpp"));
+        header << content;
     }
 
     void initialize_git()
     {
-        // Run git init in the project directory, silencing output
         std::string command
           = std::format("cd {} && git init > /dev/null 2>&1", project_path_.string());
         std::system(command.c_str());

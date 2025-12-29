@@ -8,8 +8,8 @@
 
 #include "ast/ast.hpp"
 #include "lex/token.hpp"
-#include "support/error.hpp"
 #include "support/macros.hpp"
+#include "support/parse_error.hpp"
 
 #include <cstddef>
 #include <expected>

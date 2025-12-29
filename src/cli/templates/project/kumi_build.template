@@ -1,0 +1,12 @@
+project {PROJECT_NAME} {
+  version: "0.1.0";
+}
+
+target {PROJECT_NAME} {
+  type: {TARGET_TYPE};
+  sources: "src/**/*.cpp";
+{HEADERS_LINE}
+  public {
+    cpp-standard: "{CPP_STANDARD}";
+  }
+}

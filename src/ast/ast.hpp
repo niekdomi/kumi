@@ -19,11 +19,9 @@
 namespace kumi {
 
 /// Forward Declarations
-struct ApplyStmt;
 struct ComparisonExpr;
 struct DependenciesDecl;
 struct DiagnosticStmt;
-struct FeaturesDecl;
 struct ForStmt;
 struct FunctionCall;
 struct GlobalDecl;
@@ -35,14 +33,10 @@ struct LoopControlStmt;
 struct MixinDecl;
 struct OptionsDecl;
 struct PackageDecl;
-struct PresetDecl;
 struct ProjectDecl;
-struct RootDecl;
 struct ScriptsDecl;
 struct TargetDecl;
-struct TestingDecl;
 struct ToolchainDecl;
-struct Variable;
 struct VisibilityBlock;
 struct WorkspaceDecl;
 
@@ -56,8 +50,7 @@ struct WorkspaceDecl;
 /// in the source file for error reporting and debugging.
 struct NodeBase
 {
-    std::size_t line;   ///< Line number in source file
-    std::size_t column; ///< Column number in source file
+    std::size_t position; ///< Character offset in source
 };
 
 //===---------------------------------------------------------------------===//
@@ -81,10 +74,10 @@ using Value = std::variant<std::string, // String literal: "hello"
 
 /// @brief Expression variant representing any evaluable expression
 ///
-/// Expressions can appear in conditions (@if), loop iterables (@for),
+/// Expressions can appear in conditions (`@if`), loop iterables (`@for`),
 /// and property values. They combine literals, variables, function calls,
 /// and operators.
-using Expression = std::variant<FunctionCall, Variable, ComparisonExpr, LogicalExpr, Value>;
+using Expression = std::variant<FunctionCall, ComparisonExpr, LogicalExpr, Value>;
 
 /// @brief Represents a function call expression
 ///
@@ -100,21 +93,6 @@ struct FunctionCall final : NodeBase
 {
     std::string name;             ///< Function name (e.g., "platform", "glob")
     std::vector<Value> arguments; ///< Function arguments
-};
-
-/// @brief Represents a variable reference
-///
-/// Variables reference custom properties defined in :root blocks or
-/// command-line options.
-///
-/// Example:
-/// ```css
-/// version: var(--app-version);
-/// name: ${--project-name};
-/// ```
-struct Variable final : NodeBase
-{
-    std::string name; ///< Variable name without the -- prefix
 };
 
 /// @brief Comparison operators for conditional expressions
@@ -208,14 +186,10 @@ using Statement = std::variant<
   OptionsDecl,
   GlobalDecl,
   MixinDecl,
-  PresetDecl,
-  FeaturesDecl,
-  TestingDecl,
   InstallDecl,
   PackageDecl,
   ScriptsDecl,
   ToolchainDecl,
-  RootDecl,
 
   // Visibility blocks (only in target bodies)
   VisibilityBlock,
@@ -226,7 +200,6 @@ using Statement = std::variant<
   LoopControlStmt,
   DiagnosticStmt,
   ImportStmt,
-  ApplyStmt,
 
   // Properties (can appear in blocks)
   Property>;
@@ -348,55 +321,6 @@ struct MixinDecl final : NodeBase
       visibility_blocks; ///< Visibility blocks (public, private, interface)
 };
 
-/// @brief Represents a preset declaration
-///
-/// Defines build presets with predefined configurations.
-///
-/// Example:
-/// ```css
-/// preset release {
-///     optimization: "O3";
-///     debug_info: false;
-/// }
-/// ```
-struct PresetDecl final : NodeBase
-{
-    std::string name;                 ///< Preset name
-    std::vector<Property> properties; ///< Preset properties
-};
-
-/// @brief Represents a features declaration
-///
-/// Defines optional features that can be enabled or disabled.
-///
-/// Example:
-/// ```css
-/// features {
-///     networking: true;
-///     graphics: false;
-/// }
-/// ```
-struct FeaturesDecl final : NodeBase
-{
-    std::vector<Property> features; ///< Feature flags
-};
-
-/// @brief Represents a testing declaration
-///
-/// Configures testing framework and test settings.
-///
-/// Example:
-/// ```css
-/// testing {
-///     framework: "catch2";
-///     timeout: 30;
-/// }
-/// ```
-struct TestingDecl final : NodeBase
-{
-    std::vector<Property> properties; ///< Testing properties
-};
-
 /// @brief Represents an install declaration
 ///
 /// Specifies installation rules and destinations.
@@ -460,22 +384,6 @@ struct ToolchainDecl final : NodeBase
 {
     std::string name;                 ///< Toolchain name
     std::vector<Property> properties; ///< Toolchain properties
-};
-
-/// @brief Represents a root declaration for CSS-like custom properties
-///
-/// Defines custom variables that can be referenced elsewhere.
-///
-/// Example:
-/// ```css
-/// :root {
-///     --version: "1.0.0";
-///     --author: "niekdomi";
-/// }
-/// ```
-struct RootDecl final : NodeBase
-{
-    std::vector<Property> variables; ///< Custom property definitions
 };
 
 //===---------------------------------------------------------------------===//
@@ -617,27 +525,11 @@ struct ImportStmt final : NodeBase
     std::string path; ///< Path to file to import (relative or absolute)
 };
 
-/// @brief Represents an apply statement
-///
-/// Applies a profile or mixin with optional overrides.
-///
-/// Example:
-/// ```css
-/// @apply profile(release) {
-///     optimization: "O3";
-/// }
-/// ```
-struct ApplyStmt final : NodeBase
-{
-    FunctionCall profile;        ///< Profile function call
-    std::vector<Statement> body; ///< Override statements
-};
-
 //===---------------------------------------------------------------------===//
 // Root AST
 //===---------------------------------------------------------------------===//
 
-/// @brief Root node representing an entire Kumi build file
+/// @brief Root node representing an entire build file
 struct AST
 {
     std::vector<Statement> statements; ///< All top-level statements in the file
