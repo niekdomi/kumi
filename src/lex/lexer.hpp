@@ -95,7 +95,11 @@ class Lexer final
     [[nodiscard]]
     auto next_token() -> std::expected<Token, ParseError>
     {
-        skip_whitespace_and_comment();
+        skip_whitespace();
+
+        if (peek() == '/' && (peek(1) == '/' || peek(1) == '*')) {
+            return lex_comment();
+        }
 
         if (at_end()) [[unlikely]] {
             const auto start_pos = position_;
@@ -126,6 +130,7 @@ class Lexer final
             case '"':         return lex_string();
             case '@':         return lex_at();
             case '0' ... '9': return lex_number();
+            case '/':         return lex_comment();
             default:          return lex_identifier_or_keyword();
         }
     }
@@ -143,43 +148,10 @@ class Lexer final
     }
 
     /// @brief Skips whitespace characters (space, tab, newline, ...)
-    auto skip_whitespace_and_comment() noexcept -> void
+    auto skip_whitespace() noexcept -> void
     {
-        while (!at_end()) [[likely]] {
-            const char c = peek();
-
-            if (is_space(c)) {
-                position_++;
-                continue;
-            }
-
-            if (c == '/') {
-                const char next = peek(1);
-
-                // Line comment: '//'
-                if (next == '/') {
-                    position_ += 2;
-                    while (!at_end() && peek() != '\n') {
-                        position_++;
-                    }
-                    continue;
-                }
-
-                // Block comment: '/* ... */'
-                if (next == '*') {
-                    position_ += 2;
-                    while (!at_end()) {
-                        if (peek() == '*' && peek(1) == '/') {
-                            position_ += 2;
-                            break;
-                        }
-                        position_++;
-                    }
-                    continue;
-                }
-            }
-
-            break;
+        while (!at_end() && is_space(peek())) {
+            ++position_;
         }
     }
 
@@ -192,13 +164,14 @@ class Lexer final
     {
         const auto start_pos = position_;
 
-        static constexpr std::array<std::pair<std::string_view, TokenType>, 10> KEYWORDS = {
+        static constexpr std::array<std::pair<std::string_view, TokenType>, 11> KEYWORDS = {
             std::pair{ "@if",       TokenType::AT_IF       },
             std::pair{ "@else-if",  TokenType::AT_ELSE_IF  },
             std::pair{ "@else",     TokenType::AT_ELSE     },
             std::pair{ "@for",      TokenType::AT_FOR      },
             std::pair{ "@break",    TokenType::AT_BREAK    },
             std::pair{ "@info",     TokenType::AT_INFO     },
+            std::pair{ "@debug",    TokenType::AT_DEBUG    },
             std::pair{ "@import",   TokenType::AT_IMPORT   },
             std::pair{ "@continue", TokenType::AT_CONTINUE },
             std::pair{ "@error",    TokenType::AT_ERROR    },
@@ -217,7 +190,7 @@ class Lexer final
 
         return error<Token>(std::format("unexpected character after '@': '{}'", peek()),
                             position_,
-                            "expected one of: if, else-if, else, for, break, info, import, "
+                            "expected one of: if, else-if, else, for, break, info, debug, import, "
                             "continue, error, warning");
     }
 
@@ -236,6 +209,52 @@ class Lexer final
 
         return error<Token>(
           std::format("unexpected character after '!': '{}'", peek()), position_, "expected '='");
+    }
+
+    [[nodiscard]]
+    auto lex_comment() -> std::expected<Token, ParseError>
+    {
+        const auto start_pos = position_;
+        // TODO(domi): Check if using match_string() harms performance (would be more elegant
+        //             otherwise)
+        //             Also check if if (peek() == '/') { ... } could improve performance (less
+        //             elegant code though)
+
+        // Line comment: '//'
+        if (peek() == '/' && peek(1) == '/') {
+            position_ += 2;
+            while (!at_end() && peek() != '\n') {
+                ++position_;
+            }
+
+            return Token{
+                .value = input_.substr(start_pos, position_ - start_pos),
+                .position = start_pos,
+                .type = TokenType::COMMENT,
+            };
+        }
+
+        // Block comment: '/* ... */'
+        if (peek() == '/' && peek(1) == '*') {
+            position_ += 2;
+            while (!at_end()) {
+                if (peek() == '*' && peek(1) == '/') {
+                    position_ += 2;
+                    break;
+                }
+                ++position_;
+            }
+
+            return Token{
+                .value = input_.substr(start_pos, position_ - start_pos),
+                .position = start_pos,
+                .type = TokenType::COMMENT,
+            };
+        }
+
+        return error<Token>(std::format("unexpected character after '/': '{}'", peek()),
+                            position_,
+                            "expected '/' or '*' for comment");
     }
 
     [[nodiscard]]
@@ -343,7 +362,6 @@ class Lexer final
             .type = token,
         };
     }
-
     [[nodiscard]]
     auto lex_string() -> std::expected<Token, ParseError>
     {
@@ -417,20 +435,19 @@ class Lexer final
 
         const auto text = input_.substr(start_pos, position_ - start_pos);
 
-        static constexpr std::array<std::pair<std::string_view, TokenType>, 20> KEYWORDS = {
+        static constexpr std::array<std::pair<std::string_view, TokenType>, 19> KEYWORDS = {
             // Top-Level Declarations
             std::pair{ "project",      TokenType::PROJECT      },
             std::pair{ "workspace",    TokenType::WORKSPACE    },
             std::pair{ "target",       TokenType::TARGET       },
             std::pair{ "dependencies", TokenType::DEPENDENCIES },
             std::pair{ "options",      TokenType::OPTIONS      },
-            std::pair{ "global",       TokenType::GLOBAL       },
             std::pair{ "mixin",        TokenType::MIXIN        },
             std::pair{ "profile",      TokenType::PROFILE      },
             std::pair{ "install",      TokenType::INSTALL      },
             std::pair{ "package",      TokenType::PACKAGE      },
             std::pair{ "scripts",      TokenType::SCRIPTS      },
-            std::pair{ "toolchain",    TokenType::TOOLCHAIN    },
+            std::pair{ "with",         TokenType::WITH         },
 
             // Visibility Modifiers
             std::pair{ "public",       TokenType::PUBLIC       },
@@ -450,7 +467,7 @@ class Lexer final
         for (const auto &[keyword, type] : KEYWORDS) {
             if (text == keyword) {
                 return Token{
-                    .value = text,
+                    .value = keyword,
                     .position = start_pos,
                     .type = type,
                 };

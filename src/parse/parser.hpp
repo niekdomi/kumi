@@ -55,18 +55,6 @@ class Parser final
     /// @return Current token before advancing
     auto advance() -> const Token & { return tokens_[position_++]; }
 
-    /// @brief Creates a parse error with optional hint
-    /// @param msg Error message
-    /// @param pos Position in source where error occurred
-    /// @param hint Optional hint for fixing the error
-    template<typename T>
-    auto error(std::string_view msg, std::size_t pos, std::string_view hint = "")
-      -> std::expected<T, ParseError>
-    {
-        return std::unexpected(
-          ParseError{ .message = std::string(msg), .position = pos, .hint = std::string(hint) });
-    }
-
     /// @brief Expects a specific token type and consumes it
     /// @param type Expected token type
     /// @return Token on success, ParseError if type doesn't match

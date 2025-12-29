@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -24,7 +23,6 @@ struct DependenciesDecl;
 struct DiagnosticStmt;
 struct ForStmt;
 struct FunctionCall;
-struct GlobalDecl;
 struct IfStmt;
 struct ImportStmt;
 struct InstallDecl;
@@ -33,10 +31,10 @@ struct LoopControlStmt;
 struct MixinDecl;
 struct OptionsDecl;
 struct PackageDecl;
+struct ProfileDecl;
 struct ProjectDecl;
 struct ScriptsDecl;
 struct TargetDecl;
-struct ToolchainDecl;
 struct VisibilityBlock;
 struct WorkspaceDecl;
 
@@ -184,12 +182,11 @@ using Statement = std::variant<
   TargetDecl,
   DependenciesDecl,
   OptionsDecl,
-  GlobalDecl,
   MixinDecl,
+  ProfileDecl,
   InstallDecl,
   PackageDecl,
   ScriptsDecl,
-  ToolchainDecl,
 
   // Visibility blocks (only in target bodies)
   VisibilityBlock,
@@ -249,9 +246,9 @@ struct WorkspaceDecl final : NodeBase
 /// ```
 struct TargetDecl final : NodeBase
 {
-    std::string name;                        ///< Target name
-    std::optional<std::string> extends_from; ///< Optional base target to extend from
-    std::vector<Statement> body;             ///< Target body (properties, visibility blocks, ...)
+    std::string name;                ///< Target name
+    std::vector<std::string> mixins; ///< Mixins to apply (via 'with' keyword)
+    std::vector<Statement> body;     ///< Target body (properties, visibility blocks, ...)
 };
 
 /// @brief Represents a dependencies declaration
@@ -286,22 +283,6 @@ struct OptionsDecl final : NodeBase
     std::vector<Property> options; ///< Build options
 };
 
-/// @brief Represents a global declaration
-///
-/// Defines global settings that apply to all targets.
-///
-/// Example:
-/// ```css
-/// global {
-///     cxx_standard: 20;
-///     warnings: "all";
-/// }
-/// ```
-struct GlobalDecl final : NodeBase
-{
-    std::vector<Property> properties; ///< Global properties
-};
-
 /// @brief Represents a mixin declaration
 ///
 /// Defines reusable property sets that can be applied to targets.
@@ -319,6 +300,25 @@ struct MixinDecl final : NodeBase
     std::vector<Property> properties; ///< Mixin properties
     std::vector<VisibilityBlock>
       visibility_blocks; ///< Visibility blocks (public, private, interface)
+};
+
+/// @brief Represents a profile declaration
+///
+/// Defines a named build configuration profile with specific settings.
+/// Profiles can compose mixins for shared toolchain configuration.
+///
+/// Example:
+/// ```css
+/// profile debug with gcc-toolchain {
+///     optimize: none;
+///     debug-info: full;
+/// }
+/// ```
+struct ProfileDecl final : NodeBase
+{
+    std::string name;                 ///< Profile name (e.g., "debug", "release")
+    std::vector<std::string> mixins;  ///< Mixins to apply (via 'with' keyword)
+    std::vector<Property> properties; ///< Profile properties
 };
 
 /// @brief Represents an install declaration
@@ -367,23 +367,6 @@ struct PackageDecl final : NodeBase
 struct ScriptsDecl final : NodeBase
 {
     std::vector<Property> scripts; ///< Build scripts
-};
-
-/// @brief Represents a toolchain declaration
-///
-/// Specifies compiler toolchain configuration.
-///
-/// Example:
-/// ```css
-/// toolchain gcc {
-///     compiler: "g++";
-///     version: "13";
-/// }
-/// ```
-struct ToolchainDecl final : NodeBase
-{
-    std::string name;                 ///< Toolchain name
-    std::vector<Property> properties; ///< Toolchain properties
 };
 
 //===---------------------------------------------------------------------===//

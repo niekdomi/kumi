@@ -203,8 +203,9 @@ add_subdirectory(tools/editor)
 **Syntax:**
 
 ```ebnf
-TargetDecl = "target" Identifier "{" { TargetContent } "}" ;
+TargetDecl = "target" Identifier [ "with" IdentifierList ] "{" { TargetContent } "}" ;
 TargetContent = PropertyAssignment | VisibilityBlock | Statement ;
+IdentifierList = Identifier { "," Identifier } ;
 ```
 
 **Purpose:** Defines a build target (executable, library, test, ...)
@@ -221,7 +222,6 @@ TargetContent = PropertyAssignment | VisibilityBlock | Statement ;
 - `sources: String | List<String>` - Source files (supports globs)
 - `headers: String | List<String>` - Header files
 - `depends: List<Identifier>` - Dependencies (internal or external)
-- `apply: Identifier` - Apply a mixin
 - `compile-options: List<String>` - Compiler flags
 - `defines: List<String>` - Preprocessor definitions
 - `include-dirs: List<String>` - Include directories
@@ -403,51 +403,6 @@ set(MAX_THREADS 8 CACHE STRING "Maximum threads")
 
 ---
 
-### global
-
-**Syntax:**
-
-```ebnf
-GlobalDecl = "global" "{" { PropertyAssignment | Statement } "}" ;
-```
-
-**Purpose:** Defines global settings applied to all targets
-
-**Context:** Root level, can contain conditionals
-
-**Example:**
-
-```css
-global {
-  cpp: 23;
-  warnings: all;
-  optimize: speed;
-
-  @if platform(windows) {
-    defines: PLATFORM_WINDOWS;
-  }
-
-  @if config(debug) {
-    optimize: none;
-    debug-info: full;
-  }
-}
-```
-
-**CMake equivalent:**
-
-```cmake
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-Wall)
-
-if(WIN32)
-    add_compile_definitions(PLATFORM_WINDOWS)
-endif()
-```
-
----
-
 ### mixin
 
 **Syntax:**
@@ -479,16 +434,14 @@ mixin embedded-target {
   }
 }
 
-// Apply mixins
-target myapp {
+// Apply mixins using 'with' keyword
+target myapp with strict-warnings {
   type: executable;
-  apply: strict-warnings;
   sources: "src/**/*.cpp";
 }
 
-target firmware {
+target firmware with embedded-target, strict-warnings {
   type: executable;
-  apply: embedded-target;
   sources: "firmware/**/*.cpp";
 }
 ```
@@ -510,29 +463,39 @@ endfunction()
 **Syntax:**
 
 ```ebnf
-ProfileDecl = "profile" Identifier "{" { PropertyAssignment } "}" ;
+ProfileDecl = "profile" Identifier [ "with" MixinList ] "{" { PropertyAssignment } "}" ;
+MixinList   = Identifier { "," Identifier } ;
 ```
 
-**Purpose:** Defines named build configuration profiles
+**Purpose:** Defines named build configuration profiles. Profiles can compose mixins for shared toolchain settings.
 
 **Context:** Root level only
 
 **Example:**
 
 ```css
-profile dev {
+// Mixin for shared toolchain configuration
+mixin gcc-toolchain {
+  compiler: gcc;
+  linker: mold;
+  cpp: 23;
+}
+
+// Profiles can compose mixins
+profile debug with gcc-toolchain {
   optimize: none;
   debug-info: full;
   sanitizers: address, undefined;
 }
 
-profile release {
+profile release with gcc-toolchain {
   optimize: aggressive;
   lto: full;
   strip: true;
   defines: NDEBUG;
 }
 
+// Profile without mixin
 profile release-with-debug {
   optimize: speed;
   debug-info: full;
@@ -952,13 +915,13 @@ Built-in functions are used in conditions and expressions.
 
 ```css
 @if compiler(msvc) {
-  global {
+  profile default {
     compile-options: "/W4", "/permissive-";
   }
 }
 
 @if compiler(gcc) or compiler(clang) {
-  global {
+  profile default {
     compile-options: "-Wall", "-Wextra", "-Wpedantic";
   }
 }
@@ -982,20 +945,16 @@ Built-in functions are used in conditions and expressions.
 **Example:**
 
 ```css
-@if config(debug) {
-  global {
-    optimize: none;
-    debug-info: full;
-    sanitizers: address, undefined;
-  }
+profile debug {
+  optimize: none;
+  debug-info: full;
+  sanitizers: address, undefined;
 }
 
-@if config(release) {
-  global {
-    optimize: aggressive;
-    lto: full;
-    strip: true;
-  }
+profile release {
+  optimize: aggressive;
+  lto: full;
+  strip: true;
 }
 ```
 
@@ -1025,7 +984,7 @@ options {
 }
 
 @if option(ENABLE_LOGGING) {
-  global {
+  target myapp {
     defines: ENABLE_LOGGING;
     depends: spdlog;
   }
@@ -1260,19 +1219,21 @@ KumiFile = { Statement } ;
 
 (* ===== Statements ===== *)
 Statement          = ProjectDecl | WorkspaceDecl | DependenciesDecl | TargetDecl
-                     | OptionsDecl | GlobalDecl | MixinDecl | ProfileDecl | ImportDecl
+                     | OptionsDecl | MixinDecl | ProfileDecl | ImportDecl
                      | ConditionalBlock | ForLoop | LoopControl ;
 
 (* ===== Declarations ===== *)
 ProjectDecl        = "project" Identifier "{" { PropertyAssignment } "}" ;
 WorkspaceDecl      = "workspace" "{" { PropertyAssignment } "}" ;
 DependenciesDecl   = "dependencies" "{" { DependencySpec } "}" ;
-TargetDecl         = "target" Identifier "{" { TargetContent } "}" ;
+TargetDecl         = "target" Identifier [ "with" MixinList ] "{" { TargetContent } "}" ;
 OptionsDecl        = "options" "{" { OptionSpec } "}" ;
-GlobalDecl         = "global" "{" { PropertyAssignment | Statement } "}" ;
 MixinDecl          = "mixin" Identifier "{" { PropertyAssignment | VisibilityBlock } "}" ;
-ProfileDecl        = "profile" Identifier "{" { PropertyAssignment } "}" ;
+ProfileDecl        = "profile" Identifier [ "with" MixinList ] "{" { PropertyAssignment } "}" ;
 ImportDecl         = "@import" String ";" ;
+
+(* ===== Mixin Composition ===== *)
+MixinList          = Identifier { "," Identifier } ;
 
 (* ===== Target Content ===== *)
 TargetContent      = PropertyAssignment | VisibilityBlock | Statement ;
