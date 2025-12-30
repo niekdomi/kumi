@@ -36,14 +36,12 @@ class Lexer final
     auto tokenize() -> std::expected<std::vector<Token>, ParseError>
     {
         std::vector<Token> tokens{};
-        // Heuristic: average token is ~4 characters, reserve accordingly
-        // Add 16 to handle edge cases and avoid reallocation for small inputs
-        tokens.reserve((input_.size() / 4) + 16);
+        tokens.reserve(input_.size());
 
         while (true) {
             const auto token = TRY(next_token());
 
-            const bool is_eof = token.type == TokenType::END_OF_FILE;
+            const bool is_eof = (token.type == TokenType::END_OF_FILE);
             tokens.push_back(token);
 
             if (is_eof) [[unlikely]] {
@@ -60,14 +58,7 @@ class Lexer final
 
     /// @brief Advances to next character and updates position
     /// @return Current character before advancing, or '\0' if at EOF
-    auto advance() noexcept -> char
-    {
-        if (at_end()) [[unlikely]] {
-            return '\0';
-        }
-
-        return input_[position_++];
-    }
+    auto advance() noexcept -> char { return input_[position_++]; }
 
     /// @brief Checks if lexer has reached end of input
     /// @return true if at EOF, false otherwise
@@ -96,10 +87,6 @@ class Lexer final
     auto next_token() -> std::expected<Token, ParseError>
     {
         skip_whitespace();
-
-        if (peek() == '/' && (peek(1) == '/' || peek(1) == '*')) {
-            return lex_comment();
-        }
 
         if (at_end()) [[unlikely]] {
             const auto start_pos = position_;
@@ -150,7 +137,7 @@ class Lexer final
     /// @brief Skips whitespace characters (space, tab, newline, ...)
     auto skip_whitespace() noexcept -> void
     {
-        while (!at_end() && is_space(peek())) {
+        while (is_space(peek())) {
             ++position_;
         }
     }
@@ -165,17 +152,22 @@ class Lexer final
         const auto start_pos = position_;
 
         static constexpr std::array<std::pair<std::string_view, TokenType>, 11> KEYWORDS = {
+            // Top-Level Declaration
+            std::pair{ "@import",   TokenType::AT_IMPORT   },
+
+            // Control Flow
             std::pair{ "@if",       TokenType::AT_IF       },
             std::pair{ "@else-if",  TokenType::AT_ELSE_IF  },
             std::pair{ "@else",     TokenType::AT_ELSE     },
             std::pair{ "@for",      TokenType::AT_FOR      },
             std::pair{ "@break",    TokenType::AT_BREAK    },
-            std::pair{ "@info",     TokenType::AT_INFO     },
-            std::pair{ "@debug",    TokenType::AT_DEBUG    },
-            std::pair{ "@import",   TokenType::AT_IMPORT   },
             std::pair{ "@continue", TokenType::AT_CONTINUE },
+
+            // Diagnostic Directives
             std::pair{ "@error",    TokenType::AT_ERROR    },
             std::pair{ "@warning",  TokenType::AT_WARNING  },
+            std::pair{ "@info",     TokenType::AT_INFO     },
+            std::pair{ "@debug",    TokenType::AT_DEBUG    },
         };
 
         for (const auto &[keyword, type] : KEYWORDS) {
@@ -215,15 +207,10 @@ class Lexer final
     auto lex_comment() -> std::expected<Token, ParseError>
     {
         const auto start_pos = position_;
-        // TODO(domi): Check if using match_string() harms performance (would be more elegant
-        //             otherwise)
-        //             Also check if if (peek() == '/') { ... } could improve performance (less
-        //             elegant code though)
 
-        // Line comment: '//'
-        if (peek() == '/' && peek(1) == '/') {
-            position_ += 2;
-            while (!at_end() && peek() != '\n') {
+        // Line comment
+        if (match_string("//")) {
+            while (peek() != '\n' && !at_end()) {
                 ++position_;
             }
 
@@ -234,12 +221,10 @@ class Lexer final
             };
         }
 
-        // Block comment: '/* ... */'
-        if (peek() == '/' && peek(1) == '*') {
-            position_ += 2;
+        // Block comment
+        if (match_string("/*")) {
             while (!at_end()) {
-                if (peek() == '*' && peek(1) == '/') {
-                    position_ += 2;
+                if (match_string("*/")) {
                     break;
                 }
                 ++position_;
@@ -254,7 +239,7 @@ class Lexer final
 
         return error<Token>(std::format("unexpected character after '/': '{}'", peek()),
                             position_,
-                            "expected '/' or '*' for comment");
+                            "expected '/' or '*'");
     }
 
     [[nodiscard]]
@@ -305,6 +290,7 @@ class Lexer final
         }
 
         advance();
+
         return Token{
             .value = ">",
             .position = start_pos,
@@ -326,6 +312,7 @@ class Lexer final
         }
 
         advance();
+
         return Token{
             .value = "<",
             .position = start_pos,
@@ -339,10 +326,11 @@ class Lexer final
         const auto start_pos = position_;
 
         while (is_digit(peek())) {
-            advance();
+            ++position_;
         }
 
         const auto num_str = input_.substr(start_pos, position_ - start_pos);
+
         return Token{
             .value = num_str,
             .position = start_pos,
@@ -356,6 +344,7 @@ class Lexer final
         const auto start_pos = position_;
 
         advance();
+
         return Token{
             .value = value,
             .position = start_pos,
@@ -369,11 +358,25 @@ class Lexer final
 
         advance(); // Consume opening "
 
-        std::string str{};
+        std::string str;
         str.reserve(32);
+
+        const auto is_string_char = [this]() -> bool {
+            const char c = peek();
+            return c != '"' && c != '\\' && c != '\n' && c != '\r';
+        };
+
         while (peek() != '"') {
             if (at_end()) [[unlikely]] {
                 return error<Token>("unterminated string literal", position_, "missing closing \"");
+            }
+
+            const auto batch_start = position_;
+            while (is_string_char()) {
+                position_++;
+            }
+            if (position_ > batch_start) {
+                str.append(input_.substr(batch_start, position_ - batch_start));
             }
 
             const char c = peek();
@@ -382,24 +385,20 @@ class Lexer final
                   "unterminated string literal", position_, "strings cannot span multiple lines");
             }
 
-            if (peek() == '\\') {
+            if (c == '\\') [[unlikely]] {
                 advance(); // Consume '\'
-
                 switch (peek()) {
                     case '"':  str += '"'; break;
                     case 'n':  str += '\n'; break;
                     case 't':  str += '\t'; break;
                     case 'r':  str += '\r'; break;
                     case '\\': str += '\\'; break;
-                    default:   {
+                    default:
                         return error<Token>(std::format("invalid escape sequence: '\\{}'", peek()),
                                             position_,
                                             R"(valid escapes: \", \n, \t, \r, \\)");
-                    }
                 }
                 advance();
-            } else {
-                str += advance();
             }
         }
 
@@ -417,20 +416,8 @@ class Lexer final
     {
         const auto start_pos = position_;
 
-        // TODO(domi): Do we need this if?
-        if (!is_alpha(peek()) && peek() != '_') [[unlikely]] {
-            // Invalid identifier, will be handled as an error in the parser
-            return Token{
-                .value = std::string(1, advance()),
-                .position = start_pos,
-                .type = TokenType::IDENTIFIER,
-            };
-        }
-
-        advance();
-
         while (is_identifier(peek())) {
-            advance();
+            ++position_;
         }
 
         const auto text = input_.substr(start_pos, position_ - start_pos);

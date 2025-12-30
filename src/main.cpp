@@ -2,7 +2,7 @@
 /// @brief Entry point for the Kumi build tool
 
 #include "lex/lexer.hpp"
-#include "parse/parser.hpp"
+// #include "parse/parser.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -53,31 +53,31 @@ auto main(int argc, char **argv) -> int
     std::println("│ Tokens:     {:<28}│", tokens.size());
     std::println("╰─────────────────────────────────────────╯");
 
-    // Parse
-    kumi::Parser parser(tokens);
-    const auto start_parse = std::chrono::high_resolution_clock::now();
-    auto ast_result = parser.parse();
-    const auto end_parse = std::chrono::high_resolution_clock::now();
-    const auto duration_parse_us
-      = std::chrono::duration_cast<std::chrono::microseconds>(end_parse - start_parse);
+    // // Parse
+    // kumi::Parser parser(tokens);
+    // const auto start_parse = std::chrono::high_resolution_clock::now();
+    // auto ast_result = parser.parse();
+    // const auto end_parse = std::chrono::high_resolution_clock::now();
+    // const auto duration_parse_us
+    //   = std::chrono::duration_cast<std::chrono::microseconds>(end_parse - start_parse);
 
     // Display performance metrics
     double duration_lex_ms = static_cast<double>(duration_lex_us.count()) / 1000.0;
-    double duration_parse_ms = static_cast<double>(duration_parse_us.count()) / 1000.0;
+    // double duration_parse_ms = static_cast<double>(duration_parse_us.count()) / 1000.0;
     double lex_throughput = size_mb / (duration_lex_ms / 1000.0);
-    double parse_throughput = size_mb / (duration_parse_ms / 1000.0);
+    // double parse_throughput = size_mb / (duration_parse_ms / 1000.0);
 
     std::println("\n╭─────────────────────────────────────────╮");
     std::println("│ Performance Metrics                     │");
     std::println("├─────────────────────────────────────────┤");
     std::println("│ Lexing:  {:>10.4f} ms {:>10.2f} MB/s  │", duration_lex_ms, lex_throughput);
-    std::println("│ Parsing: {:>10.4f} ms {:>10.2f} MB/s  │", duration_parse_ms, parse_throughput);
-    std::println("│ Total:   {:>10.4f} ms {:>10.2f} MB/s  │",
-                 duration_lex_ms + duration_parse_ms,
-                 size_mb / ((duration_lex_ms + duration_parse_ms) / 1000.0));
+    // std::println("│ Parsing: {:>10.4f} ms {:>10.2f} MB/s  │", duration_parse_ms,
+    // parse_throughput); std::println("│ Total:   {:>10.4f} ms {:>10.2f} MB/s  │",
+    //  duration_lex_ms + duration_parse_ms,
+    //  size_mb / ((duration_lex_ms + duration_parse_ms) / 1000.0));
     std::println("╰─────────────────────────────────────────╯");
 
-    const auto &ast = *ast_result;
-    std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
+    // const auto &ast = *ast_result;
+    // std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
     return 0;
 }

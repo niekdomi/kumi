@@ -6,7 +6,7 @@ def generate_kumi(mode="normal", size_mb=1.0):
     Generates Kumi build files based on EBNF grammar.
     Modes: 'flat', 'nested', 'normal'
     """
-    target_bytes = size_mb * 1024 * 1024 * 5
+    target_bytes = size_mb * 1024 * 1024 * 10
     output = []
 
     # 1. Header Logic

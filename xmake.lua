@@ -8,35 +8,39 @@ add_rules("mode.debug", "mode.release")
 add_rules("plugin.compile_commands.autoupdate", { outputdir = "." })
 add_includedirs("src")
 
-local common_warnings = {
-	"-Wall",
-	"-Wextra",
-	"-Werror",
-	"-Wcast-align",
-	"-Wconversion",
-	"-Wcovered-switch-default",
-	"-Wdeprecated",
-	"-Wdouble-promotion",
-	"-Wfloat-conversion",
-	"-Wfloat-equal",
-	"-Wfor-loop-analysis",
-	"-Wformat=2",
-	"-Winvalid-utf8",
-	"-Wmisleading-indentation",
-	"-Wnon-virtual-dtor",
-	"-Wold-style-cast",
-	"-Woverloaded-virtual",
+local clang_flags = {
+	-- Core
+	"-WCL4",
+	-- "-Werror",
 	"-Wpedantic",
-	"-Wpoison-system-directories",
-	"-Wshadow-all",
-	"-Wsign-conversion",
-	"-Wsuggest-destructor-override",
+	"-Wdeprecated",
+
+	-- Safety
+	"-Wnon-virtual-dtor",
 	"-Wsuggest-override",
-	"-Wsuper-class-method-mismatch",
+	"-Wunsafe-buffer-usage",
+	"-Wexperimental-lifetime-safety",
 	"-Wthread-safety",
-	"-Wunreachable-code-aggressive",
-	"-Wunused",
+	"-Wformat=2",
+
+	-- Type Safety & Performance
+	"-Wconversion",
+	"-Wcast-align",
+	"-Wold-style-cast",
+	"-Wfloat-equal",
+	"-Wdouble-promotion",
+	"-Wcast-function-type",
 	"-Wzero-as-null-pointer-constant",
+
+	-- Logical & Control Flow
+	"-Wimplicit-fallthrough",
+	"-Wshadow-all",
+	"-Wunreachable-code-aggressive",
+	"-Wloop-analysis",
+	"-Wcovered-switch-default",
+
+	-- Cross-Platform
+	"-Wpoison-system-directories",
 
 	-- Suppress warnings for extensions used by dependencies
 	"-Wno-gnu-statement-expression", -- Used in TRY macro
@@ -60,7 +64,7 @@ else
 	add_defines("NDEBUG")
 end
 
-add_cxflags(common_warnings, { force = true })
+add_cxflags(clang_flags, { force = true })
 target_end()
 
 add_requires("catch2 3.x", { system = false })
@@ -79,11 +83,10 @@ if is_mode("debug") then
 else
 	set_symbols("hidden")
 	add_cxflags("-O3", { force = true })
-	add_cxflags("-march=native", { force = true })
 	add_defines("NDEBUG")
 end
 
-add_cxflags(common_warnings, { force = true })
+add_cxflags(clang_flags, { force = true })
 add_tests("all")
 target_end()
 

@@ -1,7 +1,9 @@
 words = [
     "cppcoreguidelines",
     "cxx",
+    "domi",
     "kumi",
+    "myapp",
     "mylib",
     "myproject",
     "niekdomi",

@@ -21,7 +21,7 @@ namespace kumi {
 /// - Diagnostic directives (`@error`, `@warning`, `@info`)
 /// - Logical operators (`and`, `or`, `not`)
 /// - Operators and punctuation
-/// - Literals (`strings`, `numbers`, `booleans`, `identifiers`)
+/// - Literals (`strings`, `numbers`, `booleans`, ...)
 /// - Special tokens (`EOF`)
 enum class TokenType : std::uint8_t
 {
