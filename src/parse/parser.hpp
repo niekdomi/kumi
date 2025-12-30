@@ -39,6 +39,7 @@ class Parser final
     auto parse() -> std::expected<AST, ParseError>
     {
         AST ast{};
+        ast.statements.reserve(tokens_.size());
 
         while (peek().type != TokenType::END_OF_FILE) [[likely]] {
             ast.statements.push_back(TRY(parse_statement()));
@@ -72,6 +73,8 @@ class Parser final
                 case TokenType::SEMICOLON:
                     expected_type_str = ";";
                     // For missing semicolon, point to end of previous token
+                    // TODO(domi): Use more generic solution so this can also be applied to missing
+                    // braces etc.
                     if (position_ > 0) {
                         const auto &prev_token = tokens_[position_ - 1];
                         error_position = prev_token.position + prev_token.value.length();
