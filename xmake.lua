@@ -20,6 +20,7 @@ local clang_flags = {
 	"-Wsuggest-override",
 	"-Wunsafe-buffer-usage",
 	"-Wexperimental-lifetime-safety",
+	"-Wconsumed",
 	"-Wthread-safety",
 	"-Wformat=2",
 
@@ -59,8 +60,8 @@ if is_mode("debug") then
 	add_defines("DEBUG")
 else
 	set_symbols("hidden")
-	add_cxflags("-O3", { force = true })
-	add_cxflags("-march=native", { force = true })
+	add_cxflags("-O3", "-flto", { force = true })
+	add_ldflags("-flto", { force = true })
 	add_defines("NDEBUG")
 end
 
@@ -83,6 +84,8 @@ if is_mode("debug") then
 else
 	set_symbols("hidden")
 	add_cxflags("-O3", { force = true })
+	add_cxflags("-flto=full", { force = true })
+	add_ldflags("-flto=full", { force = true })
 	add_defines("NDEBUG")
 end
 

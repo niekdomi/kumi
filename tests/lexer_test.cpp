@@ -1,12 +1,20 @@
 /// @file lexer_test.cpp
 /// @brief Comprehensive unit tests for the Kumi lexer
+///
+/// Tests are organized by token categories matching token.hpp:
+/// - Top-Level Declarations
+/// - Visibility Modifiers
+/// - Control Flow
+/// - Diagnostic Directives
+/// - Logical Operators
+/// - Operators and Punctuation
+/// - Literals
+/// - Special tokens (EOF, Position Tracking)
 
 #include "lex/lexer.hpp"
 #include "lex/token.hpp"
 
 #include <catch2/catch_all.hpp>
-#include <random>
-#include <ranges>
 #include <string_view>
 
 using kumi::Lexer;
@@ -16,7 +24,7 @@ using kumi::TokenType;
 
 namespace {
 
-// Helper: Lex and expect success
+/// Helper: Lex and expect success
 auto lex_tokens(std::string_view input) -> std::vector<Token>
 {
     Lexer lexer(input);
@@ -25,7 +33,7 @@ auto lex_tokens(std::string_view input) -> std::vector<Token>
     return std::move(result.value());
 }
 
-// Helper: Lex single token
+/// Helper: Lex single token (input should produce exactly one token + EOF)
 auto lex_single(std::string_view input) -> Token
 {
     const auto tokens = lex_tokens(input);
@@ -33,7 +41,7 @@ auto lex_single(std::string_view input) -> Token
     return tokens[0];
 }
 
-// Helper: Lex and expect error
+/// Helper: Lex and expect error
 auto lex_error(std::string_view input) -> ParseError
 {
     Lexer lexer(input);
@@ -42,453 +50,46 @@ auto lex_error(std::string_view input) -> ParseError
     return result.error();
 }
 
-// Helper: Generate random identifier with a random length (6 - 21 character long)
-auto generate_identifier(std::mt19937 &gen) -> std::string
-{
-    static constexpr std::string_view START = "abcdefghijklmnopqrstuvwxyz_";
-    static constexpr std::string_view CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_-";
-
-    const auto len = std::uniform_int_distribution<>(5, 20)(gen);
-
-    std::string id(1, START[gen() % START.size()]);
-
-    for (auto _ : std::views::iota(0U, static_cast<std::size_t>(len))) {
-        id += CHARS[gen() % CHARS.size()];
-    }
-
-    return id;
-}
-
 } // namespace
 
 //===---------------------------------------------------------------------===//
-// At directives (@if, @else-if, @else, @for, @break, @continue, etc.)
+// Top-Level Declarations
 //===---------------------------------------------------------------------===//
 
-TEST_CASE("Lexer: @ directives", "[lexer][at]")
+TEST_CASE("Lexer: Top-Level Declarations", "[lexer][top-level]")
 {
-    const auto [input, expected_type, expected_value]
-      = GENERATE(table<std::string_view, TokenType, std::string_view>({
-        { "@if",       TokenType::IF,             "@if"       },
-        { "@else-if",  TokenType::ELSE_IF,        "@else-if"  },
-        { "@else",     TokenType::ELSE,           "@else"     },
-        { "@for",      TokenType::FOR,            "@for"      },
-        { "@break",    TokenType::BREAK,          "@break"    },
-        { "@continue", TokenType::CONTINUE,       "@continue" },
-        { "@error",    TokenType::ERROR,          "@error"    },
-        { "@warning",  TokenType::WARNING,        "@warning"  },
-        { "@import",   TokenType::IMPORT_KEYWORD, "@import"   },
-        { "@apply",    TokenType::APPLY_KEYWORD,  "@apply"    },
-    }));
-    CAPTURE(input);
-
-    const auto token = lex_single(input);
-    CHECK(token.type == expected_type);
-    CHECK(token.value == expected_value);
-}
-
-TEST_CASE("Lexer: @ directive errors", "[lexer][at][errors]")
-{
-    const auto input = GENERATE(as<std::string_view>{}, "@invalid", "@123", "@-if");
-    CAPTURE(input);
-
-    const auto error = lex_error(input);
-    CHECK_FALSE(error.message.empty());
-}
-
-//===---------------------------------------------------------------------===//
-// Operators
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: operators", "[lexer][operators]")
-{
-    const auto [input, expected_type, expected_value]
-      = GENERATE(table<std::string_view, TokenType, std::string_view>({
-        // Bang operators
-        { "!=",  TokenType::NOT_EQUAL,     "!="  },
-        { "!",   TokenType::EXCLAMATION,   "!"   },
-
-        // Dot operators
-        { "...", TokenType::ELLIPSIS,      "..." },
-        { "..",  TokenType::RANGE,         ".."  },
-        { ".",   TokenType::DOT,           "."   },
-
-        // Comparison operators
-        { "==",  TokenType::EQUAL,         "=="  },
-        { "=",   TokenType::ASSIGN,        "="   },
-        { ">=",  TokenType::GREATER_EQUAL, ">="  },
-        { ">",   TokenType::GREATER,       ">"   },
-        { "<=",  TokenType::LESS_EQUAL,    "<="  },
-        { "<",   TokenType::LESS,          "<"   },
-
-        // minus operators
-        { "--",  TokenType::MINUS_MINUS,   "--"  },
-    }));
-    CAPTURE(input);
-
-    const auto token = lex_single(input);
-    CHECK(token.type == expected_type);
-    CHECK(token.value == expected_value);
-}
-
-//===---------------------------------------------------------------------===//
-// Literals
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: numbers", "[lexer][literals]")
-{
-    SECTION("single digit")
+    SECTION("keywords")
     {
-        const auto token = lex_single("0");
-        CHECK(token.type == TokenType::NUMBER);
-        CHECK(token.value == "0");
+        const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+          { "project",      TokenType::PROJECT      },
+          { "workspace",    TokenType::WORKSPACE    },
+          { "target",       TokenType::TARGET       },
+          { "dependencies", TokenType::DEPENDENCIES },
+          { "options",      TokenType::OPTIONS      },
+          { "mixin",        TokenType::MIXIN        },
+          { "profile",      TokenType::PROFILE      },
+          { "@import",      TokenType::AT_IMPORT    },
+          { "install",      TokenType::INSTALL      },
+          { "package",      TokenType::PACKAGE      },
+          { "scripts",      TokenType::SCRIPTS      },
+          { "with",         TokenType::WITH         },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == expected_type);
+        CHECK(token.value == input);
     }
 
-    SECTION("multiple digits")
+    SECTION("multi-line project declaration")
     {
-        const auto token = lex_single("12345");
-        CHECK(token.type == TokenType::NUMBER);
-        CHECK(token.value == "12345");
-    }
-
-    SECTION("large number")
-    {
-        const auto token = lex_single("999999");
-        CHECK(token.type == TokenType::NUMBER);
-        CHECK(token.value == "999999");
-    }
-}
-
-TEST_CASE("Lexer: strings", "[lexer][literals]")
-{
-    SECTION("simple string")
-    {
-        const auto token = lex_single(R"("hello")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "hello");
-    }
-
-    SECTION("empty string")
-    {
-        const auto token = lex_single(R"("")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "");
-    }
-
-    SECTION("string with spaces")
-    {
-        const auto token = lex_single(R"("hello world")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "hello world");
-    }
-
-    SECTION("escape sequences")
-    {
-        const auto token = lex_single(R"("hello\nworld")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "hello\nworld");
-    }
-
-    SECTION("escaped quote")
-    {
-        const auto token = lex_single(R"("say \"hello\"")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "say \"hello\"");
-    }
-
-    SECTION("escaped backslash")
-    {
-        const auto token = lex_single(R"("path\\to\\file")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "path\\to\\file");
-    }
-
-    SECTION("tab escape")
-    {
-        const auto token = lex_single(R"("hello\tworld")");
-        CHECK(token.type == TokenType::STRING);
-        CHECK(token.value == "hello\tworld");
-    }
-
-    SECTION("unterminated string - EOF")
-    {
-        const auto error = lex_error(R"("unterminated)");
-        CHECK(error.message.contains("unterminated"));
-    }
-
-    SECTION("unterminated string - newline")
-    {
-        const auto error = lex_error("\"line1\nline2\"");
-        CHECK(error.message.contains("unterminated"));
-    }
-
-    SECTION("invalid escape sequence")
-    {
-        const auto error = lex_error(R"("invalid\x")");
-        CHECK(error.message.contains("invalid escape"));
-    }
-}
-
-//===---------------------------------------------------------------------===//
-// Keywords
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: keywords", "[lexer][keywords]")
-{
-    const auto [input, expected_type, expected_value]
-      = GENERATE(table<std::string_view, TokenType, std::string_view>({
-        // Keywords - Top level
-        { "project",      TokenType::PROJECT,      "project"      },
-        { "workspace",    TokenType::WORKSPACE,    "workspace"    },
-        { "target",       TokenType::TARGET,       "target"       },
-        { "dependencies", TokenType::DEPENDENCIES, "dependencies" },
-        { "options",      TokenType::OPTIONS,      "options"      },
-        { "global",       TokenType::GLOBAL,       "global"       },
-        { "mixin",        TokenType::MIXIN,        "mixin"        },
-        { "preset",       TokenType::PRESET,       "preset"       },
-        { "features",     TokenType::FEATURES,     "features"     },
-        { "testing",      TokenType::TESTING,      "testing"      },
-        { "install",      TokenType::INSTALL,      "install"      },
-        { "package",      TokenType::PACKAGE,      "package"      },
-        { "scripts",      TokenType::SCRIPTS,      "scripts"      },
-        { "toolchain",    TokenType::TOOLCHAIN,    "toolchain"    },
-        { "root",         TokenType::ROOT,         "root"         },
-        { "in",           TokenType::IN,           "in"           },
-
-        // Keywords - Visibility
-        { "public",       TokenType::PUBLIC,       "public"       },
-        { "private",      TokenType::PRIVATE,      "private"      },
-        { "interface",    TokenType::INTERFACE,    "interface"    },
-
-        // Keywords - Properties
-        { "type",         TokenType::TYPE,         "type"         },
-        { "sources",      TokenType::SOURCES,      "sources"      },
-        { "headers",      TokenType::HEADERS,      "headers"      },
-        { "depends",      TokenType::DEPENDS,      "depends"      },
-        { "apply",        TokenType::APPLY,        "apply"        },
-        { "inherits",     TokenType::INHERITS,     "inherits"     },
-        { "extends",      TokenType::EXTENDS,      "extends"      },
-        { "export",       TokenType::EXPORT,       "export"       },
-        { "import",       TokenType::IMPORT,       "import"       },
-
-        // Keywords - Logical
-        { "and",          TokenType::AND,          "and"          },
-        { "or",           TokenType::OR,           "or"           },
-        { "not",          TokenType::NOT,          "not"          },
-
-        // Keywords - Functions
-        { "platform",     TokenType::PLATFORM,     "platform"     },
-        { "arch",         TokenType::ARCH,         "arch"         },
-        { "compiler",     TokenType::COMPILER,     "compiler"     },
-        { "config",       TokenType::CONFIG,       "config"       },
-        { "option",       TokenType::OPTION,       "option"       },
-        { "feature",      TokenType::FEATURE,      "feature"      },
-        { "has-feature",  TokenType::HAS_FEATURE,  "has-feature"  },
-        { "exists",       TokenType::EXISTS,       "exists"       },
-        { "var",          TokenType::VAR,          "var"          },
-        { "glob",         TokenType::GLOB,         "glob"         },
-        { "git",          TokenType::GIT,          "git"          },
-        { "url",          TokenType::URL,          "url"          },
-        { "system",       TokenType::SYSTEM,       "system"       },
-    }));
-    CAPTURE(input);
-
-    const auto token = lex_single(input);
-    CHECK(token.type == expected_type);
-    CHECK(token.value == expected_value);
-}
-
-//===---------------------------------------------------------------------===//
-// Identifiers
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: identifiers - common patterns", "[lexer][identifiers]")
-{
-    const auto input = GENERATE(as<std::string_view>{},
-                                "myvar",
-                                "my_var",
-                                "my-var",
-                                "var123",
-                                "_private",
-                                "camelCase",
-                                "PascalCase",
-                                "snake_case",
-                                "SCREAMING_CASE",
-                                "a");
-    CAPTURE(input);
-
-    const auto token = lex_single(input);
-    CHECK(token.type == TokenType::IDENTIFIER);
-    CHECK(token.value == input);
-}
-
-TEST_CASE("Lexer: identifiers - random", "[lexer][identifiers]")
-{
-    const auto seed = GENERATE(take(20, random(1000, 9999)));
-    CAPTURE(seed);
-
-    std::mt19937 gen(static_cast<std::mt19937::result_type>(seed));
-
-    const auto id = generate_identifier(gen);
-    const auto token = lex_single(id);
-    CHECK(token.type == TokenType::IDENTIFIER);
-}
-
-//===---------------------------------------------------------------------===//
-// Punctuation
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: single-character punctuation", "[lexer][punctuation]")
-{
-    const auto [input, expected_type, expected_value]
-      = GENERATE(table<std::string_view, TokenType, std::string_view>({
-        { "{", TokenType::LEFT_BRACE,    "{" },
-        { "}", TokenType::RIGHT_BRACE,   "}" },
-        { "[", TokenType::LEFT_BRACKET,  "[" },
-        { "]", TokenType::RIGHT_BRACKET, "]" },
-        { "(", TokenType::LEFT_PAREN,    "(" },
-        { ")", TokenType::RIGHT_PAREN,   ")" },
-        { ":", TokenType::COLON,         ":" },
-        { ";", TokenType::SEMICOLON,     ";" },
-        { ",", TokenType::COMMA,         "," },
-        { "?", TokenType::QUESTION,      "?" },
-        { "$", TokenType::DOLLAR,        "$" },
-    }));
-    CAPTURE(input);
-
-    const auto token = lex_single(input);
-    CHECK(token.type == expected_type);
-    CHECK(token.value == expected_value);
-}
-
-//===---------------------------------------------------------------------===//
-// Whitespace and Position Tracking
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: whitespace handling", "[lexer][whitespace]")
-{
-    SECTION("spaces ignored")
-    {
-        const auto tokens = lex_tokens("  target  ");
-        CHECK(tokens[0].position == 2);
-    }
-
-    SECTION("tabs ignored")
-    {
-        const auto tokens = lex_tokens("\ttarget\t");
-        CHECK(tokens[0].position == 1);
-    }
-
-    SECTION("position tracking for newlines")
-    {
-        const auto tokens = lex_tokens("target\nproject");
-        CHECK(tokens[0].position == 0);
-        CHECK(tokens[1].position == 7);
-    }
-
-    SECTION("position tracking for multiple tokens")
-    {
-        const auto tokens = lex_tokens("target myapp {");
-        CHECK(tokens[0].position == 0);
-        CHECK(tokens[1].position == 7);
-        CHECK(tokens[2].position == 13);
-    }
-}
-
-//===---------------------------------------------------------------------===//
-// Complex Multi - Token Inputs
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: multi-token sequences", "[lexer][integration]")
-{
-    SECTION("simple target definition")
-    {
-        const auto tokens = lex_tokens("target myapp { }");
-        REQUIRE(tokens.size() == 5);
-        CHECK(tokens[0].type == TokenType::TARGET);
-        CHECK(tokens[1].type == TokenType::IDENTIFIER);
-        CHECK(tokens[2].type == TokenType::LEFT_BRACE);
-        CHECK(tokens[3].type == TokenType::RIGHT_BRACE);
-        CHECK(tokens[4].type == TokenType::END_OF_FILE);
-    }
-
-    SECTION("property assignment")
-    {
-        const auto tokens = lex_tokens("type: executable;");
-        REQUIRE(tokens.size() == 5);
-        CHECK(tokens[0].type == TokenType::TYPE);
-        CHECK(tokens[1].type == TokenType::COLON);
-        CHECK(tokens[2].type == TokenType::IDENTIFIER);
-        CHECK(tokens[3].type == TokenType::SEMICOLON);
-    }
-
-    SECTION("string property")
-    {
-        const auto tokens = lex_tokens(R"(sources: "*.cpp";)");
-        CHECK(tokens[0].type == TokenType::SOURCES);
-        CHECK(tokens[1].type == TokenType::COLON);
-        CHECK(tokens[2].type == TokenType::STRING);
-        CHECK(tokens[2].value == "*.cpp");
-        CHECK(tokens[3].type == TokenType::SEMICOLON);
-    }
-
-    SECTION("list of dependencies")
-    {
-        const auto tokens = lex_tokens("depends: fmt, spdlog;");
-        CHECK(tokens[0].type == TokenType::DEPENDS);
-        CHECK(tokens[1].type == TokenType::COLON);
-        CHECK(tokens[2].type == TokenType::IDENTIFIER);
-        CHECK(tokens[2].value == "fmt");
-        CHECK(tokens[3].type == TokenType::COMMA);
-        CHECK(tokens[4].type == TokenType::IDENTIFIER);
-        CHECK(tokens[4].value == "spdlog");
-        CHECK(tokens[5].type == TokenType::SEMICOLON);
-    }
-
-    SECTION("conditional block")
-    {
-        const auto tokens = lex_tokens("@if platform(windows) { }");
-        CHECK(tokens[0].type == TokenType::IF);
-        CHECK(tokens[1].type == TokenType::PLATFORM);
-        CHECK(tokens[2].type == TokenType::LEFT_PAREN);
-        CHECK(tokens[3].type == TokenType::IDENTIFIER);
-        CHECK(tokens[3].value == "windows");
-        CHECK(tokens[4].type == TokenType::RIGHT_PAREN);
-        CHECK(tokens[5].type == TokenType::LEFT_BRACE);
-        CHECK(tokens[6].type == TokenType::RIGHT_BRACE);
-    }
-
-    SECTION("range expression")
-    {
-        const auto tokens = lex_tokens("0..10");
-        CHECK(tokens[0].type == TokenType::NUMBER);
-        CHECK(tokens[1].type == TokenType::RANGE);
-        CHECK(tokens[2].type == TokenType::NUMBER);
-    }
-
-    SECTION("comparison")
-    {
-        const auto tokens = lex_tokens("version >= 23");
-        CHECK(tokens[0].type == TokenType::IDENTIFIER);
-        CHECK(tokens[1].type == TokenType::GREATER_EQUAL);
-        CHECK(tokens[2].type == TokenType::NUMBER);
-    }
-}
-
-//===---------------------------------------------------------------------===//
-// Real-World Kumi Examples
-//===---------------------------------------------------------------------===//
-
-TEST_CASE("Lexer: realistic Kumi code", "[lexer][integration]")
-{
-    SECTION("project declaration")
-    {
-        constexpr auto INPUT = R"(
+        const std::string_view input = R"(
             project myapp {
                 version: "1.0.0";
             }
         )";
-        const auto tokens = lex_tokens(INPUT);
+
+        const auto tokens = lex_tokens(input);
 
         CHECK(tokens[0].type == TokenType::PROJECT);
         CHECK(tokens[1].type == TokenType::IDENTIFIER);
@@ -499,151 +100,662 @@ TEST_CASE("Lexer: realistic Kumi code", "[lexer][integration]")
         CHECK(tokens[3].value == "version");
         CHECK(tokens[4].type == TokenType::COLON);
         CHECK(tokens[5].type == TokenType::STRING);
-        CHECK(tokens[5].value == "1.0.0");
+        CHECK(tokens[5].value == R"("1.0.0")");
         CHECK(tokens[6].type == TokenType::SEMICOLON);
 
         CHECK(tokens[7].type == TokenType::RIGHT_BRACE);
-    }
-
-    SECTION("target with dependencies")
-    {
-        constexpr auto INPUT = R"(
-            target myapp {
-                type: executable;
-                sources: "src/*.cpp";
-                depends: fmt, spdlog;
-            }
-        )";
-        const auto tokens = lex_tokens(INPUT);
-
-        CHECK(tokens[0].type == TokenType::TARGET);
-        CHECK(tokens[1].type == TokenType::IDENTIFIER);
-        CHECK(tokens[1].value == "myapp");
-        CHECK(tokens[2].type == TokenType::LEFT_BRACE);
-
-        CHECK(tokens[3].type == TokenType::TYPE);
-        CHECK(tokens[4].type == TokenType::COLON);
-        CHECK(tokens[5].type == TokenType::IDENTIFIER);
-        CHECK(tokens[5].value == "executable");
-        CHECK(tokens[6].type == TokenType::SEMICOLON);
-
-        CHECK(tokens[7].type == TokenType::SOURCES);
-        CHECK(tokens[8].type == TokenType::COLON);
-        CHECK(tokens[9].type == TokenType::STRING);
-        CHECK(tokens[9].value == "src/*.cpp");
-        CHECK(tokens[10].type == TokenType::SEMICOLON);
-
-        CHECK(tokens[11].type == TokenType::DEPENDS);
-        CHECK(tokens[12].type == TokenType::COLON);
-        CHECK(tokens[13].type == TokenType::IDENTIFIER);
-        CHECK(tokens[13].value == "fmt");
-        CHECK(tokens[14].type == TokenType::COMMA);
-        CHECK(tokens[15].type == TokenType::IDENTIFIER);
-        CHECK(tokens[15].value == "spdlog");
-        CHECK(tokens[16].type == TokenType::SEMICOLON);
-
-        CHECK(tokens[17].type == TokenType::RIGHT_BRACE);
+        CHECK(tokens[8].type == TokenType::END_OF_FILE);
     }
 }
 
 //===---------------------------------------------------------------------===//
-// Edge Cases and Error Conditions
+// Visibility Modifiers
 //===---------------------------------------------------------------------===//
 
-TEST_CASE("Lexer: edge cases", "[lexer][edge]")
+TEST_CASE("Lexer: Visibility Modifiers", "[lexer][visibility]")
 {
-    SECTION("empty input")
+    const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+      { "public",    TokenType::PUBLIC    },
+      { "private",   TokenType::PRIVATE   },
+      { "interface", TokenType::INTERFACE },
+    }));
+    CAPTURE(input);
+
+    const auto token = lex_single(input);
+    CHECK(token.type == expected_type);
+    CHECK(token.value == input);
+}
+
+//===---------------------------------------------------------------------===//
+// Control Flow
+//===---------------------------------------------------------------------===//
+
+TEST_CASE("Lexer: Control Flow", "[lexer][control-flow]")
+{
+    SECTION("keywords")
     {
-        const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
-          { "",          "" },
-          { "   \n\t  ", "" },
-          { "\n",        "" },
-          { "\n\r",      "" },
-          { "\r",        "" },
+        const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+          { "@if",       TokenType::AT_IF       },
+          { "@else-if",  TokenType::AT_ELSE_IF  },
+          { "@else",     TokenType::AT_ELSE     },
+          { "@for",      TokenType::AT_FOR      },
+          { "in",        TokenType::IN          },
+          { "@break",    TokenType::AT_BREAK    },
+          { "@continue", TokenType::AT_CONTINUE },
         }));
         CAPTURE(input);
 
-        const auto tokens = lex_tokens(input);
-        REQUIRE(tokens.size() == 1);
-        CHECK(tokens[0].type == TokenType::END_OF_FILE);
-        CHECK(tokens[0].value == expected_value);
+        const auto token = lex_single(input);
+        CHECK(token.type == expected_type);
+        CHECK(token.value == input);
     }
 
-    SECTION("adjacent operators")
+    SECTION("conditional with function call")
     {
-        auto tokens = lex_tokens("!=>=<=");
-        CHECK(tokens[0].type == TokenType::NOT_EQUAL);
-        CHECK(tokens[1].type == TokenType::GREATER_EQUAL);
-        CHECK(tokens[2].type == TokenType::LESS_EQUAL);
+        const auto tokens = lex_tokens("@if platform(windows) { }");
+
+        CHECK(tokens[0].type == TokenType::AT_IF);
+
+        CHECK(tokens[1].type == TokenType::IDENTIFIER);
+        CHECK(tokens[1].value == "platform");
+        CHECK(tokens[2].type == TokenType::LEFT_PAREN);
+        CHECK(tokens[3].type == TokenType::IDENTIFIER);
+        CHECK(tokens[3].value == "windows");
+        CHECK(tokens[4].type == TokenType::RIGHT_PAREN);
+
+        CHECK(tokens[5].type == TokenType::LEFT_BRACE);
+        CHECK(tokens[6].type == TokenType::RIGHT_BRACE);
+
+        CHECK(tokens[7].type == TokenType::END_OF_FILE);
     }
 
-    SECTION("identifier followed by number")
+    SECTION("for loop with range")
     {
-        auto tokens = lex_tokens("var123");
-        CHECK(tokens[0].type == TokenType::IDENTIFIER);
-        CHECK(tokens[0].value == "var123");
+        const auto tokens = lex_tokens("@for worker in 0..7 { }");
+
+        CHECK(tokens[0].type == TokenType::AT_FOR);
+
+        CHECK(tokens[1].type == TokenType::IDENTIFIER);
+        CHECK(tokens[1].value == "worker");
+
+        CHECK(tokens[2].type == TokenType::IN);
+
+        CHECK(tokens[3].type == TokenType::NUMBER);
+        CHECK(tokens[3].value == "0");
+        CHECK(tokens[4].type == TokenType::RANGE);
+        CHECK(tokens[4].value == "..");
+        CHECK(tokens[5].type == TokenType::NUMBER);
+        CHECK(tokens[5].value == "7");
+
+        CHECK(tokens[6].type == TokenType::LEFT_BRACE);
+        CHECK(tokens[7].type == TokenType::RIGHT_BRACE);
+
+        CHECK(tokens[8].type == TokenType::END_OF_FILE);
     }
 
-    SECTION("keyword-like identifier")
+    SECTION("for loop with list")
     {
-        auto tokens = lex_tokens("projects");
-        CHECK(tokens[0].type == TokenType::IDENTIFIER);
+        const auto tokens = lex_tokens("@for module in [core, renderer, audio] { }");
+
+        CHECK(tokens[0].type == TokenType::AT_FOR);
+
+        CHECK(tokens[1].type == TokenType::IDENTIFIER);
+        CHECK(tokens[1].value == "module");
+
+        CHECK(tokens[2].type == TokenType::IN);
+
+        CHECK(tokens[3].type == TokenType::LEFT_BRACKET);
+        CHECK(tokens[4].type == TokenType::IDENTIFIER);
+        CHECK(tokens[4].value == "core");
+        CHECK(tokens[5].type == TokenType::COMMA);
+        CHECK(tokens[6].type == TokenType::IDENTIFIER);
+        CHECK(tokens[6].value == "renderer");
+        CHECK(tokens[7].type == TokenType::COMMA);
+        CHECK(tokens[8].type == TokenType::IDENTIFIER);
+        CHECK(tokens[8].value == "audio");
+        CHECK(tokens[9].type == TokenType::RIGHT_BRACKET);
+
+        CHECK(tokens[10].type == TokenType::LEFT_BRACE);
+        CHECK(tokens[11].type == TokenType::RIGHT_BRACE);
+
+        CHECK(tokens[12].type == TokenType::END_OF_FILE);
+    }
+
+    SECTION("for loop with function call")
+    {
+        const auto tokens = lex_tokens(R"(@for file in glob("*.cpp") { })");
+
+        CHECK(tokens[0].type == TokenType::AT_FOR);
+
+        CHECK(tokens[1].type == TokenType::IDENTIFIER);
+        CHECK(tokens[1].value == "file");
+
+        CHECK(tokens[2].type == TokenType::IN);
+
+        CHECK(tokens[3].type == TokenType::IDENTIFIER);
+        CHECK(tokens[3].value == "glob");
+        CHECK(tokens[4].type == TokenType::LEFT_PAREN);
+        CHECK(tokens[5].type == TokenType::STRING);
+        CHECK(tokens[5].value == R"("*.cpp")");
+        CHECK(tokens[6].type == TokenType::RIGHT_PAREN);
+
+        CHECK(tokens[7].type == TokenType::LEFT_BRACE);
+        CHECK(tokens[8].type == TokenType::RIGHT_BRACE);
+
+        CHECK(tokens[9].type == TokenType::END_OF_FILE);
+    }
+
+    SECTION("invalid @ directives")
+    {
+        const auto input = GENERATE(as<std::string_view>{},
+                                    "@",
+                                    "@invalid",
+                                    "@123",
+                                    "@-if",
+                                    "@_else",
+                                    "@IF",
+                                    "@ELSE",
+                                    "@For");
+        CAPTURE(input);
+
+        const auto error = lex_error(input);
+        CHECK(error.message.contains("unexpected"));
+        CHECK(error.hint.contains("expected one of"));
+    }
+
+    SECTION("invalid @ directive position tracking")
+    {
+        const std::string_view input = "project myapp @invalid";
+        const auto error = lex_error(input);
+        CHECK(error.position == 14);
+        CHECK(input[error.position] == '@');
+        CHECK(error.message.contains("unexpected"));
+    }
+
+    SECTION("invalid @ directive with number")
+    {
+        const std::string_view input = "@if test { } @123 { }";
+        const auto error = lex_error(input);
+        CHECK(error.position == 13);
+        CHECK(input[error.position] == '@');
+        CHECK(error.message.contains("unexpected"));
+    }
+
+    SECTION("invalid @ directive wrong case")
+    {
+        const std::string_view input = "target myapp { @IF }";
+        const auto error = lex_error(input);
+        CHECK(error.position == 15);
+        CHECK(input[error.position] == '@');
+        CHECK(error.message.contains("unexpected"));
     }
 }
 
-TEST_CASE("Lexer: match_string edge cases", "[lexer][edge-cases]")
+//===---------------------------------------------------------------------===//
+// Diagnostic Directives
+//===---------------------------------------------------------------------===//
+
+TEST_CASE("Lexer: Diagnostic Directives", "[lexer][diagnostics]")
 {
-    SECTION("partial keyword at EOF")
+    const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+      { "@error",   TokenType::AT_ERROR   },
+      { "@warning", TokenType::AT_WARNING },
+      { "@info",    TokenType::AT_INFO    },
+      { "@debug",   TokenType::AT_DEBUG   },
+    }));
+    CAPTURE(input);
+
+    const auto token = lex_single(input);
+    CHECK(token.type == expected_type);
+    CHECK(token.value == input);
+}
+
+//===---------------------------------------------------------------------===//
+// Logical Operators
+//===---------------------------------------------------------------------===//
+
+TEST_CASE("Lexer: Logical Operators", "[lexer][logical]")
+{
+    const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+      { "and", TokenType::AND },
+      { "or",  TokenType::OR  },
+      { "not", TokenType::NOT },
+    }));
+    CAPTURE(input);
+
+    const auto token = lex_single(input);
+    CHECK(token.type == expected_type);
+    CHECK(token.value == input);
+}
+
+//===---------------------------------------------------------------------===//
+// Operators and Punctuation
+//===---------------------------------------------------------------------===//
+
+TEST_CASE("Lexer: Braces, Brackets, and Parentheses", "[lexer][punctuation]")
+{
+    const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+      { "{", TokenType::LEFT_BRACE    },
+      { "}", TokenType::RIGHT_BRACE   },
+      { "[", TokenType::LEFT_BRACKET  },
+      { "]", TokenType::RIGHT_BRACKET },
+      { "(", TokenType::LEFT_PAREN    },
+      { ")", TokenType::RIGHT_PAREN   },
+    }));
+    CAPTURE(input);
+
+    const auto token = lex_single(input);
+    CHECK(token.type == expected_type);
+    CHECK(token.value == input);
+}
+
+TEST_CASE("Lexer: Delimiters", "[lexer][delimiters]")
+{
+    SECTION("keywords")
     {
-        const auto error = lex_error("@els");
+        const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+          { ":", TokenType::COLON     },
+          { ";", TokenType::SEMICOLON },
+          { ",", TokenType::COMMA     },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == expected_type);
+        CHECK(token.value == input);
+    }
+
+    SECTION("property assignment sequence")
+    {
+        const auto tokens = lex_tokens(R"(sources: "*.cpp";)");
+
+        CHECK(tokens[0].type == TokenType::IDENTIFIER);
+        CHECK(tokens[0].value == "sources");
+        CHECK(tokens[1].type == TokenType::COLON);
+        CHECK(tokens[2].type == TokenType::STRING);
+        CHECK(tokens[2].value == R"("*.cpp")");
+        CHECK(tokens[3].type == TokenType::SEMICOLON);
+        CHECK(tokens[4].type == TokenType::END_OF_FILE);
+    }
+
+    SECTION("comma-separated list values")
+    {
+        const auto tokens = lex_tokens(R"(authors: "Alice", "Bob", "Charlie";)");
+
+        CHECK(tokens[0].type == TokenType::IDENTIFIER);
+        CHECK(tokens[0].value == "authors");
+        CHECK(tokens[1].type == TokenType::COLON);
+
+        CHECK(tokens[2].type == TokenType::STRING);
+        CHECK(tokens[2].value == R"("Alice")");
+        CHECK(tokens[3].type == TokenType::COMMA);
+
+        CHECK(tokens[4].type == TokenType::STRING);
+        CHECK(tokens[4].value == R"("Bob")");
+        CHECK(tokens[5].type == TokenType::COMMA);
+
+        CHECK(tokens[6].type == TokenType::STRING);
+        CHECK(tokens[6].value == R"("Charlie")");
+        CHECK(tokens[7].type == TokenType::SEMICOLON);
+
+        CHECK(tokens[8].type == TokenType::END_OF_FILE);
+    }
+}
+
+TEST_CASE("Lexer: Special Operators", "[lexer][special-operators]")
+{
+    SECTION("keywords")
+    {
+        const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+          { "?",  TokenType::QUESTION },
+          { "$",  TokenType::DOLLAR   },
+          { "..", TokenType::RANGE    },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == expected_type);
+        CHECK(token.value == input);
+    }
+
+    SECTION("range expression")
+    {
+        const auto tokens = lex_tokens("0..10");
+
+        CHECK(tokens[0].type == TokenType::NUMBER);
+        CHECK(tokens[0].value == "0");
+        CHECK(tokens[1].type == TokenType::RANGE);
+        CHECK(tokens[1].value == "..");
+        CHECK(tokens[2].type == TokenType::NUMBER);
+        CHECK(tokens[2].value == "10");
+        CHECK(tokens[3].type == TokenType::END_OF_FILE);
+    }
+
+    SECTION("invalid single dot")
+    {
+        const std::string_view input = "x . y";
+        const auto error = lex_error(input);
+        CHECK(error.position == 2);
+        CHECK(input[error.position] == '.');
         CHECK(error.message.contains("unexpected"));
+        CHECK(error.hint.contains("'.'"));
+    }
+}
+
+TEST_CASE("Lexer: Comparison Operators", "[lexer][comparison]")
+{
+    SECTION("keywords")
+    {
+        const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+          { "==", TokenType::EQUAL         },
+          { "!=", TokenType::NOT_EQUAL     },
+          { "<",  TokenType::LESS          },
+          { "<=", TokenType::LESS_EQUAL    },
+          { ">",  TokenType::GREATER       },
+          { ">=", TokenType::GREATER_EQUAL },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == expected_type);
+        CHECK(token.value == input);
     }
 
-    SECTION("exact keyword at EOF")
+    SECTION("adjacent operators without whitespace")
     {
-        const auto tokens = lex_tokens("@else");
-        REQUIRE(tokens.size() == 2);
-        CHECK(tokens[0].type == TokenType::ELSE);
+        const auto tokens = lex_tokens("!=>=<===");
+
+        CHECK(tokens[0].type == TokenType::NOT_EQUAL);
+        CHECK(tokens[1].type == TokenType::GREATER_EQUAL);
+        CHECK(tokens[2].type == TokenType::LESS_EQUAL);
+        CHECK(tokens[3].type == TokenType::EQUAL);
+        CHECK(tokens[4].type == TokenType::END_OF_FILE);
     }
 
-    SECTION("@ at EOF")
+    SECTION("invalid single equals")
     {
-        const auto error = lex_error("@");
+        const std::string_view input = "x = 5";
+        const auto error = lex_error(input);
+        CHECK(error.position == 2);
+        CHECK(input[error.position] == '=');
         CHECK(error.message.contains("unexpected"));
+        CHECK(error.hint.contains("'='"));
     }
 
-    SECTION("two-char operator at EOF")
+    SECTION("invalid single exclamation")
     {
-        const auto tokens = lex_tokens("target myapp ==");
-        CHECK(tokens[2].type == TokenType::EQUAL);
-        CHECK(tokens[2].value == "==");
+        const std::string_view input = "x ! y";
+        const auto error = lex_error(input);
+        CHECK(error.position == 2);
+        CHECK(input[error.position] == '!');
+        CHECK(error.message.contains("unexpected"));
+        CHECK(error.hint.contains("'='"));
     }
 
-    SECTION("ellipsis at EOF")
+    SECTION("invalid comment start")
     {
-        const auto tokens = lex_tokens("...");
-        CHECK(tokens[0].type == TokenType::ELLIPSIS);
-        CHECK(tokens[0].value == "...");
+        const std::string_view input = "test / 5";
+        const auto error = lex_error(input);
+        CHECK(error.position == 5);
+        CHECK(input[error.position] == '/');
+        CHECK(error.message.contains("unexpected"));
+        CHECK(error.hint.contains("'/' or '*'"));
     }
 
-    SECTION("line comment at EOF")
+    SECTION("position tracking in token sequence")
     {
-        const auto tokens = lex_tokens("target // comment");
-        REQUIRE(tokens.size() == 2);
-        CHECK(tokens[0].type == TokenType::TARGET);
+        const auto tokens = lex_tokens("target myapp {");
+        CHECK(tokens[0].position == 0);
+        CHECK(tokens[1].position == 7);
+        CHECK(tokens[2].position == 13);
+    }
+}
+
+//===---------------------------------------------------------------------===//
+// Literals
+//===---------------------------------------------------------------------===//
+
+TEST_CASE("Lexer: Identifiers", "[lexer][literals][identifiers]")
+{
+    SECTION("valid identifiers")
+    {
+        const auto input = GENERATE(as<std::string_view>{},
+                                    "myvar",
+                                    "my_var",
+                                    "my-var",
+                                    "var123",
+                                    "_private",
+                                    "camelCase",
+                                    "PascalCase",
+                                    "snake_case",
+                                    "SCREAMING_CASE",
+                                    "a",
+                                    "a1",
+                                    "a-b-c",
+                                    "a_b_c");
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == TokenType::IDENTIFIER);
+        CHECK(token.value == input);
     }
 
-    SECTION("unclosed block comment at EOF")
+    SECTION("keyword-like identifiers")
     {
-        const auto tokens = lex_tokens("target /* comment");
-        REQUIRE(tokens.size() == 2);
-        CHECK(tokens[0].type == TokenType::TARGET);
+        const auto input
+          = GENERATE(as<std::string_view>{}, "projects", "targeting", "ands", "trueish", "falsey");
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == TokenType::IDENTIFIER);
+        CHECK(token.value == input);
     }
 
-    SECTION("substr safety - position at end")
+    SECTION("invalid identifier starts")
     {
-        const auto tokens = lex_tokens("target");
-        CHECK(tokens[0].type == TokenType::TARGET);
-        CHECK(tokens[1].type == TokenType::END_OF_FILE);
+        const auto input
+          = GENERATE(as<std::string_view>{}, "*", "*/", "#", "~", "%", "&", "^", "|", "\\", "`");
+        CAPTURE(input);
+
+        const auto error = lex_error(input);
+        CHECK(error.message.contains("unexpected character"));
+        CHECK(error.hint.contains("expected identifier"));
+    }
+}
+
+TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
+{
+    SECTION("simple strings")
+    {
+        const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
+          { R"("")",            R"("")"            },
+          { R"("hello")",       R"("hello")"       },
+          { R"("hello world")", R"("hello world")" },
+          { R"("123")",         R"("123")"         },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == TokenType::STRING);
+        CHECK(token.value == expected_value);
+    }
+
+    SECTION("escape sequences")
+    {
+        const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
+          { R"("hello\nworld")",      R"("hello\nworld")"      },
+          { R"("hello\tworld")",      R"("hello\tworld")"      },
+          { R"("hello\rworld")",      R"("hello\rworld")"      },
+          { R"("say \"hello\"")",     R"("say \"hello\"")"     },
+          { R"("path\\to\\file")",    R"("path\\to\\file")"    },
+          { R"("\\n\\t\\r\\\"\\\\")", R"("\\n\\t\\r\\\"\\\\")" },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == TokenType::STRING);
+        CHECK(token.value == expected_value);
+    }
+
+    SECTION("unterminated string - EOF")
+    {
+        const auto error = lex_error(R"("unterminated)");
+        CHECK(error.message.contains("unterminated"));
+        CHECK(error.hint.contains("closing"));
+    }
+
+    SECTION("unterminated string - newline")
+    {
+        const auto error = lex_error("\"line1\nline2\"");
+        CHECK(error.message.contains("unterminated"));
+        CHECK(error.hint.contains("multiple lines"));
+    }
+
+    SECTION("invalid escape sequences")
+    {
+        const auto invalid_escape = GENERATE(as<std::string_view>{},
+                                             R"("invalid\x")",
+                                             R"("invalid\a")",
+                                             R"("invalid\b")",
+                                             R"("invalid\f")",
+                                             R"("invalid\v")",
+                                             R"("invalid\0")",
+                                             R"("invalid\1")");
+        CAPTURE(invalid_escape);
+
+        const auto error = lex_error(invalid_escape);
+        CHECK(error.message.contains("invalid escape"));
+        CHECK(error.hint.contains("valid escapes"));
+    }
+}
+
+TEST_CASE("Lexer: Numbers", "[lexer][literals][numbers]")
+{
+    const auto input
+      = GENERATE(as<std::string_view>{}, "0", "1", "42", "123", "999999", "1234567890");
+    CAPTURE(input);
+
+    const auto token = lex_single(input);
+    CHECK(token.type == TokenType::NUMBER);
+    CHECK(token.value == input);
+}
+
+TEST_CASE("Lexer: Booleans", "[lexer][literals][booleans]")
+{
+    const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
+      { "true",  TokenType::TRUE  },
+      { "false", TokenType::FALSE },
+    }));
+    CAPTURE(input);
+
+    const auto token = lex_single(input);
+    CHECK(token.type == expected_type);
+    CHECK(token.value == input);
+}
+
+TEST_CASE("Lexer: Comments", "[lexer][literals][comments]")
+{
+    SECTION("line comments")
+    {
+        const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
+          { "//",             "//"             },
+          { "// comment",     "// comment"     },
+          { "// hello world", "// hello world" },
+          { "//no space",     "//no space"     },
+          { "// /*",          "// /*"          },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == TokenType::COMMENT);
+        CHECK(token.value == expected_value);
+    }
+
+    SECTION("block comments")
+    {
+        const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
+          { "/**/",                 "/**/"                 },
+          { "/* comment */",        "/* comment */"        },
+          { "/* multi\nline */",    "/* multi\nline */"    },
+          { "/* /* multiple /* */", "/* /* multiple /* */" },
+        }));
+        CAPTURE(input);
+
+        const auto token = lex_single(input);
+        CHECK(token.type == TokenType::COMMENT);
+        CHECK(token.value == expected_value);
+    }
+
+    SECTION("invalid block comment missing closing */")
+    {
+        const std::string_view input = "/* unterminated";
+        const auto error = lex_error(input);
+        CHECK(error.position == 15);
+        CHECK(error.position == input.size()); // At EOF
+        CHECK(error.message.contains("unterminated"));
+        CHECK(error.hint.contains("closing */"));
+    }
+
+    SECTION("invalid block comment in multiline context")
+    {
+        const std::string_view input = "project /* unterminated\nstring";
+        const auto error = lex_error(input);
+        CHECK(error.position == 30);
+        CHECK(error.position == input.size()); // At EOF
+        CHECK(error.message.contains("unterminated"));
+    }
+
+    SECTION("*/ without opening /*")
+    {
+        const std::string_view input = "project unterminated string */";
+        const auto error = lex_error(input);
+        CHECK(error.position == 28);
+        CHECK(input[error.position] == '*');
+        CHECK(error.message.contains("unexpected character"));
+    }
+}
+
+//===---------------------------------------------------------------------===//
+// End of File
+//===---------------------------------------------------------------------===//
+
+TEST_CASE("Lexer: End of File", "[lexer][eof]")
+{
+    SECTION("empty input")
+    {
+        const auto tokens = lex_tokens("");
+        REQUIRE(tokens.size() == 1);
+        CHECK(tokens[0].type == TokenType::END_OF_FILE);
+        CHECK(tokens[0].value == "");
+        CHECK(tokens[0].position == 0);
+    }
+
+    SECTION("whitespace only")
+    {
+        const auto tokens = lex_tokens("   \n\t  ");
+        REQUIRE(tokens.size() == 1);
+        CHECK(tokens[0].type == TokenType::END_OF_FILE);
+    }
+
+    SECTION("after tokens")
+    {
+        const auto tokens = lex_tokens("project myapp");
+        REQUIRE(tokens.size() == 3);
+        CHECK(tokens[0].position == 0);
+        CHECK(tokens[1].position == 8);
+        CHECK(tokens[2].type == TokenType::END_OF_FILE);
+    }
+
+    SECTION("with leading whitespace")
+    {
+        const auto tokens = lex_tokens("  target");
+        CHECK(tokens[0].position == 2);
+    }
+
+    SECTION("with newlines")
+    {
+        const auto tokens = lex_tokens("target\nproject");
+        CHECK(tokens[0].position == 0);
+        CHECK(tokens[1].position == 7);
     }
 }

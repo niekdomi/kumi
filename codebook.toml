@@ -12,4 +12,5 @@ words = [
     "nolintnextline",
     "nullptr",
     "spdlog",
+    "tparam",
 ]

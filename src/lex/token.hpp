@@ -40,7 +40,7 @@ enum class TokenType : std::uint8_t
     INSTALL,      ///< `install { }`             - Installation configuration
     PACKAGE,      ///< `package { }`             - Packaging and publishing
     SCRIPTS,      ///< `scripts { }`             - Custom build hooks
-    WITH, ///< `with`                    - Mixin composition (e.g., `target myapp with strict { }`)
+    WITH,         ///< `with`             - Mixin composition (e.g., `target myapp with strict { }`)
 
     //===-----------------------------------------------------------------===//
     // Visibility Modifiers
@@ -66,10 +66,10 @@ enum class TokenType : std::uint8_t
     // Diagnostic Directives
     //===-----------------------------------------------------------------===//
 
-    AT_ERROR,   ///< Reserved: `@error "msg";`   - Emit build error and halt
-    AT_WARNING, ///< Reserved: `@warning "msg";` - Emit build warning
-    AT_INFO,    ///< Reserved: `@info "msg";`    - Emit informational message
-    AT_DEBUG,   ///< Reserved: `@debug "msg";`   - Emit debug message (shown with `--verbose` flag)
+    AT_ERROR,   ///< `@error "msg";`   - Emit build error and halt
+    AT_WARNING, ///< `@warning "msg";` - Emit build warning
+    AT_INFO,    ///< `@info "msg";`    - Emit informational message
+    AT_DEBUG,   ///< `@debug "msg";`   - Emit debug message (shown with `--verbose` flag)
 
     //===-----------------------------------------------------------------===//
     // Logical Operators

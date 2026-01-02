@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <expected>
 #include <format>
-#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -89,10 +88,9 @@ class Lexer final
         skip_whitespace();
 
         if (at_end()) [[unlikely]] {
-            const auto start_pos = position_;
             return Token{
                 .value = "",
-                .position = start_pos,
+                .position = position_,
                 .type = TokenType::END_OF_FILE,
             };
         }
@@ -190,7 +188,6 @@ class Lexer final
     auto lex_bang() -> std::expected<Token, ParseError>
     {
         const auto start_pos = position_;
-
         if (match_string("!=")) [[likely]] {
             return Token{
                 .value = "!=",
@@ -213,7 +210,6 @@ class Lexer final
             while (peek() != '\n' && !at_end()) {
                 ++position_;
             }
-
             return Token{
                 .value = input_.substr(start_pos, position_ - start_pos),
                 .position = start_pos,
@@ -223,18 +219,17 @@ class Lexer final
 
         // Block comment
         if (match_string("/*")) {
-            while (!at_end()) {
+            while (!at_end()) [[likely]] {
                 if (match_string("*/")) {
-                    break;
+                    return Token{
+                        .value = input_.substr(start_pos, position_ - start_pos),
+                        .position = start_pos,
+                        .type = TokenType::COMMENT,
+                    };
                 }
                 ++position_;
             }
-
-            return Token{
-                .value = input_.substr(start_pos, position_ - start_pos),
-                .position = start_pos,
-                .type = TokenType::COMMENT,
-            };
+            return error<Token>("unterminated block comment", position_, "missing closing */");
         }
 
         return error<Token>(std::format("unexpected character after '/': '{}'", peek()),
@@ -246,7 +241,6 @@ class Lexer final
     auto lex_dot() -> std::expected<Token, ParseError>
     {
         const auto start_pos = position_;
-
         if (match_string("..")) [[likely]] {
             return Token{
                 .value = "..",
@@ -263,7 +257,6 @@ class Lexer final
     auto lex_equal() -> std::expected<Token, ParseError>
     {
         const auto start_pos = position_;
-
         if (match_string("==")) [[likely]] {
             return Token{
                 .value = "==",
@@ -290,7 +283,6 @@ class Lexer final
         }
 
         advance();
-
         return Token{
             .value = ">",
             .position = start_pos,
@@ -312,7 +304,6 @@ class Lexer final
         }
 
         advance();
-
         return Token{
             .value = "<",
             .position = start_pos,
@@ -330,7 +321,6 @@ class Lexer final
         }
 
         const auto num_str = input_.substr(start_pos, position_ - start_pos);
-
         return Token{
             .value = num_str,
             .position = start_pos,
@@ -342,15 +332,14 @@ class Lexer final
     auto lex_single_char(TokenType token, std::string_view value) noexcept -> Token
     {
         const auto start_pos = position_;
-
         advance();
-
         return Token{
             .value = value,
             .position = start_pos,
             .type = token,
         };
     }
+
     [[nodiscard]]
     auto lex_string() -> std::expected<Token, ParseError>
     {
@@ -358,52 +347,38 @@ class Lexer final
 
         advance(); // Consume opening "
 
-        std::string str;
-        str.reserve(32);
-
-        const auto is_string_char = [this]() -> bool {
-            const char c = peek();
-            return c != '"' && c != '\\' && c != '\n' && c != '\r';
-        };
-
         while (peek() != '"') {
             if (at_end()) [[unlikely]] {
                 return error<Token>("unterminated string literal", position_, "missing closing \"");
             }
 
-            const auto batch_start = position_;
-            while (is_string_char()) {
-                position_++;
-            }
-            if (position_ > batch_start) {
-                str.append(input_.substr(batch_start, position_ - batch_start));
-            }
-
             const char c = peek();
+
             if (c == '\n' || c == '\r') [[unlikely]] {
                 return error<Token>(
                   "unterminated string literal", position_, "strings cannot span multiple lines");
             }
 
-            if (c == '\\') [[unlikely]] {
+            if (c == '\\') {
                 advance(); // Consume '\'
-                switch (peek()) {
-                    case '"':  str += '"'; break;
-                    case 'n':  str += '\n'; break;
-                    case 't':  str += '\t'; break;
-                    case 'r':  str += '\r'; break;
-                    case '\\': str += '\\'; break;
-                    default:
-                        return error<Token>(std::format("invalid escape sequence: '\\{}'", peek()),
-                                            position_,
-                                            R"(valid escapes: \", \n, \t, \r, \\)");
+                const char next = peek();
+                // Validate escape sequence
+                if (next != '"' && next != 'n' && next != 't' && next != 'r' && next != '\\')
+                  [[unlikely]] {
+                    return error<Token>(std::format("invalid escape sequence: '\\{}'", next),
+                                        position_,
+                                        R"(valid escapes: \", \n, \t, \r, \\)");
                 }
-                advance();
+                advance(); // Consume escaped character
+            } else {
+                advance(); // Consume regular character
             }
         }
 
         advance(); // Consume closing "
 
+        // Return raw string including quotes from original input
+        const auto str = input_.substr(start_pos, position_ - start_pos);
         return Token{
             .value = str,
             .position = start_pos,
@@ -412,7 +387,7 @@ class Lexer final
     }
 
     [[nodiscard]]
-    auto lex_identifier_or_keyword() noexcept -> Token
+    auto lex_identifier_or_keyword() -> std::expected<Token, ParseError>
     {
         const auto start_pos = position_;
 
@@ -422,7 +397,14 @@ class Lexer final
 
         const auto text = input_.substr(start_pos, position_ - start_pos);
 
-        static constexpr std::array<std::pair<std::string_view, TokenType>, 19> KEYWORDS = {
+        // No valid identifier characters were consumed
+        if (text.empty()) {
+            return error<Token>(std::format("unexpected character: '{}'", peek()),
+                                position_,
+                                "expected identifier, keyword, or valid token");
+        }
+
+        static constexpr std::array<std::pair<std::string_view, TokenType>, 20> KEYWORDS = {
             // Top-Level Declarations
             std::pair{ "project",      TokenType::PROJECT      },
             std::pair{ "workspace",    TokenType::WORKSPACE    },
@@ -440,6 +422,9 @@ class Lexer final
             std::pair{ "public",       TokenType::PUBLIC       },
             std::pair{ "private",      TokenType::PRIVATE      },
             std::pair{ "interface",    TokenType::INTERFACE    },
+
+            // Control Flow
+            std::pair{ "in",           TokenType::IN           },
 
             // Logical Operators
             std::pair{ "and",          TokenType::AND          },
