@@ -9,6 +9,23 @@
 #include <iostream>
 #include <print>
 #include <sstream>
+#include <string>
+
+auto get_peak_memory_mb() -> double
+{
+    std::ifstream status("/proc/self/status");
+    std::string line;
+    while (std::getline(status, line)) {
+        if (line.starts_with("VmHWM:")) {
+            // VmHWM is peak RSS in kB
+            std::istringstream iss(line.substr(6));
+            long kb = 0;
+            iss >> kb;
+            return static_cast<double>(kb) / 1024.0; // Convert to MB
+        }
+    }
+    return 0.0;
+}
 
 auto main(int argc, char **argv) -> int
 {
@@ -71,6 +88,7 @@ auto main(int argc, char **argv) -> int
     std::println("│ Performance Metrics                     │");
     std::println("├─────────────────────────────────────────┤");
     std::println("│ Lexing:  {:>10.4f} ms {:>10.2f} MB/s  │", duration_lex_ms, lex_throughput);
+    std::println("│ Memory:  {:>10.2f} MB (peak RSS)      │", get_peak_memory_mb());
     // std::println("│ Parsing: {:>10.4f} ms {:>10.2f} MB/s  │", duration_parse_ms,
     // parse_throughput); std::println("│ Total:   {:>10.4f} ms {:>10.2f} MB/s  │",
     //  duration_lex_ms + duration_parse_ms,

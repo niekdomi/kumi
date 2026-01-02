@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <format>
 #include <string_view>
@@ -52,8 +53,8 @@ class Lexer final
     }
 
   private:
-    std::string_view input_;    ///< Source text being tokenized
-    std::size_t position_{ 0 }; ///< Current position in input_
+    std::string_view input_;      ///< Source text being tokenized
+    std::uint32_t position_{ 0 }; ///< Current position in input_
 
     /// @brief Advances to next character and updates position
     /// @return Current character before advancing, or '\0' if at EOF
@@ -213,7 +214,7 @@ class Lexer final
                 position_ += pos;
             } else {
                 // No newline found, consume until EOF
-                position_ = input_.size();
+                position_ = static_cast<std::uint32_t>(input_.size());
             }
             return Token{
                 .value = input_.substr(start_pos, position_ - start_pos),
@@ -235,7 +236,7 @@ class Lexer final
                 };
             }
             // No closing found, set position to EOF
-            position_ = input_.size();
+            position_ = static_cast<std::uint32_t>(input_.size());
             return error<Token>("unterminated block comment", position_, "missing closing */");
         }
 

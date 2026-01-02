@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <string>
 #include <string_view>
@@ -16,9 +16,9 @@ namespace kumi {
 /// @brief Represents a parsing error with position and hint
 struct ParseError final
 {
-    std::string message;  ///< Error message
-    std::size_t position; ///< Position in source where error occurred
-    std::string hint;     ///< Hint for fixing the error
+    std::string message;    ///< Error message
+    std::uint32_t position; ///< Position in source where error occurred
+    std::string hint;       ///< Hint for fixing the error
 };
 
 /// @brief Creates a ParseError wrapped in std::unexpected
@@ -29,11 +29,14 @@ struct ParseError final
 /// @return Unexpected ParseError
 template<typename T>
 [[nodiscard]]
-auto error(std::string_view message, std::size_t position, std::string_view hint)
+auto error(std::string_view message, std::uint32_t position, std::string_view hint)
   -> std::expected<T, ParseError>
 {
     return std::unexpected(ParseError{
-      .message = std::string(message), .position = position, .hint = std::string(hint) });
+      .message = std::string(message),
+      .position = position,
+      .hint = std::string(hint),
+    });
 }
 
 } // namespace kumi

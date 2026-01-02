@@ -134,8 +134,9 @@ enum class TokenType : std::uint8_t
 struct Token final
 {
     std::string_view value; ///< Textual value. String literals include quotes (e.g., `"hello"`)
-    std::size_t position;   ///< Starting position in source text
+    std::uint32_t position; ///< Starting position in source text
     TokenType type;         ///< Type of the token
 };
+static_assert(sizeof(Token) == 24);
 
 } // namespace kumi
