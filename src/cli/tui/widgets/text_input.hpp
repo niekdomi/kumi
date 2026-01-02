@@ -13,11 +13,10 @@ namespace kumi {
 class TextInput
 {
   public:
-    explicit TextInput(std::string_view prompt, std::string placeholder = "") :
-      prompt_(prompt),
-      placeholder_(std::move(placeholder))
-    {
-    }
+    explicit TextInput(std::string_view prompt, std::string placeholder = "")
+        : prompt_(prompt),
+          placeholder_(std::move(placeholder))
+    {}
 
     [[nodiscard]]
     auto run() -> std::string

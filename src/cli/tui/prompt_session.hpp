@@ -73,7 +73,7 @@ class PromptSession
     void add_yes_no(std::string_view key, std::string_view prompt, bool default_yes = true)
     {
         prompts_.emplace_back([prompt, default_yes, key, this]() -> void {
-            Select select(prompt, { "yes", "no" }, default_yes ? 0 : 1);
+            Select select(prompt, {"yes", "no"}, default_yes ? 0 : 1);
             answers_[std::string(key)] = select.run();
         });
     }

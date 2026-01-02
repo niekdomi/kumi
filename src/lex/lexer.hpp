@@ -28,7 +28,7 @@ class Lexer final
   public:
     /// @brief Constructs a lexer for the given input
     /// @param input Source text to tokenize
-    explicit Lexer(std::string_view input) : input_(input) {};
+    explicit Lexer(std::string_view input) : input_(input) {}
 
     /// @brief Tokenizes the entire input into a vector of tokens
     /// @return Vector of tokens on success, ParseError on failure
@@ -53,12 +53,15 @@ class Lexer final
     }
 
   private:
-    std::string_view input_;      ///< Source text being tokenized
-    std::uint32_t position_{ 0 }; ///< Current position in input_
+    std::string_view input_;    ///< Source text being tokenized
+    std::uint32_t position_{0}; ///< Current position in input_
 
     /// @brief Advances to next character and updates position
     /// @return Current character before advancing, or '\0' if at EOF
-    auto advance() noexcept -> char { return input_[position_++]; }
+    auto advance() noexcept -> char
+    {
+        return input_[position_++];
+    }
 
     /// @brief Checks if lexer has reached end of input
     /// @return true if at EOF, false otherwise
@@ -90,9 +93,9 @@ class Lexer final
 
         if (at_end()) [[unlikely]] {
             return Token{
-                .value = "",
-                .position = position_,
-                .type = TokenType::END_OF_FILE,
+              .value = "",
+              .position = position_,
+              .type = TokenType::END_OF_FILE,
             };
         }
 
@@ -151,38 +154,38 @@ class Lexer final
         const auto start_pos = position_;
 
         static constexpr std::array<std::pair<std::string_view, TokenType>, 11> KEYWORDS = {
-            // Top-Level Declaration
-            std::pair{ "@import",   TokenType::AT_IMPORT   },
+          // Top-Level Declaration
+          std::pair{"@import",   TokenType::AT_IMPORT  },
 
-            // Control Flow
-            std::pair{ "@if",       TokenType::AT_IF       },
-            std::pair{ "@else-if",  TokenType::AT_ELSE_IF  },
-            std::pair{ "@else",     TokenType::AT_ELSE     },
-            std::pair{ "@for",      TokenType::AT_FOR      },
-            std::pair{ "@break",    TokenType::AT_BREAK    },
-            std::pair{ "@continue", TokenType::AT_CONTINUE },
+          // Control Flow
+          std::pair{"@if",       TokenType::AT_IF      },
+          std::pair{"@else-if",  TokenType::AT_ELSE_IF },
+          std::pair{"@else",     TokenType::AT_ELSE    },
+          std::pair{"@for",      TokenType::AT_FOR     },
+          std::pair{"@break",    TokenType::AT_BREAK   },
+          std::pair{"@continue", TokenType::AT_CONTINUE},
 
-            // Diagnostic Directives
-            std::pair{ "@error",    TokenType::AT_ERROR    },
-            std::pair{ "@warning",  TokenType::AT_WARNING  },
-            std::pair{ "@info",     TokenType::AT_INFO     },
-            std::pair{ "@debug",    TokenType::AT_DEBUG    },
+          // Diagnostic Directives
+          std::pair{"@error",    TokenType::AT_ERROR   },
+          std::pair{"@warning",  TokenType::AT_WARNING },
+          std::pair{"@info",     TokenType::AT_INFO    },
+          std::pair{"@debug",    TokenType::AT_DEBUG   },
         };
 
         for (const auto &[keyword, type] : KEYWORDS) {
             if (match_string(keyword)) {
                 return Token{
-                    .value = keyword,
-                    .position = start_pos,
-                    .type = type,
+                  .value = keyword,
+                  .position = start_pos,
+                  .type = type,
                 };
             }
         }
 
-        return error<Token>(std::format("unexpected character after '@': '{}'", peek()),
-                            position_,
-                            "expected one of: if, else-if, else, for, break, info, debug, import, "
-                            "continue, error, warning");
+        return error<Token>(
+          std::format("unexpected character after '@': '{}'", peek()),
+          position_,
+          "expected one of: if, else-if, else, for, break, " "info, " "debug," " " "im" "p" "or" "t" ", " "co" "nt" "in" "ue" ", " "er" "ro" "r," " w" "ar" "ni" "n" "g");
     }
 
     [[nodiscard]]
@@ -191,9 +194,9 @@ class Lexer final
         const auto start_pos = position_;
         if (match_string("!=")) [[likely]] {
             return Token{
-                .value = "!=",
-                .position = start_pos,
-                .type = TokenType::NOT_EQUAL,
+              .value = "!=",
+              .position = start_pos,
+              .type = TokenType::NOT_EQUAL,
             };
         }
 
@@ -217,9 +220,9 @@ class Lexer final
                 position_ = static_cast<std::uint32_t>(input_.size());
             }
             return Token{
-                .value = input_.substr(start_pos, position_ - start_pos),
-                .position = start_pos,
-                .type = TokenType::COMMENT,
+              .value = input_.substr(start_pos, position_ - start_pos),
+              .position = start_pos,
+              .type = TokenType::COMMENT,
             };
         }
 
@@ -230,9 +233,9 @@ class Lexer final
             {
                 position_ += pos + 2;
                 return Token{
-                    .value = input_.substr(start_pos, position_ - start_pos),
-                    .position = start_pos,
-                    .type = TokenType::COMMENT,
+                  .value = input_.substr(start_pos, position_ - start_pos),
+                  .position = start_pos,
+                  .type = TokenType::COMMENT,
                 };
             }
             // No closing found, set position to EOF
@@ -251,9 +254,9 @@ class Lexer final
         const auto start_pos = position_;
         if (match_string("..")) [[likely]] {
             return Token{
-                .value = "..",
-                .position = start_pos,
-                .type = TokenType::RANGE,
+              .value = "..",
+              .position = start_pos,
+              .type = TokenType::RANGE,
             };
         }
 
@@ -267,9 +270,9 @@ class Lexer final
         const auto start_pos = position_;
         if (match_string("==")) [[likely]] {
             return Token{
-                .value = "==",
-                .position = start_pos,
-                .type = TokenType::EQUAL,
+              .value = "==",
+              .position = start_pos,
+              .type = TokenType::EQUAL,
             };
         }
 
@@ -284,17 +287,17 @@ class Lexer final
 
         if (match_string(">=")) {
             return Token{
-                .value = ">=",
-                .position = start_pos,
-                .type = TokenType::GREATER_EQUAL,
+              .value = ">=",
+              .position = start_pos,
+              .type = TokenType::GREATER_EQUAL,
             };
         }
 
         advance();
         return Token{
-            .value = ">",
-            .position = start_pos,
-            .type = TokenType::GREATER,
+          .value = ">",
+          .position = start_pos,
+          .type = TokenType::GREATER,
         };
     }
 
@@ -305,17 +308,17 @@ class Lexer final
 
         if (match_string("<=")) {
             return Token{
-                .value = "<=",
-                .position = start_pos,
-                .type = TokenType::LESS_EQUAL,
+              .value = "<=",
+              .position = start_pos,
+              .type = TokenType::LESS_EQUAL,
             };
         }
 
         advance();
         return Token{
-            .value = "<",
-            .position = start_pos,
-            .type = TokenType::LESS,
+          .value = "<",
+          .position = start_pos,
+          .type = TokenType::LESS,
         };
     }
 
@@ -330,9 +333,9 @@ class Lexer final
 
         const auto num_str = input_.substr(start_pos, position_ - start_pos);
         return Token{
-            .value = num_str,
-            .position = start_pos,
-            .type = TokenType::NUMBER,
+          .value = num_str,
+          .position = start_pos,
+          .type = TokenType::NUMBER,
         };
     }
 
@@ -342,9 +345,9 @@ class Lexer final
         const auto start_pos = position_;
         advance();
         return Token{
-            .value = value,
-            .position = start_pos,
-            .type = token,
+          .value = value,
+          .position = start_pos,
+          .type = token,
         };
     }
 
@@ -372,7 +375,8 @@ class Lexer final
                 const char next = peek();
                 // Validate escape sequence
                 if (next != '"' && next != 'n' && next != 't' && next != 'r' && next != '\\')
-                  [[unlikely]] {
+                  [[unlikely]]
+                {
                     return error<Token>(std::format("invalid escape sequence: '\\{}'", next),
                                         position_,
                                         R"(valid escapes: \", \n, \t, \r, \\)");
@@ -388,9 +392,9 @@ class Lexer final
         // Return raw string including quotes from original input
         const auto str = input_.substr(start_pos, position_ - start_pos);
         return Token{
-            .value = str,
-            .position = start_pos,
-            .type = TokenType::STRING,
+          .value = str,
+          .position = start_pos,
+          .type = TokenType::STRING,
         };
     }
 
@@ -413,52 +417,52 @@ class Lexer final
         }
 
         static constexpr std::array<std::pair<std::string_view, TokenType>, 20> KEYWORDS = {
-            // Top-Level Declarations
-            std::pair{ "project",      TokenType::PROJECT      },
-            std::pair{ "workspace",    TokenType::WORKSPACE    },
-            std::pair{ "target",       TokenType::TARGET       },
-            std::pair{ "dependencies", TokenType::DEPENDENCIES },
-            std::pair{ "options",      TokenType::OPTIONS      },
-            std::pair{ "mixin",        TokenType::MIXIN        },
-            std::pair{ "profile",      TokenType::PROFILE      },
-            std::pair{ "install",      TokenType::INSTALL      },
-            std::pair{ "package",      TokenType::PACKAGE      },
-            std::pair{ "scripts",      TokenType::SCRIPTS      },
-            std::pair{ "with",         TokenType::WITH         },
+          // Top-Level Declarations
+          std::pair{"project",      TokenType::PROJECT     },
+          std::pair{"workspace",    TokenType::WORKSPACE   },
+          std::pair{"target",       TokenType::TARGET      },
+          std::pair{"dependencies", TokenType::DEPENDENCIES},
+          std::pair{"options",      TokenType::OPTIONS     },
+          std::pair{"mixin",        TokenType::MIXIN       },
+          std::pair{"profile",      TokenType::PROFILE     },
+          std::pair{"install",      TokenType::INSTALL     },
+          std::pair{"package",      TokenType::PACKAGE     },
+          std::pair{"scripts",      TokenType::SCRIPTS     },
+          std::pair{"with",         TokenType::WITH        },
 
-            // Visibility Modifiers
-            std::pair{ "public",       TokenType::PUBLIC       },
-            std::pair{ "private",      TokenType::PRIVATE      },
-            std::pair{ "interface",    TokenType::INTERFACE    },
+          // Visibility Modifiers
+          std::pair{"public",       TokenType::PUBLIC      },
+          std::pair{"private",      TokenType::PRIVATE     },
+          std::pair{"interface",    TokenType::INTERFACE   },
 
-            // Control Flow
-            std::pair{ "in",           TokenType::IN           },
+          // Control Flow
+          std::pair{"in",           TokenType::IN          },
 
-            // Logical Operators
-            std::pair{ "and",          TokenType::AND          },
-            std::pair{ "or",           TokenType::OR           },
-            std::pair{ "not",          TokenType::NOT          },
+          // Logical Operators
+          std::pair{"and",          TokenType::AND         },
+          std::pair{"or",           TokenType::OR          },
+          std::pair{"not",          TokenType::NOT         },
 
-            // Literals
-            std::pair{ "true",         TokenType::TRUE         },
-            std::pair{ "false",        TokenType::FALSE        },
+          // Literals
+          std::pair{"true",         TokenType::TRUE        },
+          std::pair{"false",        TokenType::FALSE       },
         };
 
         for (const auto &[keyword, type] : KEYWORDS) {
             if (text == keyword) {
                 return Token{
-                    .value = keyword,
-                    .position = start_pos,
-                    .type = type,
+                  .value = keyword,
+                  .position = start_pos,
+                  .type = type,
                 };
             }
         }
 
         // If it's not a keyword, it's an identifier
         return Token{
-            .value = text,
-            .position = start_pos,
-            .type = TokenType::IDENTIFIER,
+          .value = text,
+          .position = start_pos,
+          .type = TokenType::IDENTIFIER,
         };
     }
 };

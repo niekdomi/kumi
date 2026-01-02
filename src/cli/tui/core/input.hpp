@@ -20,13 +20,13 @@ enum class Key : std::uint8_t
     TAB,
     CTRL_C,
     PRINTABLE,
-    UNKNOWN
+    UNKNOWN,
 };
 
 struct InputEvent
 {
     Key key;
-    char character{ '\0' };
+    char character{'\0'};
 
     [[nodiscard]]
     constexpr auto is_printable() const noexcept -> bool
@@ -61,42 +61,42 @@ inline auto read_input() -> std::optional<InputEvent>
         char seq[2];
 
         if (read(STDIN_FILENO, &seq[0], 1) != 1 || read(STDIN_FILENO, &seq[1], 1) != 1) {
-            return InputEvent{ .key = Key::ESCAPE };
+            return InputEvent{.key = Key::ESCAPE};
         }
 
         if (seq[0] == '[') {
             switch (seq[1]) {
-                case 'A': return InputEvent{ .key = Key::ARROW_UP };
-                case 'B': return InputEvent{ .key = Key::ARROW_DOWN };
-                case 'C': return InputEvent{ .key = Key::ARROW_RIGHT };
-                case 'D': return InputEvent{ .key = Key::ARROW_LEFT };
+                case 'A': return InputEvent{.key = Key::ARROW_UP};
+                case 'B': return InputEvent{.key = Key::ARROW_DOWN};
+                case 'C': return InputEvent{.key = Key::ARROW_RIGHT};
+                case 'D': return InputEvent{.key = Key::ARROW_LEFT};
                 case '3': {
                     char tilde = 0;
                     if (read(STDIN_FILENO, &tilde, 1) == 1 && tilde == '~') {
-                        return InputEvent{ .key = Key::DELETE };
+                        return InputEvent{.key = Key::DELETE};
                     }
                     break;
                 }
             }
         }
 
-        return InputEvent{ .key = Key::UNKNOWN };
+        return InputEvent{.key = Key::UNKNOWN};
     }
 
     // Handle special characters
     switch (c) {
         case '\r':
-        case '\n': return InputEvent{ .key = Key::ENTER };
+        case '\n': return InputEvent{.key = Key::ENTER};
         case 127:
-        case '\b': return InputEvent{ .key = Key::BACKSPACE };
-        case 23:   return InputEvent{ .key = Key::CTRL_BACKSPACE };
-        case '\t': return InputEvent{ .key = Key::TAB };
-        case 3:    return InputEvent{ .key = Key::CTRL_C };
+        case '\b': return InputEvent{.key = Key::BACKSPACE};
+        case 23:   return InputEvent{.key = Key::CTRL_BACKSPACE};
+        case '\t': return InputEvent{.key = Key::TAB};
+        case 3:    return InputEvent{.key = Key::CTRL_C};
         default:
             if (c >= 32 && c <= 126) {
-                return InputEvent{ .key = Key::PRINTABLE, .character = c };
+                return InputEvent{.key = Key::PRINTABLE, .character = c};
             }
-            return InputEvent{ .key = Key::UNKNOWN };
+            return InputEvent{.key = Key::UNKNOWN};
     }
 }
 
@@ -107,7 +107,7 @@ inline auto wait_for_input() -> InputEvent
         if (auto event = read_input()) {
             return *event;
         }
-        usleep(10000); // 10ms
+        usleep(10'000); // 10ms
     }
 }
 

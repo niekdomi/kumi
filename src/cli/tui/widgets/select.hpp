@@ -22,10 +22,10 @@ constexpr std::string_view UNSELECTED = "○";
 class Select
 {
   public:
-    Select(std::string_view prompt, std::vector<std::string> options, int default_index = 0) :
-      prompt_(prompt),
-      options_(std::move(options)),
-      selected_index_(default_index)
+    Select(std::string_view prompt, std::vector<std::string> options, int default_index = 0)
+        : prompt_(prompt),
+          options_(std::move(options)),
+          selected_index_(default_index)
     {
         if (selected_index_ < 0 || selected_index_ >= static_cast<int>(options_.size())) {
             selected_index_ = 0;
@@ -57,11 +57,11 @@ class Select
 
                 case Key::PRINTABLE: handle_vim_navigation(event.character); break;
 
-                case Key::ENTER:     std::println(""); return options_[selected_index_];
+                case Key::ENTER: std::println(""); return options_[selected_index_];
 
-                case Key::CTRL_C:    std::println(""); std::exit(0);
+                case Key::CTRL_C: std::println(""); std::exit(0);
 
-                default:             break;
+                default: break;
             }
         }
     }
@@ -116,7 +116,7 @@ class Select
     std::string prompt_;
     std::vector<std::string> options_;
     int selected_index_;
-    bool rendered_once_{ false };
+    bool rendered_once_{false};
 };
 
 } // namespace kumi

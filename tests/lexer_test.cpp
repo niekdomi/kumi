@@ -61,18 +61,18 @@ TEST_CASE("Lexer: Top-Level Declarations", "[lexer][top-level]")
     SECTION("keywords")
     {
         const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-          { "project",      TokenType::PROJECT      },
-          { "workspace",    TokenType::WORKSPACE    },
-          { "target",       TokenType::TARGET       },
-          { "dependencies", TokenType::DEPENDENCIES },
-          { "options",      TokenType::OPTIONS      },
-          { "mixin",        TokenType::MIXIN        },
-          { "profile",      TokenType::PROFILE      },
-          { "@import",      TokenType::AT_IMPORT    },
-          { "install",      TokenType::INSTALL      },
-          { "package",      TokenType::PACKAGE      },
-          { "scripts",      TokenType::SCRIPTS      },
-          { "with",         TokenType::WITH         },
+          {"project",      TokenType::PROJECT     },
+          {"workspace",    TokenType::WORKSPACE   },
+          {"target",       TokenType::TARGET      },
+          {"dependencies", TokenType::DEPENDENCIES},
+          {"options",      TokenType::OPTIONS     },
+          {"mixin",        TokenType::MIXIN       },
+          {"profile",      TokenType::PROFILE     },
+          {"@import",      TokenType::AT_IMPORT   },
+          {"install",      TokenType::INSTALL     },
+          {"package",      TokenType::PACKAGE     },
+          {"scripts",      TokenType::SCRIPTS     },
+          {"with",         TokenType::WITH        },
         }));
         CAPTURE(input);
 
@@ -115,9 +115,9 @@ TEST_CASE("Lexer: Top-Level Declarations", "[lexer][top-level]")
 TEST_CASE("Lexer: Visibility Modifiers", "[lexer][visibility]")
 {
     const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-      { "public",    TokenType::PUBLIC    },
-      { "private",   TokenType::PRIVATE   },
-      { "interface", TokenType::INTERFACE },
+      {"public",    TokenType::PUBLIC   },
+      {"private",   TokenType::PRIVATE  },
+      {"interface", TokenType::INTERFACE},
     }));
     CAPTURE(input);
 
@@ -135,13 +135,13 @@ TEST_CASE("Lexer: Control Flow", "[lexer][control-flow]")
     SECTION("keywords")
     {
         const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-          { "@if",       TokenType::AT_IF       },
-          { "@else-if",  TokenType::AT_ELSE_IF  },
-          { "@else",     TokenType::AT_ELSE     },
-          { "@for",      TokenType::AT_FOR      },
-          { "in",        TokenType::IN          },
-          { "@break",    TokenType::AT_BREAK    },
-          { "@continue", TokenType::AT_CONTINUE },
+          {"@if",       TokenType::AT_IF      },
+          {"@else-if",  TokenType::AT_ELSE_IF },
+          {"@else",     TokenType::AT_ELSE    },
+          {"@for",      TokenType::AT_FOR     },
+          {"in",        TokenType::IN         },
+          {"@break",    TokenType::AT_BREAK   },
+          {"@continue", TokenType::AT_CONTINUE},
         }));
         CAPTURE(input);
 
@@ -247,15 +247,8 @@ TEST_CASE("Lexer: Control Flow", "[lexer][control-flow]")
 
     SECTION("invalid @ directives")
     {
-        const auto input = GENERATE(as<std::string_view>{},
-                                    "@",
-                                    "@invalid",
-                                    "@123",
-                                    "@-if",
-                                    "@_else",
-                                    "@IF",
-                                    "@ELSE",
-                                    "@For");
+        const auto input = GENERATE(as<std::string_view>{}, "@", "@invalid", "@123", "@-if",
+                                    "@_else", "@IF", "@ELSE", "@For");
         CAPTURE(input);
 
         const auto error = lex_error(input);
@@ -298,10 +291,10 @@ TEST_CASE("Lexer: Control Flow", "[lexer][control-flow]")
 TEST_CASE("Lexer: Diagnostic Directives", "[lexer][diagnostics]")
 {
     const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-      { "@error",   TokenType::AT_ERROR   },
-      { "@warning", TokenType::AT_WARNING },
-      { "@info",    TokenType::AT_INFO    },
-      { "@debug",   TokenType::AT_DEBUG   },
+      {"@error",   TokenType::AT_ERROR  },
+      {"@warning", TokenType::AT_WARNING},
+      {"@info",    TokenType::AT_INFO   },
+      {"@debug",   TokenType::AT_DEBUG  },
     }));
     CAPTURE(input);
 
@@ -317,9 +310,9 @@ TEST_CASE("Lexer: Diagnostic Directives", "[lexer][diagnostics]")
 TEST_CASE("Lexer: Logical Operators", "[lexer][logical]")
 {
     const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-      { "and", TokenType::AND },
-      { "or",  TokenType::OR  },
-      { "not", TokenType::NOT },
+      {"and", TokenType::AND},
+      {"or",  TokenType::OR },
+      {"not", TokenType::NOT},
     }));
     CAPTURE(input);
 
@@ -335,12 +328,12 @@ TEST_CASE("Lexer: Logical Operators", "[lexer][logical]")
 TEST_CASE("Lexer: Braces, Brackets, and Parentheses", "[lexer][punctuation]")
 {
     const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-      { "{", TokenType::LEFT_BRACE    },
-      { "}", TokenType::RIGHT_BRACE   },
-      { "[", TokenType::LEFT_BRACKET  },
-      { "]", TokenType::RIGHT_BRACKET },
-      { "(", TokenType::LEFT_PAREN    },
-      { ")", TokenType::RIGHT_PAREN   },
+      {"{", TokenType::LEFT_BRACE   },
+      {"}", TokenType::RIGHT_BRACE  },
+      {"[", TokenType::LEFT_BRACKET },
+      {"]", TokenType::RIGHT_BRACKET},
+      {"(", TokenType::LEFT_PAREN   },
+      {")", TokenType::RIGHT_PAREN  },
     }));
     CAPTURE(input);
 
@@ -354,9 +347,9 @@ TEST_CASE("Lexer: Delimiters", "[lexer][delimiters]")
     SECTION("keywords")
     {
         const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-          { ":", TokenType::COLON     },
-          { ";", TokenType::SEMICOLON },
-          { ",", TokenType::COMMA     },
+          {":", TokenType::COLON    },
+          {";", TokenType::SEMICOLON},
+          {",", TokenType::COMMA    },
         }));
         CAPTURE(input);
 
@@ -407,9 +400,9 @@ TEST_CASE("Lexer: Special Operators", "[lexer][special-operators]")
     SECTION("keywords")
     {
         const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-          { "?",  TokenType::QUESTION },
-          { "$",  TokenType::DOLLAR   },
-          { "..", TokenType::RANGE    },
+          {"?",  TokenType::QUESTION},
+          {"$",  TokenType::DOLLAR  },
+          {"..", TokenType::RANGE   },
         }));
         CAPTURE(input);
 
@@ -447,12 +440,12 @@ TEST_CASE("Lexer: Comparison Operators", "[lexer][comparison]")
     SECTION("keywords")
     {
         const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-          { "==", TokenType::EQUAL         },
-          { "!=", TokenType::NOT_EQUAL     },
-          { "<",  TokenType::LESS          },
-          { "<=", TokenType::LESS_EQUAL    },
-          { ">",  TokenType::GREATER       },
-          { ">=", TokenType::GREATER_EQUAL },
+          {"==", TokenType::EQUAL        },
+          {"!=", TokenType::NOT_EQUAL    },
+          {"<",  TokenType::LESS         },
+          {"<=", TokenType::LESS_EQUAL   },
+          {">",  TokenType::GREATER      },
+          {">=", TokenType::GREATER_EQUAL},
         }));
         CAPTURE(input);
 
@@ -519,20 +512,9 @@ TEST_CASE("Lexer: Identifiers", "[lexer][literals][identifiers]")
 {
     SECTION("valid identifiers")
     {
-        const auto input = GENERATE(as<std::string_view>{},
-                                    "myvar",
-                                    "my_var",
-                                    "my-var",
-                                    "var123",
-                                    "_private",
-                                    "camelCase",
-                                    "PascalCase",
-                                    "snake_case",
-                                    "SCREAMING_CASE",
-                                    "a",
-                                    "a1",
-                                    "a-b-c",
-                                    "a_b_c");
+        const auto input = GENERATE(as<std::string_view>{}, "myvar", "my_var", "my-var", "var123",
+                                    "_private", "camelCase", "PascalCase", "snake_case",
+                                    "SCREAMING_CASE", "a", "a1", "a-b-c", "a_b_c");
         CAPTURE(input);
 
         const auto token = lex_single(input);
@@ -542,8 +524,8 @@ TEST_CASE("Lexer: Identifiers", "[lexer][literals][identifiers]")
 
     SECTION("keyword-like identifiers")
     {
-        const auto input
-          = GENERATE(as<std::string_view>{}, "projects", "targeting", "ands", "trueish", "falsey");
+        const auto input =
+          GENERATE(as<std::string_view>{}, "projects", "targeting", "ands", "trueish", "falsey");
         CAPTURE(input);
 
         const auto token = lex_single(input);
@@ -553,8 +535,8 @@ TEST_CASE("Lexer: Identifiers", "[lexer][literals][identifiers]")
 
     SECTION("invalid identifier starts")
     {
-        const auto input
-          = GENERATE(as<std::string_view>{}, "*", "*/", "#", "~", "%", "&", "^", "|", "\\", "`");
+        const auto input =
+          GENERATE(as<std::string_view>{}, "*", "*/", "#", "~", "%", "&", "^", "|", "\\", "`");
         CAPTURE(input);
 
         const auto error = lex_error(input);
@@ -568,10 +550,10 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
     SECTION("simple strings")
     {
         const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
-          { R"("")",            R"("")"            },
-          { R"("hello")",       R"("hello")"       },
-          { R"("hello world")", R"("hello world")" },
-          { R"("123")",         R"("123")"         },
+          {R"("")",            R"("")"           },
+          {R"("hello")",       R"("hello")"      },
+          {R"("hello world")", R"("hello world")"},
+          {R"("123")",         R"("123")"        },
         }));
         CAPTURE(input);
 
@@ -583,12 +565,12 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
     SECTION("escape sequences")
     {
         const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
-          { R"("hello\nworld")",      R"("hello\nworld")"      },
-          { R"("hello\tworld")",      R"("hello\tworld")"      },
-          { R"("hello\rworld")",      R"("hello\rworld")"      },
-          { R"("say \"hello\"")",     R"("say \"hello\"")"     },
-          { R"("path\\to\\file")",    R"("path\\to\\file")"    },
-          { R"("\\n\\t\\r\\\"\\\\")", R"("\\n\\t\\r\\\"\\\\")" },
+          {R"("hello\nworld")",      R"("hello\nworld")"     },
+          {R"("hello\tworld")",      R"("hello\tworld")"     },
+          {R"("hello\rworld")",      R"("hello\rworld")"     },
+          {R"("say \"hello\"")",     R"("say \"hello\"")"    },
+          {R"("path\\to\\file")",    R"("path\\to\\file")"   },
+          {R"("\\n\\t\\r\\\"\\\\")", R"("\\n\\t\\r\\\"\\\\")"},
         }));
         CAPTURE(input);
 
@@ -613,14 +595,9 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
 
     SECTION("invalid escape sequences")
     {
-        const auto invalid_escape = GENERATE(as<std::string_view>{},
-                                             R"("invalid\x")",
-                                             R"("invalid\a")",
-                                             R"("invalid\b")",
-                                             R"("invalid\f")",
-                                             R"("invalid\v")",
-                                             R"("invalid\0")",
-                                             R"("invalid\1")");
+        const auto invalid_escape =
+          GENERATE(as<std::string_view>{}, R"("invalid\x")", R"("invalid\a")", R"("invalid\b")",
+                   R"("invalid\f")", R"("invalid\v")", R"("invalid\0")", R"("invalid\1")");
         CAPTURE(invalid_escape);
 
         const auto error = lex_error(invalid_escape);
@@ -631,8 +608,8 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
 
 TEST_CASE("Lexer: Numbers", "[lexer][literals][numbers]")
 {
-    const auto input
-      = GENERATE(as<std::string_view>{}, "0", "1", "42", "123", "999999", "1234567890");
+    const auto input =
+      GENERATE(as<std::string_view>{}, "0", "1", "42", "123", "999999", "1234567890");
     CAPTURE(input);
 
     const auto token = lex_single(input);
@@ -643,8 +620,8 @@ TEST_CASE("Lexer: Numbers", "[lexer][literals][numbers]")
 TEST_CASE("Lexer: Booleans", "[lexer][literals][booleans]")
 {
     const auto [input, expected_type] = GENERATE(table<std::string_view, TokenType>({
-      { "true",  TokenType::TRUE  },
-      { "false", TokenType::FALSE },
+      {"true",  TokenType::TRUE },
+      {"false", TokenType::FALSE},
     }));
     CAPTURE(input);
 
@@ -658,11 +635,11 @@ TEST_CASE("Lexer: Comments", "[lexer][literals][comments]")
     SECTION("line comments")
     {
         const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
-          { "//",             "//"             },
-          { "// comment",     "// comment"     },
-          { "// hello world", "// hello world" },
-          { "//no space",     "//no space"     },
-          { "// /*",          "// /*"          },
+          {"//",             "//"            },
+          {"// comment",     "// comment"    },
+          {"// hello world", "// hello world"},
+          {"//no space",     "//no space"    },
+          {"// /*",          "// /*"         },
         }));
         CAPTURE(input);
 
@@ -674,10 +651,10 @@ TEST_CASE("Lexer: Comments", "[lexer][literals][comments]")
     SECTION("block comments")
     {
         const auto [input, expected_value] = GENERATE(table<std::string_view, std::string_view>({
-          { "/**/",                 "/**/"                 },
-          { "/* comment */",        "/* comment */"        },
-          { "/* multi\nline */",    "/* multi\nline */"    },
-          { "/* /* multiple /* */", "/* /* multiple /* */" },
+          {"/**/",                 "/**/"                },
+          {"/* comment */",        "/* comment */"       },
+          {"/* multi\nline */",    "/* multi\nline */"   },
+          {"/* /* multiple /* */", "/* /* multiple /* */"},
         }));
         CAPTURE(input);
 

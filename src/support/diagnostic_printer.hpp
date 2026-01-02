@@ -25,9 +25,9 @@ class DiagnosticPrinter final
     /// @brief Constructs a diagnostic printer
     /// @param source Original source code
     /// @param filename Name of the file being parsed
-    explicit DiagnosticPrinter(std::string_view source, std::string_view filename = "build.kumi") :
-      source_(source),
-      filename_(filename)
+    explicit DiagnosticPrinter(std::string_view source, std::string_view filename = "build.kumi")
+        : source_(source),
+          filename_(filename)
     {
         // Split source into lines for quick lookup
         std::string_view remaining = source_;
@@ -88,7 +88,7 @@ class DiagnosticPrinter final
         }
 
         const std::size_t column = offset - last_newline_pos;
-        return { line, column };
+        return {line, column};
     }
 
     /// @brief Prints the file location (e.g., "--> build.kumi:5:3")
@@ -135,8 +135,8 @@ class DiagnosticPrinter final
             std::println(std::cerr, "{}{}^ {}{}", color::BOLD, color::RED, hint, color::RESET);
 
             // Show next line for context if available (skip blank lines)
-            std::size_t next_line_idx
-              = line; // line is 1-indexed, so lines_[line] is the (line+1)-th line
+            std::size_t next_line_idx =
+              line; // line is 1-indexed, so lines_[line] is the (line+1)-th line
             // Skip blank lines to show meaningful context
             while (next_line_idx < lines_.size() && lines_[next_line_idx].empty()) {
                 next_line_idx++;

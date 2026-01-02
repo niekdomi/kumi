@@ -96,12 +96,12 @@ struct FunctionCall final : NodeBase
 /// @brief Comparison operators for conditional expressions
 enum class ComparisonOp : std::uint8_t
 {
-    EQUAL,        ///< ==
-    NOT_EQUAL,    ///< !=
-    LESS,         ///< <
-    LESS_EQUAL,   ///< <=
-    GREATER,      ///< >
-    GREATER_EQUAL ///< >=
+    EQUAL,         ///< ==
+    NOT_EQUAL,     ///< !=
+    LESS,          ///< <
+    LESS_EQUAL,    ///< <=
+    GREATER,       ///< >
+    GREATER_EQUAL, ///< >=
 };
 
 /// @brief Represents a comparison expression
@@ -126,7 +126,7 @@ enum class LogicalOp : std::uint8_t
 {
     AND, ///< `and`
     OR,  ///< `or`
-    NOT  ///< `not`
+    NOT, ///< `not`
 };
 
 /// @brief Represents a logical expression
@@ -299,7 +299,7 @@ struct MixinDecl final : NodeBase
     std::string name;                 ///< Mixin name
     std::vector<Property> properties; ///< Mixin properties
     std::vector<VisibilityBlock>
-      visibility_blocks; ///< Visibility blocks (public, private, interface)
+      visibility_blocks;              ///< Visibility blocks (public, private, interface)
 };
 
 /// @brief Represents a profile declaration
@@ -378,9 +378,9 @@ struct ScriptsDecl final : NodeBase
 /// Controls how properties are propagated to dependent targets.
 enum class Visibility : std::uint8_t
 {
-    PUBLIC,   ///< Visible to this target and all dependents
-    PRIVATE,  ///< Visible only to this target
-    INTERFACE ///< Visible only to dependents
+    PUBLIC,    ///< Visible to this target and all dependents
+    PRIVATE,   ///< Visible only to this target
+    INTERFACE, ///< Visible only to dependents
 };
 
 /// @brief Represents a visibility block within a target
@@ -449,8 +449,8 @@ struct ForStmt final : NodeBase
 /// @brief Loop control operation type
 enum class LoopControl : std::uint8_t
 {
-    BREAK,   ///< Exit loop immediately
-    CONTINUE ///< Skip to next iteration
+    BREAK,    ///< Exit loop immediately
+    CONTINUE, ///< Skip to next iteration
 };
 
 /// @brief Represents a loop control statement
@@ -474,7 +474,7 @@ enum class DiagnosticLevel : std::uint8_t
 {
     ERROR,   ///< Stops build
     WARNING, ///< Continues build
-    INFO     ///< Informational
+    INFO,    ///< Informational
 };
 
 /// @brief Represents a diagnostic message statement

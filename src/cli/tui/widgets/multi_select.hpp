@@ -22,12 +22,11 @@ constexpr std::string_view UNCHECKED = "☐";
 class MultiSelect
 {
   public:
-    MultiSelect(std::string_view prompt, std::vector<std::string> options) :
-      prompt_(prompt),
-      options_(std::move(options)),
-      selected_(options_.size(), false)
-    {
-    }
+    MultiSelect(std::string_view prompt, std::vector<std::string> options)
+        : prompt_(prompt),
+          options_(std::move(options)),
+          selected_(options_.size(), false)
+    {}
 
     [[nodiscard]]
     auto run() -> std::vector<std::string>
@@ -54,11 +53,11 @@ class MultiSelect
 
                 case Key::PRINTABLE: handle_input(event.character); break;
 
-                case Key::ENTER:     std::println(""); return get_selected_options();
+                case Key::ENTER: std::println(""); return get_selected_options();
 
-                case Key::CTRL_C:    std::println(""); std::exit(0);
+                case Key::CTRL_C: std::println(""); std::exit(0);
 
-                default:             break;
+                default: break;
             }
         }
     }
@@ -102,8 +101,8 @@ class MultiSelect
         for (int i = 0; i < static_cast<int>(options_.size()); ++i) {
             std::print("\r{}", ansi::CLEAR_LINE);
 
-            const std::string_view checkbox
-              = selected_[i] ? multiselect_symbols::CHECKED : multiselect_symbols::UNCHECKED;
+            const std::string_view checkbox =
+              selected_[i] ? multiselect_symbols::CHECKED : multiselect_symbols::UNCHECKED;
 
             if (i == current_index_) {
                 std::println(
@@ -120,8 +119,8 @@ class MultiSelect
     std::string prompt_;
     std::vector<std::string> options_;
     std::vector<bool> selected_;
-    int current_index_{ 0 };
-    bool rendered_once_{ false };
+    int current_index_{0};
+    bool rendered_once_{false};
 };
 
 } // namespace kumi

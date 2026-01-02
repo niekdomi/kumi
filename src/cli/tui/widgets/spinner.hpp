@@ -16,8 +16,8 @@ namespace kumi {
 
 namespace spinner_frames {
 
-constexpr std::array<std::string_view, 10> DOTS
-  = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
+constexpr std::array<std::string_view, 10> DOTS =
+  {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
 
 } // namespace spinner_frames
 
@@ -37,16 +37,18 @@ constexpr std::string_view TREE_PIPE = "│";
 class Spinner
 {
   public:
-    explicit Spinner(std::string_view message = "Working") :
-      message_(message),
-      is_running_(false),
-      is_tty_(isatty(STDOUT_FILENO) != 0),
-      color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
-      start_time_(std::chrono::steady_clock::now())
-    {
-    }
+    explicit Spinner(std::string_view message = "Working")
+        : message_(message),
+          is_running_(false),
+          is_tty_(isatty(STDOUT_FILENO) != 0),
+          color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
+          start_time_(std::chrono::steady_clock::now())
+    {}
 
-    ~Spinner() { stop(); }
+    ~Spinner()
+    {
+        stop();
+    }
 
     Spinner(const Spinner &) = delete;
     auto operator=(const Spinner &) -> Spinner & = delete;
@@ -92,7 +94,10 @@ class Spinner
         }
     }
 
-    void update_message(std::string_view new_message) { message_ = new_message; }
+    void update_message(std::string_view new_message)
+    {
+        message_ = new_message;
+    }
 
     void success(std::string_view message)
     {
@@ -207,7 +212,7 @@ class Spinner
     std::atomic<bool> is_running_;
     bool is_tty_;
     bool color_enabled_;
-    size_t frame_index_{ 0 };
+    size_t frame_index_{0};
     std::chrono::steady_clock::time_point start_time_;
     std::thread animation_thread_;
 };

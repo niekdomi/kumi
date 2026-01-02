@@ -22,15 +22,17 @@ namespace kumi {
 class BuildStatusTracker
 {
   public:
-    BuildStatusTracker() :
-      is_running_(false),
-      is_tty_(isatty(STDOUT_FILENO) != 0),
-      color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
-      frame_index_(0)
-    {
-    }
+    BuildStatusTracker()
+        : is_running_(false),
+          is_tty_(isatty(STDOUT_FILENO) != 0),
+          color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
+          frame_index_(0)
+    {}
 
-    ~BuildStatusTracker() { stop(); }
+    ~BuildStatusTracker()
+    {
+        stop();
+    }
 
     BuildStatusTracker(const BuildStatusTracker &) = delete;
     auto operator=(const BuildStatusTracker &) -> BuildStatusTracker & = delete;

@@ -18,7 +18,7 @@ enum class Char : std::uint8_t
     DIGIT = 1U << 0U,
     ALPHA = 1U << 1U,
     IDENT = 1U << 2U,
-    SPACE = 1U << 3U
+    SPACE = 1U << 3U,
 };
 
 namespace detail {

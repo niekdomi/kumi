@@ -50,11 +50,14 @@ class Parser final
 
   private:
     std::span<const Token> tokens_; ///< Token stream being parsed
-    std::size_t position_{ 0 };     ///< Current position in token stream
+    std::size_t position_{0};       ///< Current position in token stream
 
     /// @brief Advances to next token and returns current token
     /// @return Current token before advancing
-    auto advance() -> const Token & { return tokens_[position_++]; }
+    auto advance() -> const Token &
+    {
+        return tokens_[position_++];
+    }
 
     /// @brief Expects a specific token type and consumes it
     /// @param type Expected token type
@@ -174,8 +177,8 @@ class Parser final
             }
 
             return ApplyStmt{
-                .profile = *func_call,
-                .body = std::move(body),
+              .profile = *func_call,
+              .body = std::move(body),
             };
         }
 
@@ -193,7 +196,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return DependenciesDecl{
-            .dependencies = std::move(properties),
+          .dependencies = std::move(properties),
         };
     }
 
@@ -219,8 +222,8 @@ class Parser final
         TRY(expect(TokenType::SEMICOLON));
 
         return DiagnosticStmt{
-            .level = level,
-            .message = message.value,
+          .level = level,
+          .message = message.value,
         };
     }
 
@@ -231,10 +234,10 @@ class Parser final
             return t >= TokenType::PROJECT && t <= TokenType::SYSTEM;
         };
 
-        const auto is_function_call
-          = (peek().type == TokenType::IDENTIFIER || is_keyword(peek().type))
-         && peek(1).type
-         == TokenType::LEFT_PAREN;
+        const auto is_function_call =
+          (peek().type == TokenType::IDENTIFIER || is_keyword(peek().type))
+          && peek(1).type
+          == TokenType::LEFT_PAREN;
 
         if (is_function_call) {
             return parse_function_call();
@@ -244,7 +247,7 @@ class Parser final
         if (peek().type == TokenType::LEFT_BRACKET) {
             // Parse list as a value (will be serialized as string)
             auto list_value = TRY(parse_value_or_expression());
-            return Expression{ list_value };
+            return Expression{list_value};
         }
 
         return parse_value();
@@ -269,8 +272,8 @@ class Parser final
         TRY(expect(TokenType::RIGHT_PAREN));
 
         return FunctionCall{
-            .name = name_token.value,
-            .arguments = std::move(arguments),
+          .name = name_token.value,
+          .arguments = std::move(arguments),
         };
     }
 
@@ -286,9 +289,9 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return ForStmt{
-            .variable = var_token.value,
-            .iterable = std::move(iterable),
-            .body = std::move(body),
+          .variable = var_token.value,
+          .iterable = std::move(iterable),
+          .body = std::move(body),
         };
     }
 
@@ -301,7 +304,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return GlobalDecl{
-            .properties = std::move(properties),
+          .properties = std::move(properties),
         };
     }
 
@@ -329,9 +332,9 @@ class Parser final
         }
 
         return IfStmt{
-            .condition = std::move(condition),
-            .then_block = std::move(then_block),
-            .else_block = std::move(else_block),
+          .condition = std::move(condition),
+          .then_block = std::move(then_block),
+          .else_block = std::move(else_block),
         };
     }
 
@@ -343,7 +346,7 @@ class Parser final
         TRY(expect(TokenType::SEMICOLON));
 
         return ImportStmt{
-            .path = path.value,
+          .path = path.value,
         };
     }
 
@@ -356,7 +359,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return InstallDecl{
-            .properties = std::move(properties),
+          .properties = std::move(properties),
         };
     }
 
@@ -379,7 +382,7 @@ class Parser final
         TRY(expect(TokenType::SEMICOLON));
 
         return LoopControlStmt{
-            .control = control,
+          .control = control,
         };
     }
 
@@ -418,9 +421,9 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return MixinDecl{
-            .name = identifier.value,
-            .properties = std::move(properties),
-            .visibility_blocks = std::move(visibility_blocks),
+          .name = identifier.value,
+          .properties = std::move(properties),
+          .visibility_blocks = std::move(visibility_blocks),
         };
     }
 
@@ -433,7 +436,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return OptionsDecl{
-            .options = std::move(options),
+          .options = std::move(options),
         };
     }
 
@@ -446,7 +449,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return PackageDecl{
-            .properties = std::move(properties),
+          .properties = std::move(properties),
         };
     }
 
@@ -460,8 +463,8 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return PresetDecl{
-            .name = identifier.value,
-            .properties = std::move(properties),
+          .name = identifier.value,
+          .properties = std::move(properties),
         };
     }
 
@@ -474,7 +477,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return FeaturesDecl{
-            .features = std::move(features),
+          .features = std::move(features),
         };
     }
 
@@ -488,8 +491,8 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return ProjectDecl{
-            .name = identifier.value,
-            .properties = std::move(properties),
+          .name = identifier.value,
+          .properties = std::move(properties),
         };
     }
 
@@ -535,8 +538,8 @@ class Parser final
         TRY(expect(TokenType::SEMICOLON));
 
         return Property{
-            .key = identifier.value,
-            .values = std::move(values),
+          .key = identifier.value,
+          .values = std::move(values),
         };
     }
 
@@ -550,7 +553,7 @@ class Parser final
             // Empty list
             if (peek().type == TokenType::RIGHT_BRACKET) {
                 advance(); // consume ']'
-                return Value{ std::string{ "[]" } };
+                return Value{std::string{"[]"}};
             }
 
             // Parse list items
@@ -581,7 +584,7 @@ class Parser final
 
             TRY(expect(TokenType::RIGHT_BRACKET));
             list_str += "]";
-            return Value{ list_str };
+            return Value{list_str};
         }
 
         // Function call (var, glob, etc.)
@@ -594,8 +597,9 @@ class Parser final
                 // Serialize function call: "var(--std)" becomes "var(--std)"
                 std::string serialized = fc->name + "(";
                 for (size_t i = 0; i < fc->arguments.size(); ++i) {
-                    if (i > 0)
+                    if (i > 0) {
                         serialized += ", ";
+                    }
                     // Serialize each argument
                     if (auto *str = std::get_if<std::string>(&fc->arguments[i])) {
                         serialized += *str;
@@ -606,16 +610,16 @@ class Parser final
                     }
                 }
                 serialized += ")";
-                return Value{ serialized };
+                return Value{serialized};
             }
 
             // If it's a Variable expression, serialize it
             if (auto *var = std::get_if<Variable>(&expr)) {
-                return Value{ var->name };
+                return Value{var->name};
             }
 
             // For other expression types, return a placeholder
-            return Value{ std::string{ "<expression>" } };
+            return Value{std::string{"<expression>"}};
         }
 
         return parse_value();
@@ -669,14 +673,14 @@ class Parser final
 
             variables.push_back(Property{
               .key = var_token.value, // Already includes "--" prefix
-              .values = { std::move(value) },
+              .values = {std::move(value)},
             });
         }
 
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return RootDecl{
-            .variables = std::move(variables),
+          .variables = std::move(variables),
         };
     }
 
@@ -689,7 +693,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return ScriptsDecl{
-            .scripts = std::move(scripts),
+          .scripts = std::move(scripts),
         };
     }
 
@@ -764,8 +768,8 @@ class Parser final
             return t >= TokenType::PROJECT && t <= TokenType::SYSTEM;
         };
 
-        const auto is_property_token
-          = [&is_keyword](TokenType t, TokenType next_t) noexcept -> bool {
+        const auto is_property_token = [&is_keyword](TokenType t,
+                                                     TokenType next_t) noexcept -> bool {
             return (t == TokenType::IDENTIFIER || is_keyword(t)) && next_t == TokenType::COLON;
         };
 
@@ -804,9 +808,9 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return TargetDecl{
-            .name = identifier.value,
-            .extends_from = extends_from,
-            .body = std::move(body),
+          .name = identifier.value,
+          .extends_from = extends_from,
+          .body = std::move(body),
         };
     }
 
@@ -819,7 +823,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return TestingDecl{
-            .properties = std::move(properties),
+          .properties = std::move(properties),
         };
     }
 
@@ -833,8 +837,8 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return ToolchainDecl{
-            .name = identifier.value,
-            .properties = std::move(properties),
+          .name = identifier.value,
+          .properties = std::move(properties),
         };
     }
 
@@ -846,23 +850,23 @@ class Parser final
             case TokenType::IDENTIFIER:
             case TokenType::VARIABLE:   {
                 auto token = advance();
-                return Value{ std::move(token.value) };
+                return Value{std::move(token.value)};
             }
             case TokenType::NUMBER: {
                 const auto token = advance();
                 int val = 0;
 
-                const auto [_, ec] = std::from_chars(
-                  token.value.data(), token.value.data() + token.value.size(), val);
+                const auto [_, ec] =
+                  std::from_chars(token.value.data(), token.value.data() + token.value.size(), val);
 
                 if (ec != std::errc{}) [[unlikely]] {
                     return error<Value>("invalid integer literal", token.position);
                 }
 
-                return Value{ val };
+                return Value{val};
             }
-            case TokenType::TRUE:  advance(); return Value{ true };
-            case TokenType::FALSE: advance(); return Value{ false };
+            case TokenType::TRUE:  advance(); return Value{true};
+            case TokenType::FALSE: advance(); return Value{false};
             default:
                 [[unlikely]] return error<Value>(
                   std::format("expected a value, got '{}'", peek().value), peek().position);
@@ -890,8 +894,8 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return VisibilityBlock{
-            .visibility = visibility,
-            .properties = std::move(properties),
+          .visibility = visibility,
+          .properties = std::move(properties),
         };
     }
 
@@ -904,7 +908,7 @@ class Parser final
         TRY(expect(TokenType::RIGHT_BRACE));
 
         return WorkspaceDecl{
-            .properties = std::move(properties),
+          .properties = std::move(properties),
         };
     }
 };

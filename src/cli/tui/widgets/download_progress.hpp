@@ -14,18 +14,20 @@ namespace kumi {
 class DownloadProgressTracker
 {
   public:
-    explicit DownloadProgressTracker(int total_packages, int bar_width = 40) :
-      total_(total_packages),
-      current_(0),
-      bar_(bar_width),
-      is_running_(false),
-      is_tty_(isatty(STDOUT_FILENO) != 0),
-      color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
-      start_time_(std::chrono::steady_clock::now())
-    {
-    }
+    explicit DownloadProgressTracker(int total_packages, int bar_width = 40)
+        : total_(total_packages),
+          current_(0),
+          bar_(bar_width),
+          is_running_(false),
+          is_tty_(isatty(STDOUT_FILENO) != 0),
+          color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
+          start_time_(std::chrono::steady_clock::now())
+    {}
 
-    ~DownloadProgressTracker() { stop(); }
+    ~DownloadProgressTracker()
+    {
+        stop();
+    }
 
     DownloadProgressTracker(const DownloadProgressTracker &) = delete;
     auto operator=(const DownloadProgressTracker &) -> DownloadProgressTracker & = delete;
@@ -98,7 +100,7 @@ class DownloadProgressTracker
     std::atomic<bool> is_running_;
     bool is_tty_;
     bool color_enabled_;
-    std::atomic<double> speed_mbps_{ 0.0 };
+    std::atomic<double> speed_mbps_{0.0};
     std::chrono::steady_clock::time_point start_time_;
     std::thread animation_thread_;
 };

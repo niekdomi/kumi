@@ -15,11 +15,11 @@ struct BuildPackage
         Pending,
         Building,
         Complete,
-        Cached
+        Cached,
     };
     Status status = Status::Pending;
     std::chrono::steady_clock::time_point start_time;
-    std::chrono::milliseconds elapsed{ 0 };
+    std::chrono::milliseconds elapsed{0};
 
     std::string current_file;
     std::vector<std::string> completed_files;

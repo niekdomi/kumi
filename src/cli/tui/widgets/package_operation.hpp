@@ -26,15 +26,17 @@ class PackageOperationTracker
         size_t size_bytes = 0;
     };
 
-    explicit PackageOperationTracker(std::string_view operation = "Installing") :
-      operation_(operation),
-      is_tty_(isatty(STDOUT_FILENO) != 0),
-      color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
-      start_time_(std::chrono::steady_clock::now())
-    {
-    }
+    explicit PackageOperationTracker(std::string_view operation = "Installing")
+        : operation_(operation),
+          is_tty_(isatty(STDOUT_FILENO) != 0),
+          color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
+          start_time_(std::chrono::steady_clock::now())
+    {}
 
-    void add_package(Package pkg) { packages_.push_back(std::move(pkg)); }
+    void add_package(Package pkg)
+    {
+        packages_.push_back(std::move(pkg));
+    }
 
     void show_summary()
     {

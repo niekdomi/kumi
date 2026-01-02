@@ -124,7 +124,7 @@ enum class TokenType : std::uint8_t
     // Special
     //===-----------------------------------------------------------------===//
 
-    END_OF_FILE ///< End of file marker
+    END_OF_FILE, ///< End of file marker
 };
 
 /// @brief Represents a single lexical token
@@ -137,6 +137,7 @@ struct Token final
     std::uint32_t position; ///< Starting position in source text
     TokenType type;         ///< Type of the token
 };
+
 static_assert(sizeof(Token) == 24);
 
 } // namespace kumi

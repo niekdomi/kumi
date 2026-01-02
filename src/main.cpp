@@ -60,8 +60,8 @@ auto main(int argc, char **argv) -> int
     const auto end_lex = std::chrono::high_resolution_clock::now();
     const auto mem_after = get_peak_memory_mb();
 
-    const auto duration_lex_us
-      = std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
+    const auto duration_lex_us =
+      std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
 
     // Display file info
     const auto &tokens = *tokens_result;

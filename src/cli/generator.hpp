@@ -60,8 +60,8 @@ class ProjectGenerator
             if (config_.use_git) {
                 initialize_git();
             }
-
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception &e) {
             return std::unexpected(std::format("Failed to generate project: {}", e.what()));
         }
 
@@ -83,17 +83,17 @@ class ProjectGenerator
         }
 
         std::map<std::string, std::string> vars = {
-            { "PROJECT_NAME", config_.name         },
-            { "TARGET_TYPE",  config_.type         },
-            { "CPP_STANDARD", config_.cpp_standard }
+          {"PROJECT_NAME", config_.name        },
+          {"TARGET_TYPE",  config_.type        },
+          {"CPP_STANDARD", config_.cpp_standard}
         };
 
         if (config_.type == "library") {
-            vars["HEADERS_LINE"]
-              = std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
+            vars["HEADERS_LINE"] =
+              std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
         } else if (config_.type == "header-only") {
-            vars["HEADERS_LINE"]
-              = std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
+            vars["HEADERS_LINE"] =
+              std::format("  headers: \"include/{}/**/*.hpp\";\n", config_.name);
         } else {
             vars["HEADERS_LINE"] = "";
         }
@@ -117,8 +117,8 @@ class ProjectGenerator
 
     void generate_main_cpp()
     {
-        const auto template_name
-          = (config_.cpp_standard == "23") ? "main_cpp23.template" : "main_cpp_legacy.template";
+        const auto template_name =
+          (config_.cpp_standard == "23") ? "main_cpp23.template" : "main_cpp_legacy.template";
 
         auto template_result = TemplateLoader::load_template(template_name);
         if (!template_result) {
@@ -126,7 +126,7 @@ class ProjectGenerator
         }
 
         std::map<std::string, std::string> vars = {
-            { "PROJECT_NAME", config_.name }
+          {"PROJECT_NAME", config_.name}
         };
 
         const auto content = TemplateLoader::substitute(*template_result, vars);
@@ -145,7 +145,7 @@ class ProjectGenerator
         }
 
         std::map<std::string, std::string> vars = {
-            { "PROJECT_NAME", config_.name }
+          {"PROJECT_NAME", config_.name}
         };
 
         const auto header_content = TemplateLoader::substitute(*header_template, vars);
@@ -166,7 +166,7 @@ class ProjectGenerator
         }
 
         std::map<std::string, std::string> vars = {
-            { "PROJECT_NAME", config_.name }
+          {"PROJECT_NAME", config_.name}
         };
 
         const auto content = TemplateLoader::substitute(*template_result, vars);
@@ -177,8 +177,8 @@ class ProjectGenerator
 
     void initialize_git()
     {
-        std::string command
-          = std::format("cd {} && git init > /dev/null 2>&1", project_path_.string());
+        std::string command =
+          std::format("cd {} && git init > /dev/null 2>&1", project_path_.string());
         std::system(command.c_str());
     }
 
