@@ -208,7 +208,8 @@ class Lexer final
         // Line comment
         if (match_string("//")) {
             const auto remaining = input_.substr(position_);
-            if (const auto pos = remaining.find('\n'); pos != std::string_view::npos) {
+            if (const auto pos = remaining.find('\n'); pos != std::string_view::npos) [[likely]]
+            {
                 position_ += pos;
             } else {
                 // No newline found, consume until EOF
@@ -224,7 +225,8 @@ class Lexer final
         // Block comment
         if (match_string("/*")) {
             const auto remaining = input_.substr(position_);
-            if (const auto pos = remaining.find("*/"); pos != std::string_view::npos) {
+            if (const auto pos = remaining.find("*/"); pos != std::string_view::npos) [[likely]]
+            {
                 position_ += pos + 2;
                 return Token{
                     .value = input_.substr(start_pos, position_ - start_pos),
