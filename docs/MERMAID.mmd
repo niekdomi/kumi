@@ -1,0 +1,62 @@
+graph TB
+subgraph "CLI Layer"
+CLI[CLI Interface<br/>kumi build/test/run]
+end
+
+    subgraph "Coordinator"
+        BS[BuildSystem<br/>Root Coordinator]
+    end
+
+    subgraph "Parsing Pipeline"
+        IR[ImportResolver<br/>Handle @import]
+        Lexer[Lexer<br/>Tokenization]
+        Parser[Parser<br/>AST Generation]
+    end
+
+    subgraph "Validation"
+        ST[SymbolTable<br/>Track Definitions]
+        SC[SemanticChecker<br/>Validate AST]
+    end
+
+    subgraph "Build Planning"
+        BG[BuildGraph<br/>Dependency Graph]
+        CC[CompilerDetector<br/>Find Toolchain]
+    end
+
+    subgraph "Package Management"
+        PM[PackageManager<br/>Dependency Resolution]
+        PR[PackageRegistry<br/>Conan/Custom]
+        Cache[LocalCache<br/>~/.kumi/cache]
+    end
+
+    subgraph "Execution"
+        BE[BuildExecutor<br/>Parallel Build]
+        CG[CommandGenerator<br/>Compile Commands]
+        Ninja[Ninja Backend<br/>Build Execution]
+        Compiler[Compiler<br/>GCC/Clang/MSVC]
+    end
+
+    CLI --> BS
+    BS --> IR
+    IR --> Lexer
+    Lexer --> Parser
+    Parser --> IR
+    IR -.->|For each @import| Lexer
+    IR --> ST
+    ST --> SC
+    SC --> PM
+    PM --> PR
+    PM --> Cache
+    PM --> BG
+    BG --> CC
+    CC --> BE
+    BE --> CG
+    CG --> Ninja
+    Ninja --> Compiler
+
+    style CLI fill:#e1f5ff
+    style BS fill:#fff4e1
+    style SC fill:#ffe1e1
+    style BG fill:#e1ffe1
+    style BE fill:#f5e1ff
+    style PM fill:#ffe1f5
