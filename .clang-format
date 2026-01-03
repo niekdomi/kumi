@@ -73,7 +73,7 @@ BreakBinaryOperations: OnePerLine
 BreakConstructorInitializers: BeforeColon
 BreakFunctionDefinitionParameters: false
 BreakInheritanceList: AfterComma
-BreakStringLiterals: true
+BreakStringLiterals: false # Buggy? -> bug report?
 BreakTemplateDeclarations: Yes
 ColumnLimit: 100
 CompactNamespaces: false

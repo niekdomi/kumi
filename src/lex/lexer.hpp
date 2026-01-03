@@ -12,7 +12,6 @@
 #include "support/parse_error.hpp"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <format>
@@ -127,7 +126,7 @@ class Lexer final
     /// @brief Peeks at next character without advancing
     /// @return Next character, or '\0' if at EOF
     [[nodiscard]]
-    auto peek(std::size_t look_ahead = 0) const noexcept -> char
+    auto peek(std::uint32_t look_ahead = 0) const noexcept -> char
     {
         const auto pos = position_ + look_ahead;
         if (pos >= input_.size()) [[unlikely]] {
@@ -185,8 +184,7 @@ class Lexer final
         return error<Token>(
           std::format("unexpected character after '@': '{}'", peek()),
           position_,
-          "expected one of: if, else-if, else, for, break, continue, import, " "error, warning, "
-                                                                               "info, debug");
+          "expected one of: if, else-if, else, for, break, continue, import, error, warning, info, debug");
     }
 
     [[nodiscard]]
@@ -361,14 +359,16 @@ class Lexer final
 
         while (peek() != '"') {
             if (at_end()) [[unlikely]] {
-                return error<Token>("unterminated string literal", position_, "missing closing \"");
+                return error<Token>("unterminated string literal", start_pos, "missing closing \"");
             }
 
             const char c = peek();
 
             if (c == '\n' || c == '\r') [[unlikely]] {
-                return error<Token>(
-                  "unterminated string literal", position_, "strings cannot span multiple lines");
+                return error<Token>("unterminated string literal",
+                                    start_pos,
+                                    "missing closing \"",
+                                    "strings cannot span multiple lines");
             }
 
             if (c == '\\') {
@@ -380,6 +380,7 @@ class Lexer final
                 {
                     return error<Token>(std::format("invalid escape sequence: '\\{}'", next),
                                         position_,
+                                        "unknown escape character",
                                         R"(valid escapes: \", \n, \t, \r, \\)");
                 }
                 advance(); // Consume escaped character
@@ -414,7 +415,8 @@ class Lexer final
         if (text.empty()) {
             return error<Token>(std::format("unexpected character: '{}'", peek()),
                                 position_,
-                                "expected identifier, keyword, or valid token");
+                                "invalid character here",
+                                "expected an identifier, keyword, or other valid token");
         }
 
         static constexpr std::array<std::pair<std::string_view, TokenType>, 20> KEYWORDS = {

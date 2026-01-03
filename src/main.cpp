@@ -2,9 +2,11 @@
 /// @brief Entry point for the Kumi build tool
 
 #include "lex/lexer.hpp"
-// #include "parse/parser.hpp"
+#include "parse/parser.hpp"
+#include "support/diagnostic_printer.hpp"
 
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <print>
@@ -58,10 +60,22 @@ auto main(int argc, char** argv) -> int
     auto tokens_result = lexer.tokenize();
 
     const auto end_lex = std::chrono::high_resolution_clock::now();
-    const auto mem_after = get_peak_memory_mb();
+    const auto mem_after_lex = get_peak_memory_mb();
 
     const auto duration_lex_us =
       std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
+
+    if (!tokens_result.has_value()) {
+        kumi::DiagnosticPrinter printer(source, filename);
+        const auto& lex_error = tokens_result.error();
+        // Convert LexError to ParseError for diagnostic printing
+        kumi::ParseError parse_err{.message = lex_error.message,
+                                   .position = lex_error.position,
+                                   .label = lex_error.label,
+                                   .help = lex_error.help};
+        printer.print_error(parse_err);
+        return 1;
+    }
 
     // Display file info
     const auto& tokens = *tokens_result;
@@ -75,32 +89,44 @@ auto main(int argc, char** argv) -> int
     std::println("│ Tokens:     {:<28}│", tokens.size());
     std::println("╰─────────────────────────────────────────╯");
 
-    // // Parse
-    // kumi::Parser parser(tokens);
-    // const auto start_parse = std::chrono::high_resolution_clock::now();
-    // auto ast_result = parser.parse();
-    // const auto end_parse = std::chrono::high_resolution_clock::now();
-    // const auto duration_parse_us
-    //   = std::chrono::duration_cast<std::chrono::microseconds>(end_parse - start_parse);
+    // Parse
+    kumi::Parser parser(tokens);
+    const auto start_parse = std::chrono::high_resolution_clock::now();
+    auto ast_result = parser.parse();
+    const auto end_parse = std::chrono::high_resolution_clock::now();
+    const auto duration_parse_us =
+      std::chrono::duration_cast<std::chrono::microseconds>(end_parse - start_parse);
+
+    // Check for parse errors
+    if (!ast_result.has_value()) {
+        kumi::DiagnosticPrinter printer(source, filename);
+        printer.print_error(ast_result.error());
+        return 1;
+    }
+
+    const auto mem_after = get_peak_memory_mb();
 
     // Display performance metrics
     double duration_lex_ms = static_cast<double>(duration_lex_us.count()) / 1000.0;
-    // double duration_parse_ms = static_cast<double>(duration_parse_us.count()) / 1000.0;
+    double duration_parse_ms = static_cast<double>(duration_parse_us.count()) / 1000.0;
     double lex_throughput = size_mb / (duration_lex_ms / 1000.0);
-    // double parse_throughput = size_mb / (duration_parse_ms / 1000.0);
+    double parse_throughput = size_mb / (duration_parse_ms / 1000.0);
 
     std::println("\n╭─────────────────────────────────────────╮");
     std::println("│ Performance Metrics                     │");
     std::println("├─────────────────────────────────────────┤");
     std::println("│ Lexing:  {:>10.4f} ms {:>10.2f} MB/s  │", duration_lex_ms, lex_throughput);
-    std::println("│ Memory:  {:>10.2f} MB (peak RSS)       │", mem_after - mem_before);
-    // std::println("│ Parsing: {:>10.4f} ms {:>10.2f} MB/s  │", duration_parse_ms,
-    // parse_throughput); std::println("│ Total:   {:>10.4f} ms {:>10.2f} MB/s  │",
-    //  duration_lex_ms + duration_parse_ms,
-    //  size_mb / ((duration_lex_ms + duration_parse_ms) / 1000.0));
+    std::println("│ Parsing: {:>10.4f} ms {:>10.2f} MB/s  │", duration_parse_ms, parse_throughput);
+    std::println("│ Total:   {:>10.4f} ms {:>10.2f} MB/s  │",
+                 duration_lex_ms + duration_parse_ms,
+                 size_mb / ((duration_lex_ms + duration_parse_ms) / 1000.0));
+    std::println("├─────────────────────────────────────────┤");
+    std::println("│ Lex Memory:   {:>13.2f} MB          │", mem_after_lex - mem_before);
+    std::println("│ Parse Memory: {:>13.2f} MB          │", mem_after - mem_after_lex);
+    std::println("│ Peak RSS:     {:>13.2f} MB          │", mem_after - mem_before);
     std::println("╰─────────────────────────────────────────╯");
 
-    // const auto &ast = *ast_result;
-    // std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
+    const auto& ast = *ast_result;
+    std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
     return 0;
 }

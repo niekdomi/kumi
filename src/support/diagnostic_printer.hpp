@@ -44,8 +44,7 @@ class DiagnosticPrinter final
 
     /// @brief Prints a beautiful error message
     /// @param error The parse error to display
-    /// @param hint Optional hint or suggestion
-    auto print_error(const ParseError& error, std::string_view hint = "") const -> void
+    auto print_error(const ParseError& error) const -> void
     {
         std::println(std::cerr,
                      "{}{}error: {}{}{}",
@@ -58,7 +57,7 @@ class DiagnosticPrinter final
         // Lazy coordinate conversion: only compute line/column when printing
         const auto [line, column] = position_to_line_column(error.position, source_);
         print_location(line, column);
-        print_source_snippet(line, column, hint);
+        print_source_snippet(line, column, error.label, error.help);
 
         std::println(std::cerr);
     }
@@ -100,8 +99,10 @@ class DiagnosticPrinter final
     }
 
     /// @brief Prints the source snippet with visual indicator
-    auto print_source_snippet(std::size_t line, std::size_t column, std::string_view hint) const
-      -> void
+    auto print_source_snippet(std::size_t line,
+                              std::size_t column,
+                              std::string_view label,
+                              std::string_view help) const -> void
     {
         if (line == 0 || line > lines_.size()) {
             return;
@@ -121,7 +122,7 @@ class DiagnosticPrinter final
         std::println(
           std::cerr, "{}{:>{}} |{} {}", color::BLUE, line, gutter_width, color::RESET, line_text);
 
-        // Print the indicator (^^^)
+        // Print the indicator (^)
         std::print(
           std::cerr, "{}{}|{} ", color::BLUE, std::string(gutter_width + 1, ' '), color::RESET);
 
@@ -130,31 +131,24 @@ class DiagnosticPrinter final
             std::print(std::cerr, "{}", std::string(column - 1, ' '));
         }
 
-        // Print the caret indicator with optional hint inline
-        if (!hint.empty()) {
-            std::println(std::cerr, "{}{}^ {}{}", color::BOLD, color::RED, hint, color::RESET);
-
-            // Show next line for context if available (skip blank lines)
-            std::size_t next_line_idx =
-              line; // line is 1-indexed, so lines_[line] is the (line+1)-th line
-            // Skip blank lines to show meaningful context
-            while (next_line_idx < lines_.size() && lines_[next_line_idx].empty()) {
-                next_line_idx++;
-            }
-
-            if (next_line_idx < lines_.size()) {
-                const auto next_line_num = next_line_idx + 1;
-                const auto next_gutter_width = std::to_string(next_line_num).length();
-                std::println(std::cerr,
-                             "{}{:>{}} |{} {}",
-                             color::BLUE,
-                             next_line_num,
-                             next_gutter_width,
-                             color::RESET,
-                             lines_[next_line_idx]);
-            }
+        // Print the caret indicator and inline message
+        if (!label.empty()) {
+            std::println(std::cerr, "{}{}^ {}{}", color::BOLD, color::RED, label, color::RESET);
         } else {
             std::println(std::cerr, "{}{}^{}", color::BOLD, color::RED, color::RESET);
+        }
+
+        // Print help section if help is provided
+        if (!help.empty()) {
+            std::println(
+              std::cerr, "{}{}|{}", color::BLUE, std::string(gutter_width + 1, ' '), color::RESET);
+            std::println(std::cerr,
+                         "{}{} = {}help:{} {}",
+                         color::BLUE,
+                         std::string(gutter_width + 1, ' '),
+                         color::BOLD,
+                         color::RESET,
+                         help);
         }
     }
 };

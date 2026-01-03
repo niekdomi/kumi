@@ -260,7 +260,7 @@ TEST_CASE("Lexer: Control Flow", "[lexer][control-flow]")
 
         const auto error = lex_error(input);
         CHECK(error.message.contains("unexpected"));
-        CHECK(error.hint.contains("expected one of"));
+        CHECK(error.help.contains("expected one of"));
     }
 
     SECTION("invalid @ directive position tracking")
@@ -438,7 +438,7 @@ TEST_CASE("Lexer: Special Operators", "[lexer][special-operators]")
         CHECK(error.position == 2);
         CHECK(input[error.position] == '.');
         CHECK(error.message.contains("unexpected"));
-        CHECK(error.hint.contains("'.'"));
+        CHECK(error.help.contains("'.'"));
     }
 }
 
@@ -479,7 +479,7 @@ TEST_CASE("Lexer: Comparison Operators", "[lexer][comparison]")
         CHECK(error.position == 2);
         CHECK(input[error.position] == '=');
         CHECK(error.message.contains("unexpected"));
-        CHECK(error.hint.contains("'='"));
+        CHECK(error.help.contains("'='"));
     }
 
     SECTION("invalid single exclamation")
@@ -489,7 +489,7 @@ TEST_CASE("Lexer: Comparison Operators", "[lexer][comparison]")
         CHECK(error.position == 2);
         CHECK(input[error.position] == '!');
         CHECK(error.message.contains("unexpected"));
-        CHECK(error.hint.contains("'='"));
+        CHECK(error.help.contains("'='"));
     }
 
     SECTION("invalid comment start")
@@ -499,7 +499,7 @@ TEST_CASE("Lexer: Comparison Operators", "[lexer][comparison]")
         CHECK(error.position == 5);
         CHECK(input[error.position] == '/');
         CHECK(error.message.contains("unexpected"));
-        CHECK(error.hint.contains("'/' or '*'"));
+        CHECK(error.help.contains("'/' or '*'"));
     }
 
     SECTION("position tracking in token sequence")
@@ -559,7 +559,7 @@ TEST_CASE("Lexer: Identifiers", "[lexer][literals][identifiers]")
 
         const auto error = lex_error(input);
         CHECK(error.message.contains("unexpected character"));
-        CHECK(error.hint.contains("expected identifier"));
+        CHECK(error.help.contains("expected identifier"));
     }
 }
 
@@ -601,14 +601,14 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
     {
         const auto error = lex_error(R"("unterminated)");
         CHECK(error.message.contains("unterminated"));
-        CHECK(error.hint.contains("closing"));
+        CHECK(error.help.contains("closing"));
     }
 
     SECTION("unterminated string - newline")
     {
         const auto error = lex_error("\"line1\nline2\"");
         CHECK(error.message.contains("unterminated"));
-        CHECK(error.hint.contains("multiple lines"));
+        CHECK(error.help.contains("multiple lines"));
     }
 
     SECTION("invalid escape sequences")
@@ -625,7 +625,7 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
 
         const auto error = lex_error(invalid_escape);
         CHECK(error.message.contains("invalid escape"));
-        CHECK(error.hint.contains("valid escapes"));
+        CHECK(error.help.contains("valid escapes"));
     }
 }
 
@@ -693,7 +693,7 @@ TEST_CASE("Lexer: Comments", "[lexer][literals][comments]")
         CHECK(error.position == 15);
         CHECK(error.position == input.size()); // At EOF
         CHECK(error.message.contains("unterminated"));
-        CHECK(error.hint.contains("closing */"));
+        CHECK(error.help.contains("closing */"));
     }
 
     SECTION("invalid block comment in multiline context")

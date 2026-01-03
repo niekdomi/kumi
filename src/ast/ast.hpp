@@ -11,10 +11,11 @@
 
 #pragma once
 
+#include "support/arena.hpp"
+
 #include <cstdint>
-#include <memory>
 #include <optional>
-#include <string>
+#include <span>
 #include <variant>
 #include <vector>
 
@@ -57,6 +58,8 @@ struct NodeBase
     std::uint32_t position{}; ///< Character offset in source file
 };
 
+static_assert(sizeof(NodeBase) == 4);
+
 //===----------------------------------------------------------------------===//
 // Primitive Values
 //===----------------------------------------------------------------------===//
@@ -73,9 +76,9 @@ struct NodeBase
 /// enabled: true;           // Boolean value
 /// type: executable;        // Identifier value
 /// ```
-using Value = std::variant<std::string,   ///< String literal or identifier: "hello" or myapp
-                           std::uint32_t, ///< Integer literal: 42, 0, 1000
-                           bool           ///< Boolean literal: true, false
+using Value = std::variant<std::string_view, ///< String literal or identifier: "hello" or myapp
+                           std::uint32_t,    ///< Integer literal: 42, 0, 1000
+                           bool              ///< Boolean literal: true, false
                            >;
 
 //===----------------------------------------------------------------------===//
@@ -98,8 +101,11 @@ using Value = std::variant<std::string,   ///< String literal or identifier: "he
 /// ```
 struct List final : NodeBase
 {
-    std::vector<Value> elements; ///< List elements
+    std::uint32_t element_start{}; ///< Start of list elements
+    std::uint32_t element_end{};   ///< End of list elements
 };
+
+static_assert(sizeof(List) == 12);
 
 /// @brief Represents a numeric range for iteration
 ///
@@ -122,6 +128,8 @@ struct Range final : NodeBase
     std::uint32_t end{};   ///< End value (exclusive)
 };
 
+static_assert(sizeof(Range) == 12);
+
 /// @brief Represents a function call expression
 ///
 /// Function calls query build-time information like platform, architecture,
@@ -143,9 +151,12 @@ struct Range final : NodeBase
 /// ```
 struct FunctionCall final : NodeBase
 {
-    std::string name;             ///< Function name (platform, glob, arch, etc.)
-    std::vector<Value> arguments; ///< Positional arguments
+    std::string_view name;     ///< Function name (platform, glob, arch, etc.)
+    std::uint32_t arg_start{}; ///< Start of positional arguments
+    std::uint32_t arg_end{};   ///< End of positional arguments
 };
+
+static_assert(sizeof(FunctionCall) == 32);
 
 /// @brief Primary expression (leaf nodes in expression tree)
 ///
@@ -190,7 +201,7 @@ enum class ComparisonOperator : std::uint8_t
 /// ```
 using UnaryOperand = std::variant<FunctionCall,
                                   Value,
-                                  std::unique_ptr<LogicalExpr> // Parenthesized expressions: a and b
+                                  std::uint32_t // Parenthesized expressions: a and b
                                   >;
 
 /// @brief Represents a unary expression with optional NOT operator
@@ -213,6 +224,8 @@ struct UnaryExpr final : NodeBase
     UnaryOperand operand;   ///< The operand to potentially negate
 };
 
+static_assert(sizeof(UnaryExpr) == 48);
+
 /// @brief Represents a comparison expression
 ///
 /// Comparison expressions evaluate relational operations between two values.
@@ -231,10 +244,12 @@ struct UnaryExpr final : NodeBase
 /// ```
 struct ComparisonExpr final : NodeBase
 {
-    UnaryExpr left;                       ///< Left-hand side
-    std::optional<ComparisonOperator> op; ///< Comparison operator (if binary)
-    std::optional<UnaryExpr> right;       ///< Right-hand side (if binary)
+    UnaryExpr left;                     ///< Left-hand side
+    ComparisonOperator op;              ///< Comparison operator (if binary)
+    std::optional<std::uint32_t> right; ///< Right-hand side (if binary)
 };
+
+static_assert(sizeof(ComparisonExpr) == 72);
 
 /// @brief Represents a logical expression (AND/OR of comparisons)
 ///
@@ -255,9 +270,12 @@ struct ComparisonExpr final : NodeBase
 /// ```
 struct LogicalExpr final : NodeBase
 {
-    LogicalOperator op;                   ///< Operator (all same: AND or OR)
-    std::vector<ComparisonExpr> operands; ///< Comparison operands (2+)
+    LogicalOperator op;            ///< Operator (all same: AND or OR)
+    std::uint32_t operand_start{}; ///< Start of comparison operands (2+)
+    std::uint32_t operand_end{};   ///< End of comparison operands (2+)
 };
+
+static_assert(sizeof(LogicalExpr) == 16);
 
 /// @brief Top-level condition type used in if statements
 ///
@@ -316,9 +334,12 @@ using Iterable = std::variant<List,        ///< Explicit list of values
 /// ```
 struct Property final : NodeBase
 {
-    std::string key;           ///< Property name (type, sources, defines, etc.)
-    std::vector<Value> values; ///< Property values (one or more)
+    std::string_view key;        ///< Property name (type, sources, defines, etc.)
+    std::uint32_t value_start{}; ///< Start of property values (one or more)
+    std::uint32_t value_end{};   ///< End of property values (one or more)
 };
+
+static_assert(sizeof(Property) == 32);
 
 //===----------------------------------------------------------------------===//
 // Dependencies
@@ -333,8 +354,8 @@ struct Property final : NodeBase
 /// ```ebnf
 /// DependencyValue = String | Identifier | FunctionCall ;
 /// ```
-using DependencyValue = std::variant<std::string, ///< Version string: "1.0.0", "^2.3.4"
-                                     FunctionCall ///< git(...), path(...), system
+using DependencyValue = std::variant<std::string_view, ///< Version string: "1.0.0", "^2.3.4"
+                                     FunctionCall      ///< git(...), path(...), system
                                      >;
 
 /// @brief Represents a single dependency specification
@@ -358,11 +379,14 @@ using DependencyValue = std::variant<std::string, ///< Version string: "1.0.0", 
 /// ```
 struct DependencySpec final : NodeBase
 {
-    bool is_optional{false};       ///< True if suffixed with `?`
-    std::string name;              ///< Dependency name (package identifier)
-    DependencyValue value;         ///< Version, git URL, path, or system
-    std::vector<Property> options; ///< Additional options (tag, branch, etc.)
+    bool is_optional{false};    ///< True if suffixed with `?`
+    std::string_view name;      ///< Dependency name (package identifier)
+    DependencyValue value;      ///< Version, git URL, path, or system
+    std::uint32_t option_start; ///< Start of additional options (`tag`, `branch`, ...)
+    std::uint32_t option_end;   ///< End of additional options
 };
+
+static_assert(sizeof(DependencySpec) == 72);
 
 //===----------------------------------------------------------------------===//
 // Options
@@ -393,10 +417,13 @@ struct DependencySpec final : NodeBase
 /// ```
 struct OptionSpec final : NodeBase
 {
-    std::string name;                  ///< Option name
-    Value default_value;               ///< Default value
-    std::vector<Property> constraints; ///< Constraints (min, max, choices, etc.)
+    std::string_view name;            ///< Option name
+    Value default_value;              ///< Default value
+    std::uint32_t constraint_start{}; ///< Start of constraints (min, max, choices, etc.)
+    std::uint32_t constraint_end{};   ///< End of constraints (min, max, choices, etc.)
 };
+
+static_assert(sizeof(OptionSpec) == 56);
 
 //===----------------------------------------------------------------------===//
 // Top-Level Declarations
@@ -441,9 +468,12 @@ using Statement = std::variant<ProjectDecl,
 /// ```
 struct ProjectDecl final : NodeBase
 {
-    std::string name;                 ///< Project name
-    std::vector<Property> properties; ///< Project configuration properties
+    std::string_view name;          ///< Project name
+    std::uint32_t property_start{}; ///< Start of project configuration properties
+    std::uint32_t property_end{};   ///< End of project configuration properties
 };
+
+static_assert(sizeof(ProjectDecl) == 32);
 
 /// @brief Represents a workspace declaration
 ///
@@ -465,8 +495,11 @@ struct ProjectDecl final : NodeBase
 /// ```
 struct WorkspaceDecl final : NodeBase
 {
-    std::vector<Property> properties; ///< Workspace configuration
+    std::uint32_t property_start{}; ///< Start of workspace configuration
+    std::uint32_t property_end{};   ///< End of workspace configuration
 };
+
+static_assert(sizeof(WorkspaceDecl) == 12);
 
 /// @brief Represents a target declaration
 ///
@@ -500,10 +533,14 @@ struct WorkspaceDecl final : NodeBase
 /// ```
 struct TargetDecl final : NodeBase
 {
-    std::string name;                ///< Target name
-    std::vector<std::string> mixins; ///< Mixins to apply (via `with` keyword)
-    std::vector<Statement> body;     ///< Target body (properties, blocks, control flow)
+    std::string_view name;       ///< Target name
+    std::uint32_t mixin_start{}; ///< Start of mixins to apply (via `with` keyword)
+    std::uint32_t mixin_end{};   ///< End of mixins to apply
+    std::uint32_t body_start;    ///< Start of target body (`properties`, `blocks`, `control flow`)
+    std::uint32_t body_end{};    ///< End of target body
 };
+
+static_assert(sizeof(TargetDecl) == 40);
 
 /// @brief Represents a dependencies declaration
 ///
@@ -527,8 +564,11 @@ struct TargetDecl final : NodeBase
 /// ```
 struct DependenciesDecl final : NodeBase
 {
-    std::vector<DependencySpec> dependencies; ///< List of dependency specifications
+    std::uint32_t dep_start{}; ///< Start of list of dependency specifications
+    std::uint32_t dep_end{};   ///< End of list of dependency specifications
 };
+
+static_assert(sizeof(DependenciesDecl) == 12);
 
 /// @brief Represents an options declaration
 ///
@@ -554,8 +594,11 @@ struct DependenciesDecl final : NodeBase
 /// ```
 struct OptionsDecl final : NodeBase
 {
-    std::vector<OptionSpec> options; ///< Build option specifications
+    std::uint32_t option_start{}; ///< Start of build option specifications
+    std::uint32_t option_end{};   ///< End of build option specifications
 };
+
+static_assert(sizeof(OptionsDecl) == 12);
 
 /// @brief Represents a mixin declaration
 ///
@@ -583,9 +626,12 @@ struct OptionsDecl final : NodeBase
 /// ```
 struct MixinDecl final : NodeBase
 {
-    std::string name;            ///< Mixin name
-    std::vector<Statement> body; ///< Mixin body (properties, visibility blocks)
+    std::string_view name;      ///< Mixin name
+    std::uint32_t body_start{}; ///< Start of mixin body (properties, visibility blocks)
+    std::uint32_t body_end{};   ///< End of mixin body (properties, visibility blocks)
 };
+
+static_assert(sizeof(MixinDecl) == 32);
 
 /// @brief Represents a profile declaration
 ///
@@ -608,15 +654,18 @@ struct MixinDecl final : NodeBase
 /// profile release with lto-flags {
 ///     optimize: aggressive;
 ///     debug-info: none;
-///     defines: NDEBUG;
 /// }
 /// ```
 struct ProfileDecl final : NodeBase
 {
-    std::string name;                 ///< Profile name (debug, release, etc.)
-    std::vector<std::string> mixins;  ///< Mixins to apply
-    std::vector<Property> properties; ///< Profile configuration
+    std::string_view name;          ///< Profile name (debug, release, etc.)
+    std::uint32_t mixin_start{};    ///< Start of mixins to apply
+    std::uint32_t mixin_end{};      ///< End of mixins to apply
+    std::uint32_t property_start{}; ///< Start of profile configuration
+    std::uint32_t property_end{};   ///< End of profile configuration
 };
+
+static_assert(sizeof(ProfileDecl) == 40);
 
 /// @brief Represents an install declaration
 ///
@@ -638,8 +687,11 @@ struct ProfileDecl final : NodeBase
 /// ```
 struct InstallDecl final : NodeBase
 {
-    std::vector<Property> properties; ///< Installation configuration
+    std::uint32_t property_start{}; ///< Start of installation configuration
+    std::uint32_t property_end{};   ///< End of installation configuration
 };
+
+static_assert(sizeof(InstallDecl) == 12);
 
 /// @brief Represents a package declaration
 ///
@@ -662,8 +714,11 @@ struct InstallDecl final : NodeBase
 /// ```
 struct PackageDecl final : NodeBase
 {
-    std::vector<Property> properties; ///< Package configuration
+    std::uint32_t property_start{}; ///< Start of package configuration
+    std::uint32_t property_end{};   ///< End of package configuration
 };
+
+static_assert(sizeof(PackageDecl) == 12);
 
 /// @brief Represents a scripts declaration
 ///
@@ -684,8 +739,11 @@ struct PackageDecl final : NodeBase
 /// ```
 struct ScriptsDecl final : NodeBase
 {
-    std::vector<Property> scripts; ///< Build script hooks
+    std::uint32_t script_start{}; ///< Start of build script hooks
+    std::uint32_t script_end{};   ///< End of build script hooks
 };
+
+static_assert(sizeof(ScriptsDecl) == 12);
 
 //===----------------------------------------------------------------------===//
 // Visibility Blocks
@@ -730,9 +788,12 @@ enum class Visibility : std::uint8_t
 /// ```
 struct VisibilityBlock final : NodeBase
 {
-    Visibility visibility;            ///< Visibility level
-    std::vector<Property> properties; ///< Properties with this visibility
+    Visibility visibility{};        ///< Visibility level
+    std::uint32_t property_start{}; ///< Start of properties with this visibility
+    std::uint32_t property_end{};   ///< End of properties with this visibility
 };
+
+static_assert(sizeof(VisibilityBlock) == 16);
 
 //===----------------------------------------------------------------------===//
 // Control Flow Statements
@@ -763,10 +824,14 @@ struct VisibilityBlock final : NodeBase
 /// ```
 struct IfStmt final : NodeBase
 {
-    Condition condition;               ///< Condition to evaluate
-    std::vector<Statement> then_block; ///< Statements if condition is true
-    std::vector<Statement> else_block; ///< Statements for else/else-if (may contain another IfStmt)
+    Condition condition;      ///< Condition to evaluate
+    std::uint32_t then_start; ///< Start of statements if condition is true
+    std::uint32_t then_count; ///< Number of statements in then block
+    std::uint32_t else_start; ///< Start of else/else-if block
+    std::uint32_t else_count; ///< Number of statements in else block
 };
+
+static_assert(sizeof(IfStmt) == 104);
 
 /// @brief Represents a for-loop statement
 ///
@@ -802,10 +867,13 @@ struct IfStmt final : NodeBase
 /// ```
 struct ForStmt final : NodeBase
 {
-    std::string variable;        ///< Loop variable name
-    Iterable iterable;           ///< Collection to iterate over
-    std::vector<Statement> body; ///< Loop body statements
+    std::string_view variable;  ///< Loop variable name
+    Iterable iterable;          ///< Collection to iterate over
+    std::uint32_t body_start{}; ///< Start of loop body statements
+    std::uint32_t body_end{};   ///< End of loop body statements
 };
+
+static_assert(sizeof(ForStmt) == 72);
 
 /// @brief Loop control operation type
 enum class LoopControl : std::uint8_t
@@ -837,6 +905,8 @@ struct LoopControlStmt final : NodeBase
 {
     LoopControl control{LoopControl::BREAK}; ///< Break or continue
 };
+
+static_assert(sizeof(LoopControlStmt) == 8);
 
 //===----------------------------------------------------------------------===//
 // Diagnostic and Import Statements
@@ -875,9 +945,11 @@ enum DiagnosticLevel : std::uint8_t
 /// ```
 struct DiagnosticStmt final : NodeBase
 {
-    DiagnosticLevel level; ///< Message severity
-    std::string message;   ///< Diagnostic message text
+    DiagnosticLevel level{};  ///< Message severity
+    std::string_view message; ///< Diagnostic message text
 };
+
+static_assert(sizeof(DiagnosticStmt) == 24);
 
 /// @brief Represents an import statement
 ///
@@ -896,8 +968,10 @@ struct DiagnosticStmt final : NodeBase
 /// ```
 struct ImportStmt final : NodeBase
 {
-    std::string path; ///< Path to file to import (relative or absolute)
+    std::string_view path; ///< Path to file to import (relative or absolute)
 };
+
+static_assert(sizeof(ImportStmt) == 24);
 
 //===----------------------------------------------------------------------===//
 // Root AST
@@ -910,8 +984,57 @@ struct ImportStmt final : NodeBase
 /// of other declarations and statements.
 struct AST final
 {
-    std::vector<Statement> statements; ///< All top-level statements
-    std::string file_path;             ///< Source file path (for diagnostics)
+    // String storage
+    Arena string_storage;
+
+    // Side vectors (SOA)
+    std::vector<Property> all_properties;
+    std::vector<std::string_view> all_mixins;
+    std::vector<Statement> all_statements;
+    std::vector<DependencySpec> all_dependencies;
+    std::vector<OptionSpec> all_options;
+
+    // Main declarations
+    std::vector<Statement> statements;
+    std::string_view file_path;
+
+    // Access helpers
+    [[nodiscard]]
+    auto get_properties(uint32_t start, uint32_t count) const -> std::span<const Property>
+    {
+        return std::span{all_properties}.subspan(start, count);
+    }
+
+    [[nodiscard]]
+    auto get_mixins(uint32_t start, uint32_t count) const -> std::span<const std::string_view>
+    {
+        return std::span{all_mixins}.subspan(start, count);
+    }
+
+    [[nodiscard]]
+    auto get_statements(uint32_t start, uint32_t count) const -> std::span<const Statement>
+    {
+        return std::span{all_statements}.subspan(start, count);
+    }
+
+    [[nodiscard]]
+    auto get_dependencies(uint32_t start, uint32_t count) const -> std::span<const DependencySpec>
+    {
+        return std::span{all_dependencies}.subspan(start, count);
+    }
+
+    [[nodiscard]]
+    auto get_options(uint32_t start, uint32_t count) const -> std::span<const OptionSpec>
+    {
+        return std::span{all_options}.subspan(start, count);
+    }
+
+    AST() = default;
+    AST(AST&&) = default;
+    AST(const AST&) = delete;
+
+    auto operator=(AST&&) -> AST& = default;
+    auto operator=(const AST&) -> AST& = delete;
 };
 
 } // namespace kumi
