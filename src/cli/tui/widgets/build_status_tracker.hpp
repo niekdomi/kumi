@@ -34,10 +34,10 @@ class BuildStatusTracker
         stop();
     }
 
-    BuildStatusTracker(const BuildStatusTracker &) = delete;
-    auto operator=(const BuildStatusTracker &) -> BuildStatusTracker & = delete;
-    BuildStatusTracker(BuildStatusTracker &&) = delete;
-    auto operator=(BuildStatusTracker &&) -> BuildStatusTracker & = delete;
+    BuildStatusTracker(const BuildStatusTracker&) = delete;
+    auto operator=(const BuildStatusTracker&) -> BuildStatusTracker& = delete;
+    BuildStatusTracker(BuildStatusTracker&&) = delete;
+    auto operator=(BuildStatusTracker&&) -> BuildStatusTracker& = delete;
 
     void add_package(std::string_view name, std::string_view version, bool cached = false)
     {
@@ -52,7 +52,7 @@ class BuildStatusTracker
     void start_building(std::string_view name)
     {
         std::lock_guard lock(mutex_);
-        for (auto &pkg : packages_) {
+        for (auto& pkg : packages_) {
             if (pkg.name == name && pkg.status == BuildPackage::Status::Pending) {
                 pkg.status = BuildPackage::Status::Building;
                 pkg.start_time = std::chrono::steady_clock::now();
@@ -64,7 +64,7 @@ class BuildStatusTracker
     void update_file(std::string_view name, std::string_view file)
     {
         std::lock_guard lock(mutex_);
-        for (auto &pkg : packages_) {
+        for (auto& pkg : packages_) {
             if (pkg.name == name && pkg.status == BuildPackage::Status::Building) {
                 if (!pkg.current_file.empty()) {
                     pkg.completed_files.push_back(pkg.current_file);
@@ -78,7 +78,7 @@ class BuildStatusTracker
     void complete_package(std::string_view name)
     {
         std::lock_guard lock(mutex_);
-        for (auto &pkg : packages_) {
+        for (auto& pkg : packages_) {
             if (pkg.name == name && pkg.status == BuildPackage::Status::Building) {
                 pkg.status = BuildPackage::Status::Complete;
                 pkg.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -142,7 +142,7 @@ class BuildStatusTracker
         std::lock_guard lock(mutex_);
 
         size_t max_name_len = 0;
-        for (const auto &pkg : packages_) {
+        for (const auto& pkg : packages_) {
             max_name_len = std::max(max_name_len, pkg.name.length());
         }
 
@@ -150,7 +150,7 @@ class BuildStatusTracker
             std::print("{}", ansi::move_up(static_cast<int>(packages_.size())));
         }
 
-        for (const auto &pkg : packages_) {
+        for (const auto& pkg : packages_) {
             std::print("\r{}", ansi::CLEAR_LINE);
 
             if (pkg.status == BuildPackage::Status::Complete) {

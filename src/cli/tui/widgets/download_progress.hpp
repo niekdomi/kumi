@@ -29,10 +29,10 @@ class DownloadProgressTracker
         stop();
     }
 
-    DownloadProgressTracker(const DownloadProgressTracker &) = delete;
-    auto operator=(const DownloadProgressTracker &) -> DownloadProgressTracker & = delete;
-    DownloadProgressTracker(DownloadProgressTracker &&) = delete;
-    auto operator=(DownloadProgressTracker &&) -> DownloadProgressTracker & = delete;
+    DownloadProgressTracker(const DownloadProgressTracker&) = delete;
+    auto operator=(const DownloadProgressTracker&) -> DownloadProgressTracker& = delete;
+    DownloadProgressTracker(DownloadProgressTracker&&) = delete;
+    auto operator=(DownloadProgressTracker&&) -> DownloadProgressTracker& = delete;
 
     void start()
     {

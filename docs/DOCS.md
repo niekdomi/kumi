@@ -440,7 +440,8 @@ target myapp with strict-warnings {
   sources: "src/**/*.cpp";
 }
 
-target firmware with embedded-target, strict-warnings {
+target firmware with embedded-target,
+strict-warnings {
   type: executable;
   sources: "firmware/**/*.cpp";
 }
@@ -1219,8 +1220,9 @@ KumiFile = { Statement } ;
 
 (* ===== Statements ===== *)
 Statement          = ProjectDecl | WorkspaceDecl | DependenciesDecl | TargetDecl
-                     | OptionsDecl | MixinDecl | ProfileDecl | ImportDecl
-                     | ConditionalBlock | ForLoop | LoopControl ;
+                     | OptionsDecl | MixinDecl | ProfileDecl | InstallDecl
+                     | PackageDecl | ScriptsDecl | ImportDecl
+                     | ConditionalBlock | ForLoop | LoopControl | DiagnosticStmt ;
 
 (* ===== Declarations ===== *)
 ProjectDecl        = "project" Identifier "{" { PropertyAssignment } "}" ;
@@ -1230,6 +1232,9 @@ TargetDecl         = "target" Identifier [ "with" MixinList ] "{" { TargetConten
 OptionsDecl        = "options" "{" { OptionSpec } "}" ;
 MixinDecl          = "mixin" Identifier "{" { PropertyAssignment | VisibilityBlock } "}" ;
 ProfileDecl        = "profile" Identifier [ "with" MixinList ] "{" { PropertyAssignment } "}" ;
+InstallDecl        = "install" "{" { PropertyAssignment } "}" ;
+PackageDecl        = "package" "{" { PropertyAssignment } "}" ;
+ScriptsDecl        = "scripts" "{" { PropertyAssignment } "}" ;
 ImportDecl         = "@import" String ";" ;
 
 (* ===== Mixin Composition ===== *)
@@ -1258,6 +1263,9 @@ Iterable           = List | Range | FunctionCall ;
 Range              = Number ".." Number ;
 
 LoopControl        = ( "@break" | "@continue" ) ";" ;
+
+(* ===== Diagnostics ===== *)
+DiagnosticStmt     = ( "@error" | "@warning" | "@info" | "@debug" ) String ";" ;
 
 (* ===== Conditions ===== *)
 Condition          = LogicalExpr ;

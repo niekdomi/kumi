@@ -1,32 +1,35 @@
 /// @file ast.hpp
-/// @brief Abstract Syntax Tree node definitions
+/// @brief Abstract Syntax Tree node definitions for the Kumi build system
 ///
-/// Defines all AST node types representing parsed Kumi build files.
+/// The hierarchy:
+/// - Expressions: Values, operators, function calls
+/// - Statements: Declarations, control flow, properties
+/// - Declarations: Top-level constructs (project, target, etc.)
 ///
-/// @see Parser for AST construction
-/// @see Lexer for tokenization
+/// @see Parser for AST construction from tokens
+/// @see Lexer for tokenization of source files
 
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
 namespace kumi {
 
-/// Forward Declarations
-struct ComparisonExpr;
+//===----------------------------------------------------------------------===//
+// Forward Declarations
+//===----------------------------------------------------------------------===//
+
 struct DependenciesDecl;
 struct DiagnosticStmt;
 struct ForStmt;
-struct FunctionCall;
 struct IfStmt;
 struct ImportStmt;
 struct InstallDecl;
-struct LogicalExpr;
 struct LoopControlStmt;
 struct MixinDecl;
 struct OptionsDecl;
@@ -36,326 +39,641 @@ struct ProjectDecl;
 struct ScriptsDecl;
 struct TargetDecl;
 struct VisibilityBlock;
+struct UnaryExpr;
 struct WorkspaceDecl;
+struct ComparisonExpr;
+struct LogicalExpr;
 
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 // Base Node
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
-/// @brief Base class for all AST nodes, providing source location information
+/// @brief Base class for all AST nodes providing source location tracking
 ///
-/// All AST node types inherit from this base to track where they appear
-/// in the source file for error reporting and debugging.
+/// Every AST node includes position information for error reporting and
+/// debugging. The position is a byte offset into the source file.
 struct NodeBase
 {
-    std::size_t position; ///< Character offset in source
+    std::uint32_t position{}; ///< Character offset in source file
 };
 
-//===---------------------------------------------------------------------===//
-// Values and Expressions
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Primitive Values
+//===----------------------------------------------------------------------===//
 
-/// @brief Represents a literal value in the AST
+/// @brief Represents a literal value (string, number, boolean, or identifier)
 ///
-/// Values can be strings, integers, or booleans. They appear in property
-/// assignments, function arguments, and expressions.
+/// Values are the atomic units in the AST. They appear in property assignments,
+/// function arguments, and expressions.
 ///
-/// Example:
+/// Examples:
 /// ```css
-/// name: "kumi";         // String value
-/// version: 42;          // Integer value
-/// enabled: true;        // Boolean value
+/// name: "myapp";           // String value
+/// version: 42;             // Integer value
+/// enabled: true;           // Boolean value
+/// type: executable;        // Identifier value
 /// ```
-using Value = std::variant<std::string, // String literal: "hello"
-                           int,         // Number literal: 123
-                           bool>;       // Boolean literal: true/false
+using Value = std::variant<std::string,   ///< String literal or identifier: "hello" or myapp
+                           std::uint32_t, ///< Integer literal: 42, 0, 1000
+                           bool           ///< Boolean literal: true, false
+                           >;
 
-/// @brief Expression variant representing any evaluable expression
+//===----------------------------------------------------------------------===//
+// Expressions
+//===----------------------------------------------------------------------===//
+
+/// @brief Represents a list of values
 ///
-/// Expressions can appear in conditions (`@if`), loop iterables (`@for`),
-/// and property values. They combine literals, variables, function calls,
-/// and operators.
-using Expression = std::variant<FunctionCall, ComparisonExpr, LogicalExpr, Value>;
+/// Lists are used for property values and loop iteration.
+///
+/// Grammar:
+/// ```ebnf
+/// List = "[" Value { "," Value } "]" ;
+/// ```
+///
+/// Examples:
+/// ```css
+/// sources: ["main.cpp", "utils.cpp", "helper.cpp"];
+/// @for module in [core, renderer, audio] { ... }
+/// ```
+struct List final : NodeBase
+{
+    std::vector<Value> elements; ///< List elements
+};
+
+/// @brief Represents a numeric range for iteration
+///
+/// Ranges are inclusive of the start and exclusive of the end value,
+/// following common programming convention.
+///
+/// Grammar:
+/// ```ebnf
+/// Range = Number ".." Number ;
+/// ```
+///
+/// Examples:
+/// ```css
+/// @for i in 0..10 { ... }      // 0, 1, 2, ..., 9
+/// @for worker in 1..8 { ... }  // 1, 2, 3, ..., 7
+/// ```
+struct Range final : NodeBase
+{
+    std::uint32_t start{}; ///< Start value (inclusive)
+    std::uint32_t end{};   ///< End value (exclusive)
+};
 
 /// @brief Represents a function call expression
 ///
-/// Function calls are used for platform detection, file globbing, and other
-/// build-time queries.
+/// Function calls query build-time information like platform, architecture,
+/// configuration, or perform operations like file globbing.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// FunctionCall = Identifier "(" [ ArgumentList ] ")" [ FunctionOptions ] ;
+/// ArgumentList = Value { "," Value } ;
+/// FunctionOptions = "{" { PropertyAssignment } "}" ;
+/// ```
+///
+/// Examples:
 /// ```css
 /// @if platform(windows) { ... }
-/// sources: glob("src/*.cpp");
+/// sources: glob("src/**/*.cpp");
+/// @if arch(x86_64, arm64) { ... }
+/// files: find("resources", "*.png");
 /// ```
 struct FunctionCall final : NodeBase
 {
-    std::string name;             ///< Function name (e.g., "platform", "glob")
-    std::vector<Value> arguments; ///< Function arguments
+    std::string name;             ///< Function name (platform, glob, arch, etc.)
+    std::vector<Value> arguments; ///< Positional arguments
 };
 
-/// @brief Comparison operators for conditional expressions
-enum class ComparisonOp : std::uint8_t
+/// @brief Primary expression (leaf nodes in expression tree)
+///
+/// Primary expressions are the most basic expressions that cannot be
+/// further decomposed. They include literals, function calls, and
+/// parenthesized expressions.
+///
+/// Grammar:
+/// ```ebnf
+/// PrimaryExpr = FunctionCall | Identifier | Boolean | "(" LogicalExpr ")" ;
+/// ```
+using PrimaryExpr = std::variant<FunctionCall,
+                                 Value // Identifier or Boolean
+                                 >;
+
+/// @brief Logical operators for boolean expressions
+enum class LogicalOperator : std::uint8_t
 {
-    EQUAL,         ///< ==
-    NOT_EQUAL,     ///< !=
-    LESS,          ///< <
-    LESS_EQUAL,    ///< <=
-    GREATER,       ///< >
-    GREATER_EQUAL, ///< >=
+    AND, ///< Logical AND: `and`
+    OR,  ///< Logical OR: `or`
+};
+
+/// @brief Comparison operators for relational expressions
+enum class ComparisonOperator : std::uint8_t
+{
+    EQUAL,         ///< Equal: `==`
+    NOT_EQUAL,     ///< Not equal: `!=`
+    LESS,          ///< Less than: `<`
+    LESS_EQUAL,    ///< Less than or equal: `<=`
+    GREATER,       ///< Greater than: `>`
+    GREATER_EQUAL, ///< Greater than or equal: `>=`
+};
+
+/// @brief Unary expression operand (primary expression or parenthesized logical expression)
+///
+/// This allows for both simple expressions like `platform(windows)` and
+/// complex parenthesized expressions like `(a and b)`.
+///
+/// Grammar:
+/// ```ebnf
+/// UnaryOperand = FunctionCall | Identifier | Boolean | "(" LogicalExpr ")" ;
+/// ```
+using UnaryOperand = std::variant<FunctionCall,
+                                  Value,
+                                  std::unique_ptr<LogicalExpr> // Parenthesized expressions: a and b
+                                  >;
+
+/// @brief Represents a unary expression with optional NOT operator
+///
+/// Unary expressions handle logical negation.
+///
+/// Grammar:
+/// ```ebnf
+/// UnaryExpr = [ "not" ] PrimaryExpr ;
+/// ```
+///
+/// Examples:
+/// ```css
+/// @if not platform(windows) { ... }
+/// @if not feature(networking) { ... }
+/// ```
+struct UnaryExpr final : NodeBase
+{
+    bool is_negated{false}; ///< True if prefixed with 'not'
+    UnaryOperand operand;   ///< The operand to potentially negate
 };
 
 /// @brief Represents a comparison expression
 ///
-/// Comparison expressions compare two values or expressions using
-/// relational operators.
+/// Comparison expressions evaluate relational operations between two values.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// ComparisonExpr = UnaryExpr [ ComparisonOp UnaryExpr ] ;
+/// ComparisonOp = "==" | "!=" | "<" | ">" | "<=" | ">=" ;
+/// ```
+///
+/// Examples:
 /// ```css
-/// @if option(BUILD_TESTS) == true { ... }
-/// @if var(--version) >= 2 { ... }
+/// @if option(MAX_THREADS) > 8 { ... }
+/// @if version == 2 { ... }
+/// @if arch(x86_64) { ... }  // Unary expression without comparison
 /// ```
 struct ComparisonExpr final : NodeBase
 {
-    ComparisonOp op;                   ///< Comparison operator
-    std::unique_ptr<Expression> left;  ///< Left-hand side expression
-    std::unique_ptr<Expression> right; ///< Right-hand side expression
+    UnaryExpr left;                       ///< Left-hand side
+    std::optional<ComparisonOperator> op; ///< Comparison operator (if binary)
+    std::optional<UnaryExpr> right;       ///< Right-hand side (if binary)
 };
 
-/// @brief Logical operators for boolean expressions
-enum class LogicalOp : std::uint8_t
-{
-    AND, ///< `and`
-    OR,  ///< `or`
-    NOT, ///< `not`
-};
-
-/// @brief Represents a logical expression
+/// @brief Represents a logical expression (AND/OR of comparisons)
 ///
-/// Logical expressions combine boolean values or expressions using
-/// AND, OR, and NOT operators.
+/// Logical expressions combine comparison expressions with AND/OR operators.
+/// All operators in one expression must be the same (either all AND or all OR).
+/// Mixed precedence requires parentheses.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// LogicalExpr = ComparisonExpr { ( "and" | "or" ) ComparisonExpr } ;
+/// ```
+///
+/// Examples:
 /// ```css
 /// @if platform(windows) and arch(x86_64) { ... }
-/// @if not option(DISABLE_TESTS) { ... }
+/// @if config(debug) or option(FORCE_LOGGING) { ... }
+/// @if a and b and c { ... }
 /// ```
 struct LogicalExpr final : NodeBase
 {
-    LogicalOp op;                      ///< Logical operator
-    std::unique_ptr<Expression> left;  ///< Left-hand side (nullptr for NOT)
-    std::unique_ptr<Expression> right; ///< Right-hand side expression
+    LogicalOperator op;                   ///< Operator (all same: AND or OR)
+    std::vector<ComparisonExpr> operands; ///< Comparison operands (2+)
 };
 
-//===---------------------------------------------------------------------===//
-// Properties
-//===---------------------------------------------------------------------===//
+/// @brief Top-level condition type used in if statements
+///
+/// A condition can be a logical expression, comparison, or simple unary expression.
+///
+/// Grammar:
+/// ```ebnf
+/// Condition = LogicalExpr ;
+/// LogicalExpr = ComparisonExpr { ( "and" | "or" ) ComparisonExpr } ;
+/// ```
+using Condition = std::variant<LogicalExpr,    ///< a and b, x or y or z
+                               ComparisonExpr, ///< a > 5, platform(windows)
+                               UnaryExpr       ///< not feature(x), platform(linux)
+                               >;
 
-/// @brief Represents a property assignment
+/// @brief Iterable expression for for-loops
 ///
-/// Properties are key-value pairs that configure build settings.
-/// Values can be single or multiple items.
+/// Grammar:
+/// ```ebnf
+/// Iterable = List | Range | FunctionCall ;
+/// ```
 ///
-/// Example:
+/// Examples:
 /// ```css
-/// type: executable;
-/// sources: "main.cpp", "utils.cpp";
-/// cxx_standard: 20;
+/// @for x in [a, b, c] { ... }       // List
+/// @for i in 0..10 { ... }           // Range
+/// @for file in glob("*.cpp") { ... } // FunctionCall
+/// ```
+using Iterable = std::variant<List,        ///< Explicit list of values
+                              Range,       ///< Numeric range
+                              FunctionCall ///< Function returning iterable (e.g., glob)
+                              >;
+
+//===----------------------------------------------------------------------===//
+// Properties
+//===----------------------------------------------------------------------===//
+
+/// @brief Represents a property assignment (key-value pair)
+///
+/// Properties configure build settings. They can have single or multiple values.
+/// Semantic analysis validates whether multiple values are allowed and if
+/// the value types are correct for each property.
+///
+/// Grammar:
+/// ```ebnf
+/// PropertyAssignment = Identifier ":" ValueList ";" ;
+/// ValueList = Value { "," Value } ;
+/// ```
+///
+/// Examples:
+/// ```css
+/// type: executable;                          // Single value
+/// sources: "main.cpp", "utils.cpp";          // Multiple values
+/// cxx_standard: 20;                          // Integer value
+/// warnings: "all", "extra", "pedantic";      // Multiple string values
 /// ```
 struct Property final : NodeBase
 {
-    std::string key;           ///< Property key (e.g., "type", "sources")
-    std::vector<Value> values; ///< Property values (can be multiple)
+    std::string key;           ///< Property name (type, sources, defines, etc.)
+    std::vector<Value> values; ///< Property values (one or more)
 };
 
-//===---------------------------------------------------------------------===//
-// Top-Level Declarations
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Dependencies
+//===----------------------------------------------------------------------===//
 
-/// @brief Top-level statement variant
+/// @brief Dependency value type
 ///
-/// Represents any statement that can appear at file scope or within blocks.
-/// This includes declarations, control flow, and properties.
-using Statement = std::variant<
-  // Top-level declarations
-  ProjectDecl,
-  WorkspaceDecl,
-  TargetDecl,
-  DependenciesDecl,
-  OptionsDecl,
-  MixinDecl,
-  ProfileDecl,
-  InstallDecl,
-  PackageDecl,
-  ScriptsDecl,
+/// Dependencies can reference version strings, system packages,
+/// git repositories, or local paths.
+///
+/// Grammar:
+/// ```ebnf
+/// DependencyValue = String | Identifier | FunctionCall ;
+/// ```
+using DependencyValue = std::variant<std::string, ///< Version string: "1.0.0", "^2.3.4"
+                                     FunctionCall ///< git(...), path(...), system
+                                     >;
 
-  // Visibility blocks (only in target bodies)
-  VisibilityBlock,
+/// @brief Represents a single dependency specification
+///
+/// Dependencies declare external libraries or packages required by the project.
+/// They can be optional and include additional configuration options.
+///
+/// Grammar:
+/// ```ebnf
+/// DependencySpec = Identifier [ "?" ] ":" DependencyValue [ DependencyOptions ] ";" ;
+/// DependencyOptions = "{" { PropertyAssignment } "}" ;
+/// ```
+///
+/// Examples:
+/// ```css
+/// fmt: "10.2.1";    // Simple version
+/// opengl?: system; // Optional system dependency
+/// imgui: git("https://github.com/...") {
+///     tag: "v1.90";
+/// };
+/// ```
+struct DependencySpec final : NodeBase
+{
+    bool is_optional{false};       ///< True if suffixed with `?`
+    std::string name;              ///< Dependency name (package identifier)
+    DependencyValue value;         ///< Version, git URL, path, or system
+    std::vector<Property> options; ///< Additional options (tag, branch, etc.)
+};
 
-  // Control flow
-  IfStmt,
-  ForStmt,
-  LoopControlStmt,
-  DiagnosticStmt,
-  ImportStmt,
+//===----------------------------------------------------------------------===//
+// Options
+//===----------------------------------------------------------------------===//
 
-  // Properties (can appear in blocks)
-  Property>;
+/// @brief Represents a build option specification
+///
+/// Options are user-configurable build settings that can be overridden
+/// via command line or configuration files. They can include constraints
+/// like allowed values, min/max ranges, etc.
+///
+/// Grammar:
+/// ```ebnf
+/// OptionSpec = Identifier ":" Value [ OptionConstraints ] ";" ;
+/// OptionConstraints = "{" { PropertyAssignment } "}" ;
+/// ```
+///
+/// Examples:
+/// ```css
+/// BUILD_TESTS: true;
+/// MAX_THREADS: 8 {
+///     min: 1;
+///     max: 128;
+/// };
+/// LOG_LEVEL: "info" {
+///     choices: "debug", "info", "warning", "error";
+/// };
+/// ```
+struct OptionSpec final : NodeBase
+{
+    std::string name;                  ///< Option name
+    Value default_value;               ///< Default value
+    std::vector<Property> constraints; ///< Constraints (min, max, choices, etc.)
+};
+
+//===----------------------------------------------------------------------===//
+// Top-Level Declarations
+//===----------------------------------------------------------------------===//
+
+// Forward declare Statement for recursive definition
+using Statement = std::variant<ProjectDecl,
+                               WorkspaceDecl,
+                               TargetDecl,
+                               DependenciesDecl,
+                               OptionsDecl,
+                               MixinDecl,
+                               ProfileDecl,
+                               InstallDecl,
+                               PackageDecl,
+                               ScriptsDecl,
+                               VisibilityBlock,
+                               IfStmt,
+                               ForStmt,
+                               LoopControlStmt,
+                               DiagnosticStmt,
+                               ImportStmt,
+                               Property>;
 
 /// @brief Represents a project declaration
 ///
-/// Defines the project name and global project settings.
+/// The project declaration defines the project name and global settings.
+/// There should be exactly one project per build file.
+///
+/// Grammar:
+/// ```ebnf
+/// ProjectDecl = "project" Identifier "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
-/// project myproject {
+/// project myapp {
 ///     version: "1.0.0";
-///     language: "C++";
+///     cpp: 23;
+///     license: "MIT";
 /// }
 /// ```
 struct ProjectDecl final : NodeBase
 {
     std::string name;                 ///< Project name
-    std::vector<Property> properties; ///< Project properties
+    std::vector<Property> properties; ///< Project configuration properties
 };
 
 /// @brief Represents a workspace declaration
 ///
-/// Defines workspace-wide settings and configurations.
+/// The workspace declaration configures workspace-wide settings like
+/// build directory, output paths, and global compiler flags.
+///
+/// Grammar:
+/// ```ebnf
+/// WorkspaceDecl = "workspace" "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
 /// workspace {
-///     build_dir: "build";
+///     build-dir: "build";
+///     output-dir: "dist";
+///     warnings-as-errors: true;
 /// }
 /// ```
 struct WorkspaceDecl final : NodeBase
 {
-    std::vector<Property> properties; ///< Workspace properties
+    std::vector<Property> properties; ///< Workspace configuration
 };
 
 /// @brief Represents a target declaration
 ///
-/// Defines a build target (executable, library, ...) with its configuration.
+/// Targets are the primary build outputs (executables, libraries, tests, etc.).
+/// They can compose mixins for shared configuration and contain properties,
+/// visibility blocks, and conditional/loop statements.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// TargetDecl = "target" Identifier [ "with" MixinList ] "{" { TargetContent } "}" ;
+/// MixinList = Identifier { "," Identifier } ;
+/// TargetContent = PropertyAssignment | VisibilityBlock | Statement ;
+/// ```
+///
+/// Examples:
 /// ```css
-/// target mylib {
-///     type: static_library;
+/// target myapp {
+///     type: executable;
 ///     sources: glob("src/*.cpp");
+/// }
+///
+/// target mylib with common-flags, strict-warnings {
+///     type: static-library;
+///     public {
+///         include-dirs: "include";
+///     }
+///     private {
+///         sources: glob("src/*.cpp");
+///     }
 /// }
 /// ```
 struct TargetDecl final : NodeBase
 {
     std::string name;                ///< Target name
-    std::vector<std::string> mixins; ///< Mixins to apply (via 'with' keyword)
-    std::vector<Statement> body;     ///< Target body (properties, visibility blocks, ...)
+    std::vector<std::string> mixins; ///< Mixins to apply (via `with` keyword)
+    std::vector<Statement> body;     ///< Target body (properties, blocks, control flow)
 };
 
 /// @brief Represents a dependencies declaration
 ///
-/// Lists external dependencies required by the project.
+/// Declares all external dependencies required by the project.
+///
+/// Grammar:
+/// ```ebnf
+/// DependenciesDecl = "dependencies" "{" { DependencySpec } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
 /// dependencies {
-///     fmt: "10.0.0";
+///     fmt: "10.2.1";
 ///     spdlog: "1.12.0";
+///     opengl?: system;
+///     imgui: git("https://github.com/ocornut/imgui") {
+///         tag: "v1.90";
+///     };
 /// }
 /// ```
 struct DependenciesDecl final : NodeBase
 {
-    std::vector<Property> dependencies; ///< List of dependencies
+    std::vector<DependencySpec> dependencies; ///< List of dependency specifications
 };
 
 /// @brief Represents an options declaration
 ///
-/// Defines build options that can be toggled or configured.
+/// Defines user-configurable build options with default values and constraints.
+///
+/// Grammar:
+/// ```ebnf
+/// OptionsDecl = "options" "{" { OptionSpec } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
 /// options {
 ///     BUILD_TESTS: true;
-///     ENABLE_LOGGING: false;
+///     MAX_THREADS: 8 {
+///         min: 1;
+///         max: 128;
+///     };
+///     LOG_LEVEL: "info" {
+///         choices: "debug", "info", "warning", "error";
+///     };
 /// }
 /// ```
 struct OptionsDecl final : NodeBase
 {
-    std::vector<Property> options; ///< Build options
+    std::vector<OptionSpec> options; ///< Build option specifications
 };
 
 /// @brief Represents a mixin declaration
 ///
-/// Defines reusable property sets that can be applied to targets.
+/// Mixins are reusable property sets that can be composed into targets
+/// and profiles. They help avoid repetition and enforce consistency.
+///
+/// Grammar:
+/// ```ebnf
+/// MixinDecl = "mixin" Identifier "{" { PropertyAssignment | VisibilityBlock } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
-/// mixin common_flags {
-///     warnings: "all";
-///     optimization: "O2";
+/// mixin strict-warnings {
+///     warnings: "all", "extra", "pedantic";
+///     warnings-as-errors: true;
+/// }
+///
+/// mixin embedded-target {
+///     optimization: size;
+///     public {
+///         defines: EMBEDDED_TARGET;
+///     }
 /// }
 /// ```
 struct MixinDecl final : NodeBase
 {
-    std::string name;                 ///< Mixin name
-    std::vector<Property> properties; ///< Mixin properties
-    std::vector<VisibilityBlock>
-      visibility_blocks;              ///< Visibility blocks (public, private, interface)
+    std::string name;            ///< Mixin name
+    std::vector<Statement> body; ///< Mixin body (properties, visibility blocks)
 };
 
 /// @brief Represents a profile declaration
 ///
-/// Defines a named build configuration profile with specific settings.
-/// Profiles can compose mixins for shared toolchain configuration.
+/// Profiles define build configurations (debug, release, etc.) with
+/// specific compiler and linker settings. They can compose mixins.
+///
+/// Grammar:
+/// ```ebnf
+/// ProfileDecl = "profile" Identifier [ "with" MixinList ] "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
-/// profile debug with gcc-toolchain {
+/// profile debug {
 ///     optimize: none;
 ///     debug-info: full;
+///     defines: DEBUG_MODE;
+/// }
+///
+/// profile release with lto-flags {
+///     optimize: aggressive;
+///     debug-info: none;
+///     defines: NDEBUG;
 /// }
 /// ```
 struct ProfileDecl final : NodeBase
 {
-    std::string name;                 ///< Profile name (e.g., "debug", "release")
-    std::vector<std::string> mixins;  ///< Mixins to apply (via 'with' keyword)
-    std::vector<Property> properties; ///< Profile properties
+    std::string name;                 ///< Profile name (debug, release, etc.)
+    std::vector<std::string> mixins;  ///< Mixins to apply
+    std::vector<Property> properties; ///< Profile configuration
 };
 
 /// @brief Represents an install declaration
 ///
-/// Specifies installation rules and destinations.
+/// Specifies installation rules, destinations, and file permissions.
+/// Controls how build artifacts are deployed to target systems.
+///
+/// Grammar:
+/// ```ebnf
+/// InstallDecl = "install" "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
 /// install {
 ///     destination: "/usr/local/bin";
 ///     permissions: "755";
+///     targets: myapp, mylib;
 /// }
 /// ```
 struct InstallDecl final : NodeBase
 {
-    std::vector<Property> properties; ///< Installation properties
+    std::vector<Property> properties; ///< Installation configuration
 };
 
 /// @brief Represents a package declaration
 ///
-/// Defines packaging configuration for distribution.
+/// Defines packaging configuration for distribution formats like
+/// deb, rpm, msi, dmg, etc.
+///
+/// Grammar:
+/// ```ebnf
+/// PackageDecl = "package" "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
 /// package {
-///     format: "deb";
+///     format: "deb", "rpm";
 ///     maintainer: "user@example.com";
+///     description: "My awesome application";
+///     license: "MIT";
 /// }
 /// ```
 struct PackageDecl final : NodeBase
 {
-    std::vector<Property> properties; ///< Package properties
+    std::vector<Property> properties; ///< Package configuration
 };
 
 /// @brief Represents a scripts declaration
 ///
-/// Defines custom build scripts and hooks.
+/// Defines custom build scripts and hooks that run at various
+/// stages of the build process (pre-build, post-build, etc.).
+///
+/// Grammar:
+/// ```ebnf
+/// ScriptsDecl = "scripts" "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
@@ -366,35 +684,47 @@ struct PackageDecl final : NodeBase
 /// ```
 struct ScriptsDecl final : NodeBase
 {
-    std::vector<Property> scripts; ///< Build scripts
+    std::vector<Property> scripts; ///< Build script hooks
 };
 
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 // Visibility Blocks
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
 /// @brief Visibility modifier for target properties
 ///
-/// Controls how properties are propagated to dependent targets.
+/// Controls how properties propagate to dependent targets, following
+/// CMake's model of transitive dependencies.
 enum class Visibility : std::uint8_t
 {
-    PUBLIC,    ///< Visible to this target and all dependents
+    PUBLIC,    ///< Visible to this target and all consumers
     PRIVATE,   ///< Visible only to this target
-    INTERFACE, ///< Visible only to dependents
+    INTERFACE, ///< Visible only to consumers (not this target)
 };
 
-/// @brief Represents a visibility block within a target
+/// @brief Represents a visibility block within a target or mixin
 ///
-/// Groups properties with a specific visibility modifier.
+/// Visibility blocks group properties with a specific propagation level.
+/// This is essential for proper dependency management in modular builds.
+///
+/// Grammar:
+/// ```ebnf
+/// VisibilityBlock = ( "public" | "private" | "interface" ) "{" { PropertyAssignment } "}" ;
+/// ```
 ///
 /// Example:
 /// ```css
 /// target mylib {
 ///     public {
-///         include_dirs: "include";
+///         include-dirs: "include";
+///         defines: USE_MYLIB;
 ///     }
 ///     private {
 ///         sources: glob("src/*.cpp");
+///         defines: MYLIB_INTERNAL;
+///     }
+///     interface {
+///         link-libraries: pthread;
 ///     }
 /// }
 /// ```
@@ -404,118 +734,184 @@ struct VisibilityBlock final : NodeBase
     std::vector<Property> properties; ///< Properties with this visibility
 };
 
-//===---------------------------------------------------------------------===//
-// Control Flow
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Control Flow Statements
+//===----------------------------------------------------------------------===//
 
-/// @brief Represents a conditional statement
+/// @brief Represents a conditional statement (if/else-if/else)
 ///
-/// Allows conditional compilation based on platform, options, or expressions.
+/// Conditionals enable platform-specific and configuration-dependent builds.
+/// The else_branch can contain either more statements (for else block) or
+/// another IfStmt (for else-if chains).
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// ConditionalBlock = IfBlock [ ElseBlock ] ;
+/// IfBlock = "@if" Condition "{" { Statement } "}" ;
+/// ElseBlock = "@else" ( IfBlock | "{" { Statement } "}" ) ;
+/// ```
+///
+/// Examples:
 /// ```css
 /// @if platform(windows) {
 ///     sources: "win32.cpp";
-/// } @else-if platform(linux) {
-///     sources: "linux.cpp";
+/// } @else-if platform(macos) {
+///     sources: "macos.cpp";
 /// } @else {
-///     sources: "generic.cpp";
+///     sources: "linux.cpp";
 /// }
 /// ```
 struct IfStmt final : NodeBase
 {
-    Expression condition;              ///< Condition to evaluate
+    Condition condition;               ///< Condition to evaluate
     std::vector<Statement> then_block; ///< Statements if condition is true
-    std::vector<Statement> else_block; ///< Statements if condition is false (empty if no else)
+    std::vector<Statement> else_block; ///< Statements for else/else-if (may contain another IfStmt)
 };
 
-/// @brief Represents a for loop statement
+/// @brief Represents a for-loop statement
 ///
-/// Iterates over a collection or range.
+/// For-loops iterate over collections, ranges, or file globs, generating
+/// targets or properties dynamically.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// ForLoop = "@for" Identifier "in" Iterable "{" { Statement } "}" ;
+/// Iterable = List | Range | FunctionCall ;
+/// ```
+///
+/// Examples:
 /// ```css
-/// @for file in glob("src/*.cpp") {
-///     sources: file;
+/// @for module in [core, renderer, audio] {
+///     target ${module}-lib {
+///         type: static-library;
+///         sources: "modules/${module}/**/*.cpp";
+///     }
+/// }
+///
+/// @for i in 0..8 {
+///     target worker-${i} {
+///         defines: WORKER_ID=${i};
+///     }
+/// }
+///
+/// @for file in glob("plugins/*.cpp") {
+///     target plugin-${file.stem} {
+///         sources: ${file};
+///     }
 /// }
 /// ```
 struct ForStmt final : NodeBase
 {
     std::string variable;        ///< Loop variable name
-    Expression iterable;         ///< Collection to iterate (list, range, or function call)
+    Iterable iterable;           ///< Collection to iterate over
     std::vector<Statement> body; ///< Loop body statements
 };
 
 /// @brief Loop control operation type
 enum class LoopControl : std::uint8_t
 {
-    BREAK,    ///< Exit loop immediately
-    CONTINUE, ///< Skip to next iteration
+    BREAK,    ///< Exit loop immediately: `@break;`
+    CONTINUE, ///< Skip to next iteration: `@continue;`
 };
 
 /// @brief Represents a loop control statement
 ///
-/// Breaks out of or continues a loop.
+/// Loop control statements alter loop execution flow.
+/// They are only valid inside for-loops.
+///
+/// Grammar:
+/// ```ebnf
+/// LoopControl = ( "@break" | "@continue" ) ";" ;
+/// ```
 ///
 /// Example:
 /// ```css
-/// @for item in items {
-///     @if condition { @break; }
+/// @for file in glob("src/**/*.cpp") {
+///     @if file.contains("deprecated") {
+///         @continue;
+///     }
+///     sources: ${file};
 /// }
 /// ```
-/// @note NOLINTNEXTLINE (suppresses uninitialized member warning)
 struct LoopControlStmt final : NodeBase
 {
-    LoopControl control; ///< Control operation (break or continue)
+    LoopControl control{LoopControl::BREAK}; ///< Break or continue
 };
 
+//===----------------------------------------------------------------------===//
+// Diagnostic and Import Statements
+//===----------------------------------------------------------------------===//
+
 /// @brief Diagnostic message severity level
-enum class DiagnosticLevel : std::uint8_t
+enum DiagnosticLevel : std::uint8_t
 {
-    ERROR,   ///< Stops build
-    WARNING, ///< Continues build
-    INFO,    ///< Informational
+    ERROR,   ///< Error: stops build
+    WARNING, ///< Warning: continues build
+    INFO,    ///< Info: informational message
+    DEBUG,   ///< Debug: verbose debugging message (shown with --verbose)
 };
 
 /// @brief Represents a diagnostic message statement
 ///
-/// Emits errors, warnings, or info messages during build configuration.
+/// Diagnostics emit errors, warnings, or info messages during configuration.
+/// Useful for validation and debugging build logic.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// DiagnosticStmt = ( "@error" | "@warning" | "@info" | "@debug" ) String ";" ;
+/// ```
+///
+/// Examples:
 /// ```css
 /// @if not option(BUILD_TESTS) {
 ///     @warning "Tests are disabled";
 /// }
-/// @error "Unsupported platform";
+///
+/// @if platform(unknown) {
+///     @error "Unsupported platform";
+/// }
+///
+/// @info "Configuring with ${project.name} v${project.version}";
 /// ```
 struct DiagnosticStmt final : NodeBase
 {
-    DiagnosticLevel level; ///< Message severity level
+    DiagnosticLevel level; ///< Message severity
     std::string message;   ///< Diagnostic message text
 };
 
 /// @brief Represents an import statement
 ///
-/// Imports declarations from another Kumi file.
+/// Imports declarations from another Kumi file, enabling modular
+/// build configurations.
 ///
-/// Example:
+/// Grammar:
+/// ```ebnf
+/// ImportDecl = "@import" String ";" ;
+/// ```
+///
+/// Examples:
 /// ```css
-/// @import "common.kumi";
-/// @import "../shared/config.kumi";
+/// @import "common/mixins.kumi";
+/// @import "../shared/options.kumi";
 /// ```
 struct ImportStmt final : NodeBase
 {
     std::string path; ///< Path to file to import (relative or absolute)
 };
 
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 // Root AST
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
-/// @brief Root node representing an entire build file
-struct AST
+/// @brief Root AST node representing a complete Kumi build file
+///
+/// The AST root contains all top-level statements parsed from the file.
+/// A valid Kumi file should have one project declaration and any number
+/// of other declarations and statements.
+struct AST final
 {
-    std::vector<Statement> statements; ///< All top-level statements in the file
+    std::vector<Statement> statements; ///< All top-level statements
+    std::string file_path;             ///< Source file path (for diagnostics)
 };
 
 } // namespace kumi

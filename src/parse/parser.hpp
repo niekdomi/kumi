@@ -54,7 +54,7 @@ class Parser final
 
     /// @brief Advances to next token and returns current token
     /// @return Current token before advancing
-    auto advance() -> const Token &
+    auto advance() -> const Token&
     {
         return tokens_[position_++];
     }
@@ -79,7 +79,7 @@ class Parser final
                     // TODO(domi): Use more generic solution so this can also be applied to missing
                     // braces etc.
                     if (position_ > 0) {
-                        const auto &prev_token = tokens_[position_ - 1];
+                        const auto& prev_token = tokens_[position_ - 1];
                         error_position = prev_token.position + prev_token.value.length();
                     }
                     break;
@@ -119,7 +119,7 @@ class Parser final
     /// @param look_ahead Number of tokens to look ahead (default: 0)
     /// @return Token at position + look_ahead, or EOF token if out of bounds
     [[nodiscard]]
-    auto peek(std::size_t look_ahead = 0) const noexcept -> const Token &
+    auto peek(std::size_t look_ahead = 0) const noexcept -> const Token&
     {
         const auto pos = position_ + look_ahead;
         if (pos >= tokens_.size()) [[unlikely]] {
@@ -145,9 +145,9 @@ class Parser final
                             peek().position);
     }
 
-    //===---------------------------------------------------------------------===//
+    //===------------------------------------------------------------------===//
     // Parsing Helpers
-    //===---------------------------------------------------------------------===//
+    //===------------------------------------------------------------------===//
 
     [[nodiscard]]
     auto parse_apply() -> std::expected<Statement, ParseError>
@@ -164,7 +164,7 @@ class Parser final
         auto profile_expr = TRY(parse_function_call());
 
         // Extract FunctionCall from Expression variant
-        if (const auto *func_call = std::get_if<FunctionCall>(&profile_expr)) [[likely]]
+        if (const auto* func_call = std::get_if<FunctionCall>(&profile_expr)) [[likely]]
         {
             std::vector<Statement> body{};
 
@@ -407,12 +407,12 @@ class Parser final
         while (peek().type != TokenType::RIGHT_BRACE) {
             if (is_visibility(peek().type)) {
                 auto stmt = TRY(parse_visibility_block());
-                if (auto *vis = std::get_if<VisibilityBlock>(&stmt)) {
+                if (auto* vis = std::get_if<VisibilityBlock>(&stmt)) {
                     visibility_blocks.push_back(std::move(*vis));
                 }
             } else {
                 auto stmt = TRY(parse_property());
-                if (auto *prop = std::get_if<Property>(&stmt)) {
+                if (auto* prop = std::get_if<Property>(&stmt)) {
                     properties.push_back(std::move(*prop));
                 }
             }
@@ -505,7 +505,7 @@ class Parser final
         while (peek().type != TokenType::RIGHT_BRACE) {
             auto statement = TRY(parse_property());
 
-            if (const auto *property = std::get_if<Property>(&statement)) [[likely]]
+            if (const auto* property = std::get_if<Property>(&statement)) [[likely]]
             {
                 properties.push_back(*property);
                 continue;
@@ -573,11 +573,11 @@ class Parser final
 
                 // Parse list item value
                 auto item = TRY(parse_value());
-                if (auto *str = std::get_if<std::string>(&item)) {
+                if (auto* str = std::get_if<std::string>(&item)) {
                     list_str += *str;
-                } else if (auto *num = std::get_if<int>(&item)) {
+                } else if (auto* num = std::get_if<int>(&item)) {
                     list_str += std::to_string(*num);
-                } else if (auto *b = std::get_if<bool>(&item)) {
+                } else if (auto* b = std::get_if<bool>(&item)) {
                     list_str += *b ? "true" : "false";
                 }
             }
@@ -593,7 +593,7 @@ class Parser final
 
             // Convert Expression to Value by serializing function calls
             // Since Value is std::variant<string, int, bool>, we store function calls as strings
-            if (auto *fc = std::get_if<FunctionCall>(&expr)) {
+            if (auto* fc = std::get_if<FunctionCall>(&expr)) {
                 // Serialize function call: "var(--std)" becomes "var(--std)"
                 std::string serialized = fc->name + "(";
                 for (size_t i = 0; i < fc->arguments.size(); ++i) {
@@ -601,11 +601,11 @@ class Parser final
                         serialized += ", ";
                     }
                     // Serialize each argument
-                    if (auto *str = std::get_if<std::string>(&fc->arguments[i])) {
+                    if (auto* str = std::get_if<std::string>(&fc->arguments[i])) {
                         serialized += *str;
-                    } else if (auto *num = std::get_if<int>(&fc->arguments[i])) {
+                    } else if (auto* num = std::get_if<int>(&fc->arguments[i])) {
                         serialized += std::to_string(*num);
-                    } else if (auto *b = std::get_if<bool>(&fc->arguments[i])) {
+                    } else if (auto* b = std::get_if<bool>(&fc->arguments[i])) {
                         serialized += *b ? "true" : "false";
                     }
                 }
@@ -614,7 +614,7 @@ class Parser final
             }
 
             // If it's a Variable expression, serialize it
-            if (auto *var = std::get_if<Variable>(&expr)) {
+            if (auto* var = std::get_if<Variable>(&expr)) {
                 return Value{var->name};
             }
 

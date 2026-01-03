@@ -33,11 +33,11 @@ class TemplateLoader
 
     [[nodiscard]]
     static auto substitute(std::string_view template_content,
-                           const std::map<std::string, std::string> &variables) -> std::string
+                           const std::map<std::string, std::string>& variables) -> std::string
     {
         std::string result(template_content);
 
-        for (const auto &[key, value] : variables) {
+        for (const auto& [key, value] : variables) {
             const std::string placeholder = "{" + key + "}";
             size_t pos = 0;
             while ((pos = result.find(placeholder, pos)) != std::string::npos) {

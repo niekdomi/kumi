@@ -39,10 +39,10 @@ class RawMode
         static_cast<void>(std::fflush(stdout));
     }
 
-    RawMode(const RawMode &) = delete;
-    auto operator=(const RawMode &) -> RawMode & = delete;
-    RawMode(RawMode &&) = delete;
-    auto operator=(RawMode &&) -> RawMode & = delete;
+    RawMode(const RawMode&) = delete;
+    auto operator=(const RawMode&) -> RawMode& = delete;
+    RawMode(RawMode&&) = delete;
+    auto operator=(RawMode&&) -> RawMode& = delete;
 
   private:
     struct termios original_termios_{};

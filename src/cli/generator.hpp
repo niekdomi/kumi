@@ -25,7 +25,7 @@ class ProjectGenerator
 
     explicit ProjectGenerator(Config config) : config_(std::move(config)) {}
 
-    auto generate(const fs::path &base_path = fs::current_path())
+    auto generate(const fs::path& base_path = fs::current_path())
       -> std::expected<void, std::string>
     {
         project_path_ = base_path / config_.name;
@@ -61,7 +61,7 @@ class ProjectGenerator
                 initialize_git();
             }
         }
-        catch (const std::exception &e) {
+        catch (const std::exception& e) {
             return std::unexpected(std::format("Failed to generate project: {}", e.what()));
         }
 

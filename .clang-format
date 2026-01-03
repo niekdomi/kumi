@@ -12,7 +12,7 @@ AlignConsecutiveShortCaseStatements:
 AlignConsecutiveTableGenBreakingDAGArgColons: None
 AlignConsecutiveTableGenCondOperatorColons: None
 AlignConsecutiveTableGenDefinitionColons: None
-AlignEscapedNewlines: LeftWithLastLine
+AlignEscapedNewlines: Right
 AlignOperands: AlignAfterOperator
 AlignTrailingComments:
   Kind: Always
@@ -115,9 +115,9 @@ NamespaceIndentation: None
 #   Suffix: Upper
 PPIndentWidth: -1
 PackConstructorInitializers: CurrentLine
-PointerAlignment: Right
+PointerAlignment: Left
 QualifierAlignment: Left
-ReferenceAlignment: Right
+ReferenceAlignment: Left
 ReflowComments: IndentOnly
 RemoveEmptyLinesInUnwrappedLines: true
 RemoveParentheses: MultipleParentheses

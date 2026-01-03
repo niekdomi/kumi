@@ -29,7 +29,7 @@ auto get_peak_memory_mb() -> double
 }
 } // namespace
 
-auto main(int argc, char **argv) -> int
+auto main(int argc, char** argv) -> int
 {
     if (argc < 2) {
         std::cerr << "Usage: kumi <file.kumi>\n";
@@ -64,7 +64,7 @@ auto main(int argc, char **argv) -> int
       std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
 
     // Display file info
-    const auto &tokens = *tokens_result;
+    const auto& tokens = *tokens_result;
     double size_mb = static_cast<double>(source.size()) / 1000000.0;
 
     std::println("╭─────────────────────────────────────────╮");

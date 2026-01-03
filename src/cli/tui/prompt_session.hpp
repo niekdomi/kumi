@@ -24,7 +24,7 @@ class PromptSession
 
     void add_validated_text_input(std::string_view key,
                                   std::string_view prompt,
-                                  const std::string &placeholder = "")
+                                  const std::string& placeholder = "")
     {
         prompts_.emplace_back([prompt, placeholder, key, this]() -> void {
             while (true) {
@@ -80,7 +80,7 @@ class PromptSession
 
     void run()
     {
-        for (auto &prompt : prompts_) {
+        for (auto& prompt : prompts_) {
             prompt();
         }
     }
@@ -96,7 +96,7 @@ class PromptSession
     }
 
     [[nodiscard]]
-    auto get_all() const -> const std::map<std::string, std::string> &
+    auto get_all() const -> const std::map<std::string, std::string>&
     {
         return answers_;
     }

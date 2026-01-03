@@ -45,7 +45,7 @@ class DiagnosticPrinter final
     /// @brief Prints a beautiful error message
     /// @param error The parse error to display
     /// @param hint Optional hint or suggestion
-    auto print_error(const ParseError &error, std::string_view hint = "") const -> void
+    auto print_error(const ParseError& error, std::string_view hint = "") const -> void
     {
         std::println(std::cerr,
                      "{}{}error: {}{}{}",
@@ -108,7 +108,7 @@ class DiagnosticPrinter final
         }
 
         const auto line_idx = line - 1;
-        const auto &line_text = lines_[line_idx];
+        const auto& line_text = lines_[line_idx];
 
         // Calculate gutter width (for line numbers)
         const auto gutter_width = std::to_string(line).length();

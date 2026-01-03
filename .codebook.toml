@@ -3,6 +3,8 @@ words = [
     "cppcoreguidelines",
     "cxx",
     "domi",
+    "evaluable",
+    "globbing",
     "kumi",
     "myapp",
     "mylib",

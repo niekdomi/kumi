@@ -41,14 +41,14 @@ class PackageOperationTracker
     void show_summary()
     {
         size_t max_name_len = 0;
-        for (const auto &pkg : packages_) {
+        for (const auto& pkg : packages_) {
             max_name_len = std::max(max_name_len, pkg.name.length());
         }
 
         std::vector<Package> root_packages;
         std::vector<Package> transitive_deps;
 
-        for (const auto &pkg : packages_) {
+        for (const auto& pkg : packages_) {
             if (pkg.is_root) {
                 root_packages.push_back(pkg);
             } else {
@@ -57,7 +57,7 @@ class PackageOperationTracker
         }
 
         for (size_t i = 0; i < root_packages.size(); ++i) {
-            const auto &pkg = root_packages[i];
+            const auto& pkg = root_packages[i];
             const bool is_last_root = (i == root_packages.size() - 1);
 
             if (color_enabled_) {
@@ -82,7 +82,7 @@ class PackageOperationTracker
 
             if (!transitive_deps.empty() && is_last_root) {
                 for (size_t j = 0; j < transitive_deps.size(); ++j) {
-                    const auto &dep = transitive_deps[j];
+                    const auto& dep = transitive_deps[j];
                     const bool is_last = (j == transitive_deps.size() - 1);
                     const auto tree_char = is_last ? "└─" : "├─";
 

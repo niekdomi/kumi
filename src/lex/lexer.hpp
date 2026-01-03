@@ -144,9 +144,9 @@ class Lexer final
         }
     }
 
-    //===---------------------------------------------------------------------===//
+    //===------------------------------------------------------------------===//
     // Lexing Helpers
-    //===---------------------------------------------------------------------===//
+    //===------------------------------------------------------------------===//
 
     [[nodiscard]]
     auto lex_at() -> std::expected<Token, ParseError>
@@ -172,7 +172,7 @@ class Lexer final
           std::pair{"@debug",    TokenType::AT_DEBUG   },
         };
 
-        for (const auto &[keyword, type] : KEYWORDS) {
+        for (const auto& [keyword, type] : KEYWORDS) {
             if (match_string(keyword)) {
                 return Token{
                   .value = keyword,
@@ -185,7 +185,8 @@ class Lexer final
         return error<Token>(
           std::format("unexpected character after '@': '{}'", peek()),
           position_,
-          "expected one of: if, else-if, else, for, break, " "info, " "debug," " " "im" "p" "or" "t" ", " "co" "nt" "in" "ue" ", " "er" "ro" "r," " w" "ar" "ni" "n" "g");
+          "expected one of: if, else-if, else, for, break, continue, import, " "error, warning, "
+                                                                               "info, debug");
     }
 
     [[nodiscard]]
@@ -448,7 +449,7 @@ class Lexer final
           std::pair{"false",        TokenType::FALSE       },
         };
 
-        for (const auto &[keyword, type] : KEYWORDS) {
+        for (const auto& [keyword, type] : KEYWORDS) {
             if (text == keyword) {
                 return Token{
                   .value = keyword,

@@ -1,5 +1,5 @@
 /// @file lexer_test.cpp
-/// @brief Comprehensive unit tests for the Kumi lexer
+/// @brief Comprehensive unit tests for the lexer
 ///
 /// Tests are organized by token categories matching token.hpp:
 /// - Top-Level Declarations
@@ -247,8 +247,15 @@ TEST_CASE("Lexer: Control Flow", "[lexer][control-flow]")
 
     SECTION("invalid @ directives")
     {
-        const auto input = GENERATE(as<std::string_view>{}, "@", "@invalid", "@123", "@-if",
-                                    "@_else", "@IF", "@ELSE", "@For");
+        const auto input = GENERATE(as<std::string_view>{},
+                                    "@",
+                                    "@invalid",
+                                    "@123",
+                                    "@-if",
+                                    "@_else",
+                                    "@IF",
+                                    "@ELSE",
+                                    "@For");
         CAPTURE(input);
 
         const auto error = lex_error(input);
@@ -512,9 +519,20 @@ TEST_CASE("Lexer: Identifiers", "[lexer][literals][identifiers]")
 {
     SECTION("valid identifiers")
     {
-        const auto input = GENERATE(as<std::string_view>{}, "myvar", "my_var", "my-var", "var123",
-                                    "_private", "camelCase", "PascalCase", "snake_case",
-                                    "SCREAMING_CASE", "a", "a1", "a-b-c", "a_b_c");
+        const auto input = GENERATE(as<std::string_view>{},
+                                    "myvar",
+                                    "my_var",
+                                    "my-var",
+                                    "var123",
+                                    "_private",
+                                    "camelCase",
+                                    "PascalCase",
+                                    "snake_case",
+                                    "SCREAMING_CASE",
+                                    "a",
+                                    "a1",
+                                    "a-b-c",
+                                    "a_b_c");
         CAPTURE(input);
 
         const auto token = lex_single(input);
@@ -595,9 +613,14 @@ TEST_CASE("Lexer: Strings", "[lexer][literals][strings]")
 
     SECTION("invalid escape sequences")
     {
-        const auto invalid_escape =
-          GENERATE(as<std::string_view>{}, R"("invalid\x")", R"("invalid\a")", R"("invalid\b")",
-                   R"("invalid\f")", R"("invalid\v")", R"("invalid\0")", R"("invalid\1")");
+        const auto invalid_escape = GENERATE(as<std::string_view>{},
+                                             R"("invalid\x")",
+                                             R"("invalid\a")",
+                                             R"("invalid\b")",
+                                             R"("invalid\f")",
+                                             R"("invalid\v")",
+                                             R"("invalid\0")",
+                                             R"("invalid\1")");
         CAPTURE(invalid_escape);
 
         const auto error = lex_error(invalid_escape);

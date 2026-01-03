@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <string_view>
 
@@ -40,7 +39,7 @@ enum class TokenType : std::uint8_t
     INSTALL,      ///< `install { }`             - Installation configuration
     PACKAGE,      ///< `package { }`             - Packaging and publishing
     SCRIPTS,      ///< `scripts { }`             - Custom build hooks
-    WITH,         ///< `with`             - Mixin composition (e.g., `target myapp with strict { }`)
+    WITH,         ///< `with`                    - Mixin (e.g., `target myapp with strict { }`)
 
     //===-----------------------------------------------------------------===//
     // Visibility Modifiers

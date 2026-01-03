@@ -50,10 +50,10 @@ class Spinner
         stop();
     }
 
-    Spinner(const Spinner &) = delete;
-    auto operator=(const Spinner &) -> Spinner & = delete;
-    Spinner(Spinner &&) = delete;
-    auto operator=(Spinner &&) -> Spinner & = delete;
+    Spinner(const Spinner&) = delete;
+    auto operator=(const Spinner&) -> Spinner& = delete;
+    Spinner(Spinner&&) = delete;
+    auto operator=(Spinner&&) -> Spinner& = delete;
 
     void start()
     {
