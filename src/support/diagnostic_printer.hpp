@@ -108,10 +108,14 @@ class DiagnosticPrinter final
     /// @param column Column number
     auto print_location(std::size_t line, std::size_t column) const -> void
     {
-        // `--> build.kumi:5:3`
+        const auto gutter_width = std::format("{}", line).length();
+        const auto gutter_space = std::string(gutter_width, ' ');
+
+        // `  --> build.kumi:5:3` (aligned with gutter)
         std::println(std::cerr,
-                     "{}  --> {}{}:{}:{}{}",
+                     "{}{} --> {}{}:{}:{}{}",
                      color::BLUE,
+                     gutter_space,
                      color::BOLD,
                      filename_,
                      line,

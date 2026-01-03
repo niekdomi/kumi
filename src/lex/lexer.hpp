@@ -181,10 +181,7 @@ class Lexer final
             }
         }
 
-        return error<Token>(
-          std::format("unexpected character after '@': '{}'", peek()),
-          position_,
-          "expected one of: if, else-if, else, for, break, continue, import, error, warning, info, debug");
+        return error<Token>("unexpected character after '@'", position_);
     }
 
     [[nodiscard]]
