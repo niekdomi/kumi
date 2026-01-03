@@ -18,7 +18,6 @@
 #include <utility>
 
 namespace kumi {
-// clang-format off
 
 /// @brief Formats and displays diagnostic messages with source context
 ///
@@ -41,14 +40,22 @@ class DiagnosticPrinter final
     explicit constexpr DiagnosticPrinter(std::string_view source,
                                          std::string_view filename) noexcept
         : source_(source),
-          filename_(filename){}
+          filename_(filename)
+    {}
 
     /// @brief Prints a formatted error diagnostic to stderr
     /// @param error Parse error with position and message
     auto print_error(const ParseError& error) const -> void
     {
         // `error: unexpected token '}'`
-        std::println(std::cerr, "{}{}error:{}{} {}", color::BOLD, color::RED, color::RESET, color::BOLD, error.message, color::RESET);
+        std::println(std::cerr,
+                     "{}{}error:{}{} {}",
+                     color::BOLD,
+                     color::RED,
+                     color::RESET,
+                     color::BOLD,
+                     error.message,
+                     color::RESET);
 
         const auto [line, column] = position_to_coordinates(error.position);
         print_location(line, column);
@@ -83,13 +90,15 @@ class DiagnosticPrinter final
     /// @param offset Byte position in source
     /// @return 1-indexed (line, column) pair
     [[nodiscard]]
-    constexpr auto position_to_coordinates(std::size_t offset) const noexcept -> std::pair<std::size_t, std::size_t>
+    constexpr auto position_to_coordinates(std::size_t offset) const noexcept
+      -> std::pair<std::size_t, std::size_t>
     {
         const auto prefix = source_.substr(0, std::min(offset, source_.size()));
         const auto line = std::ranges::count(prefix, '\n') + 1;
 
         const auto line_start = prefix.rfind('\n');
-        const auto column = (line_start == std::string_view::npos) ? offset + 1 : offset - line_start;
+        const auto column =
+          (line_start == std::string_view::npos) ? offset + 1 : offset - line_start;
 
         return {line, column};
     }
@@ -100,7 +109,14 @@ class DiagnosticPrinter final
     auto print_location(std::size_t line, std::size_t column) const -> void
     {
         // `--> build.kumi:5:3`
-        std::println(std::cerr, "{}  --> {}{}:{}:{}{}", color::BLUE, color::BOLD, filename_, line, column, color::RESET);
+        std::println(std::cerr,
+                     "{}  --> {}{}:{}:{}{}",
+                     color::BLUE,
+                     color::BOLD,
+                     filename_,
+                     line,
+                     column,
+                     color::RESET);
     }
 
     /// @brief Prints source snippet with error indicator
@@ -124,19 +140,32 @@ class DiagnosticPrinter final
         std::println(std::cerr, "{}{}│{}", color::BLUE, gutter_space, color::RESET);
 
         // `5 │ target myapp {`
-        std::println(std::cerr, "{} {:>{}} │{} {}", color::BLUE, line, gutter_width, color::RESET, line_text);
+        std::println(
+          std::cerr, "{} {:>{}} │{} {}", color::BLUE, line, gutter_width, color::RESET, line_text);
 
         // `   │              ^ expected property or closing brace`
         std::print(std::cerr, "{}{}│{} ", color::BLUE, gutter_space, color::RESET);
         if (column > 1) {
             std::print(std::cerr, "{}", std::string(column - 1, ' '));
         }
-        std::println(std::cerr, "{}{}^{}{}{}", color::BOLD, color::RED, label.empty() ? "" : " ", label, color::RESET);
+        std::println(std::cerr,
+                     "{}{}^{}{}{}",
+                     color::BOLD,
+                     color::RED,
+                     label.empty() ? "" : " ",
+                     label,
+                     color::RESET);
 
         // `   = help: valid properties include 'sources', 'defines', etc.`
         if (!help.empty()) {
             std::println(std::cerr, "{}{}│{}", color::BLUE, gutter_space, color::RESET);
-            std::println(std::cerr, "{}{}= {}help:{} {}", color::BLUE, gutter_space, color::BOLD, color::RESET, help);
+            std::println(std::cerr,
+                         "{}{}= {}help:{} {}",
+                         color::BLUE,
+                         gutter_space,
+                         color::BOLD,
+                         color::RESET,
+                         help);
         }
     }
 };

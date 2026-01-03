@@ -1,8 +1,8 @@
 /// @file terminal_state.hpp
 /// @brief Terminal capability detection and state management
 ///
-/// Provides utilities for detecting terminal capabilities (TTY, color support)
-/// to enable graceful degradation in different environments.
+/// Provides thread-safe utilities for detecting terminal capabilities
+/// (TTY, color support) to enable graceful degradation in different environments.
 
 #pragma once
 
@@ -20,27 +20,40 @@ inline auto detect_tty() noexcept -> bool
     return ::isatty(STDOUT_FILENO) != 0;
 }
 
-/// @brief Detects if color output should be enabled
+/// @brief Detects if color output should be enabled (thread-safe, cached)
 /// @return true if colors should be used, false otherwise
 ///
 /// Colors are disabled if:
 /// - Not connected to a TTY
 /// - NO_COLOR environment variable is set
+///
+/// The result is cached on first call for thread-safe access.
 [[nodiscard]]
 inline auto detect_color_enabled() noexcept -> bool
 {
-    return detect_tty() && (std::getenv("NO_COLOR") == nullptr);
+    static const bool cached = []() noexcept -> bool {
+        if (!detect_tty()) {
+            return false;
+        }
+        // NOTE: Called once during initialization before any threads are spawned
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
+        return std::getenv("NO_COLOR") == nullptr;
+    }();
+    return cached;
 }
 
 /// @brief Terminal capability state
 ///
 /// Encapsulates terminal capabilities for reuse across widgets.
-/// Typically constructed once and passed to widgets.
+/// Construct once at program startup and pass to widgets.
+///
+/// Example:
+/// ```cpp
+/// TerminalState term_state; // Detect capabilities
+/// Spinner spinner{"Loading", term_state};
+/// ```
 struct TerminalState final
 {
-    bool is_tty{detect_tty()};
-    bool color_enabled{detect_color_enabled()};
-
     /// @brief Constructs terminal state with automatic detection
     TerminalState() noexcept = default;
 
@@ -49,9 +62,20 @@ struct TerminalState final
     /// @param color Whether color output is enabled
     constexpr TerminalState(bool tty, bool color) noexcept : is_tty(tty), color_enabled(color) {}
 
+    bool is_tty{detect_tty()};
+    bool color_enabled{detect_color_enabled()};
+
     /// @brief Returns color code if enabled, empty string otherwise
     /// @param color_code ANSI color code to conditionally apply
     /// @return The color code if colors are enabled, empty string otherwise
+    ///
+    /// Usage:
+    /// ```cpp
+    /// std::println("{}{}{} Success",
+    ///     term_state.color(color::GREEN),
+    ///     symbol,
+    ///     term_state.color(color::RESET));
+    /// ```
     [[nodiscard]]
     constexpr auto color(std::string_view color_code) const noexcept -> std::string_view
     {

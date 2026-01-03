@@ -5,6 +5,7 @@ words = [
     "domi",
     "ebnf",
     "evaluable",
+    "getenv",
     "globbing",
     "imgui",
     "kumi",
@@ -22,4 +23,6 @@ words = [
     "pthread",
     "spdlog",
     "tparam",
+    "tty",
+    "ℹ",
 ]

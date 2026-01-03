@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <array>
 #include <string_view>
 
 namespace kumi::ui::symbols {
@@ -23,7 +24,8 @@ constexpr std::string_view INFO = "ℹ";
 // Progress & Activity
 //===----------------------------------------------------------------------===//
 
-constexpr std::string_view SPINNER_DOTS[] = {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
+constexpr std::array<std::string_view, 10> SPINNER_DOTS =
+  {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
 
 constexpr std::string_view PROGRESS_FILLED = "━";
 constexpr std::string_view PROGRESS_EMPTY = "─";

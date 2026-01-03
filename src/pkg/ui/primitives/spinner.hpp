@@ -8,12 +8,12 @@
 
 #include "cli/colors.hpp"
 #include "ui/core/ansi.hpp"
-#include "ui/widgets/common/animation.hpp"
 #include "ui/widgets/common/symbols.hpp"
 #include "ui/widgets/common/terminal_state.hpp"
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <print>
 #include <string>
 #include <string_view>
@@ -69,7 +69,7 @@ class Spinner final
         }
 
         is_running_.store(true, std::memory_order_relaxed);
-        timer_.reset();
+        start_time_ = std::chrono::steady_clock::now();
 
         if (!term_state_.is_tty) {
             std::println("{}...", message_);
@@ -148,7 +148,9 @@ class Spinner final
     [[nodiscard]]
     auto elapsed_ms() const noexcept -> long long
     {
-        return timer_.elapsed_ms();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now() - start_time_)
+          .count();
     }
 
     /// @brief Gets elapsed time in seconds
@@ -156,28 +158,34 @@ class Spinner final
     [[nodiscard]]
     auto elapsed_seconds() const noexcept -> double
     {
-        return timer_.elapsed_seconds();
+        return static_cast<double>(elapsed_ms()) / 1000.0;
     }
 
   private:
+    /// @brief Frame duration for animation updates
+    static constexpr auto FRAME_DURATION = std::chrono::milliseconds{80};
+
+    /// @brief Threshold for showing elapsed time
+    static constexpr auto ELAPSED_TIME_THRESHOLD = 2.0; // seconds
+
     /// @brief Animation loop running in background thread
     auto animate() -> void
     {
-        constexpr auto FRAME_COUNT = std::size(kumi::ui::symbols::SPINNER_DOTS);
-        kumi::ui::AnimationController controller{FRAME_COUNT};
+        std::size_t frame_index = 0;
+        constexpr auto FRAME_COUNT = kumi::ui::symbols::SPINNER_DOTS.size();
 
         while (is_running_.load(std::memory_order_relaxed)) {
-            const auto frame = kumi::ui::symbols::SPINNER_DOTS[controller.current_frame()];
+            const auto frame = kumi::ui::symbols::SPINNER_DOTS[frame_index];
             const auto elapsed = elapsed_seconds();
 
             std::print("\r{}", ansi::CLEAR_LINE);
-            std::print("{}{}{}{} {}...",
+            std::print("{}{}{} {}...",
                        term_state_.color(color::CYAN),
                        frame,
                        term_state_.color(color::RESET),
                        message_);
 
-            if (elapsed >= 2.0) {
+            if (elapsed >= ELAPSED_TIME_THRESHOLD) {
                 std::print(" {}{}({:.1f}s){}",
                            term_state_.color(color::DIM),
                            term_state_.color(color::YELLOW),
@@ -187,8 +195,8 @@ class Spinner final
 
             std::fflush(stdout);
 
-            controller.advance();
-            std::this_thread::sleep_for(controller.frame_duration());
+            frame_index = (frame_index + 1) % FRAME_COUNT;
+            std::this_thread::sleep_for(FRAME_DURATION);
         }
     }
 
@@ -200,7 +208,7 @@ class Spinner final
                       std::string_view status_color,
                       std::string_view message) const -> void
     {
-        std::println("{}{}{}{} {}",
+        std::println("{}{}{} {}",
                      term_state_.color(status_color),
                      symbol,
                      term_state_.color(color::RESET),
@@ -209,8 +217,7 @@ class Spinner final
 
     std::string message_;
     kumi::ui::TerminalState term_state_;
-    kumi::ui::ElapsedTimer timer_;
-    kumi::ui::AnimationController animation_controller_{std::size(kumi::ui::symbols::SPINNER_DOTS)};
+    std::chrono::steady_clock::time_point start_time_;
     std::atomic<bool> is_running_{false};
     std::thread animation_thread_;
 };

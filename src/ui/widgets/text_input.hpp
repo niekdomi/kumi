@@ -2,7 +2,10 @@
 /// @brief Text input widget for terminal UI
 ///
 /// Provides an interactive text input field with placeholder support,
-/// keyboard navigation, and word deletion.
+/// keyboard navigation, and word deletion capabilities.
+///
+/// @see Select for single-selection menus
+/// @see MultiSelect for multi-selection menus
 
 #pragma once
 
@@ -23,7 +26,7 @@ namespace kumi::ui {
 /// Displays a prompt and allows the user to enter text with support for:
 /// - Backspace for character deletion
 /// - Ctrl+Backspace for word deletion
-/// - Ctrl+C to exit
+/// - Ctrl+C to exit program
 /// - Enter to submit
 /// - Placeholder text when empty
 ///
@@ -101,19 +104,44 @@ class TextInput final
     }
 
     /// @brief Clears the input value
-    auto clear() -> void
+    auto clear() noexcept -> void
     {
         value_.clear();
         render();
     }
 
+    /// @brief Checks if the input is empty
+    /// @return true if input is empty, false otherwise
+    [[nodiscard]]
+    auto empty() const noexcept -> bool
+    {
+        return value_.empty();
+    }
+
+    /// @brief Gets the placeholder text
+    /// @return Placeholder string
+    [[nodiscard]]
+    auto placeholder() const noexcept -> std::string_view
+    {
+        return placeholder_;
+    }
+
   private:
+    std::string prompt_;
+    std::string placeholder_;
+    std::string value_;
+    TerminalState term_state_;
+
+    //===------------------------------------------------------------------===//
+    // Rendering
+    //===------------------------------------------------------------------===//
+
     /// @brief Renders the current state of the input widget
     auto render() const -> void
     {
         std::print("\r{}", ansi::CLEAR_LINE);
         std::print(
-          "{}{}{}{}: ", term_state_.color(color::BOLD), prompt_, term_state_.color(color::RESET));
+          "{}{}{}: ", term_state_.color(color::BOLD), prompt_, term_state_.color(color::RESET));
 
         if (value_.empty() && !placeholder_.empty()) {
             std::print("{}{}{}",
@@ -124,30 +152,34 @@ class TextInput final
             std::print("{}", value_);
         }
 
-        std::fflush(stdout);
+        static_cast<void>(std::fflush(stdout));
     }
 
+    //===------------------------------------------------------------------===//
+    // Input Processing
+    //===------------------------------------------------------------------===//
+
     /// @brief Deletes the last word from the input
-    auto delete_last_word() -> void
+    ///
+    /// Removes characters from the end until a word boundary is found.
+    /// Whitespace-only input is cleared entirely.
+    auto delete_last_word() noexcept -> void
     {
         if (value_.empty()) {
             return;
         }
 
+        // Find the last non-whitespace character
         const auto pos = value_.find_last_not_of(" \t");
         if (pos == std::string::npos) {
             value_.clear();
             return;
         }
 
+        // Find the start of the last word
         const auto word_start = value_.find_last_of(" \t", pos);
         value_.erase(word_start == std::string::npos ? 0 : word_start + 1);
     }
-
-    std::string prompt_;
-    std::string placeholder_;
-    std::string value_;
-    TerminalState term_state_;
 };
 
 } // namespace kumi::ui
