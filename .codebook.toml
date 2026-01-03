@@ -18,6 +18,7 @@ words = [
     "nolintnextline",
     "nullptr",
     "opengl",
+    "programmatically",
     "pthread",
     "spdlog",
     "tparam",

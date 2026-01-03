@@ -2,7 +2,7 @@
 /// @brief Entry point for the Kumi build tool
 
 #include "lex/lexer.hpp"
-#include "parse/parser.hpp"
+// #include "parse/parser.hpp"
 #include "support/diagnostic_printer.hpp"
 
 #include <chrono>
@@ -90,19 +90,19 @@ auto main(int argc, char** argv) -> int
     std::println("╰─────────────────────────────────────────╯");
 
     // Parse
-    kumi::Parser parser(tokens);
+    // kumi::Parser parser(tokens);
     const auto start_parse = std::chrono::high_resolution_clock::now();
-    auto ast_result = parser.parse();
+    // auto ast_result = parser.parse();
     const auto end_parse = std::chrono::high_resolution_clock::now();
     const auto duration_parse_us =
       std::chrono::duration_cast<std::chrono::microseconds>(end_parse - start_parse);
 
     // Check for parse errors
-    if (!ast_result.has_value()) {
-        kumi::DiagnosticPrinter printer(source, filename);
-        printer.print_error(ast_result.error());
-        return 1;
-    }
+    // if (!ast_result.has_value()) {
+    //     kumi::DiagnosticPrinter printer(source, filename);
+    //     printer.print_error(ast_result.error());
+    //     return 1;
+    // }
 
     const auto mem_after = get_peak_memory_mb();
 
@@ -126,7 +126,7 @@ auto main(int argc, char** argv) -> int
     std::println("│ Peak RSS:     {:>13.2f} MB          │", mem_after - mem_before);
     std::println("╰─────────────────────────────────────────╯");
 
-    const auto& ast = *ast_result;
-    std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
+    // const auto& ast = *ast_result;
+    // std::println("\n✓ Parsed {} statements successfully", ast.statements.size());
     return 0;
 }

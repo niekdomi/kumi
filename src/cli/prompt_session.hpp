@@ -1,15 +1,15 @@
 #pragma once
 
-#include "cli/tui/core/ansi.hpp"
-#include "cli/tui/widgets/select.hpp"
-#include "cli/tui/widgets/text_input.hpp"
+#include "ui/core/ansi.hpp"
+#include "ui/widgets/select.hpp"
+#include "ui/widgets/text_input.hpp"
 
 #include <functional>
 #include <map>
 #include <print>
 #include <string>
 
-namespace kumi {
+namespace kumi::cli {
 
 class PromptSession
 {
@@ -17,7 +17,7 @@ class PromptSession
     void add_text_input(std::string_view key, std::string_view prompt, std::string placeholder = "")
     {
         prompts_.emplace_back([prompt, placeholder, key, this]() -> void {
-            TextInput input(prompt, placeholder);
+            ui::TextInput input(prompt, placeholder);
             answers_[std::string(key)] = input.run();
         });
     }
@@ -28,7 +28,7 @@ class PromptSession
     {
         prompts_.emplace_back([prompt, placeholder, key, this]() -> void {
             while (true) {
-                TextInput input(prompt, placeholder);
+                ui::TextInput input(prompt, placeholder);
                 std::string result = input.run();
 
                 if (result.empty() || result.find_first_not_of(" \t\n\r") == std::string::npos) {
@@ -65,7 +65,7 @@ class PromptSession
     {
         prompts_.emplace_back(
           [prompt, default_index, key, this, opts = std::move(options)]() mutable -> void {
-              Select select(prompt, std::move(opts), default_index);
+              ui::Select select(prompt, std::move(opts), default_index);
               answers_[std::string(key)] = select.run();
           });
     }
@@ -73,7 +73,7 @@ class PromptSession
     void add_yes_no(std::string_view key, std::string_view prompt, bool default_yes = true)
     {
         prompts_.emplace_back([prompt, default_yes, key, this]() -> void {
-            Select select(prompt, {"yes", "no"}, default_yes ? 0 : 1);
+            ui::Select select(prompt, {"yes", "no"}, default_yes ? 0 : 1);
             answers_[std::string(key)] = select.run();
         });
     }
@@ -112,4 +112,4 @@ class PromptSession
     std::map<std::string, std::string> answers_;
 };
 
-} // namespace kumi
+} // namespace kumi::cli

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cli/tui/core/ansi.hpp"
+#include "ui/core/ansi.hpp"
 
 #include <print>
 

@@ -64,7 +64,7 @@ constexpr std::string_view INFO = CYAN;
 
 // Utility functions
 [[nodiscard]]
-auto rgb(int r, int g, int b) -> std::string
+inline auto rgb(int r, int g, int b) -> std::string
 {
     return std::format("\033[38;2;{};{};{}m", r, g, b);
 }

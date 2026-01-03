@@ -1,5 +1,4 @@
 import os
-import random
 
 
 def generate_kumi(mode="normal", size_mb=1.0):
@@ -16,8 +15,10 @@ def generate_kumi(mode="normal", size_mb=1.0):
     elif mode == "flat":
         output.append('project flat_stress { version: "1.0.0"; }\n')
     else:
-        output.append('project kumi_enterprise { version: "2025.12.0"; authors: "Kumi Team"; }\n\n')
-        output.append('mixin base_cfg {\n  cpp: 23;\n  warnings: strict;\n}\n\n')
+        output.append(
+            'project kumi_enterprise { version: "2025.12.0"; authors: "Kumi Team"; }\n\n'
+        )
+        output.append("mixin base_cfg {\n  cpp: 23;\n  warnings: strict;\n}\n\n")
         output.append('dependencies {\n  fmt: "10.2.1";\n  spdlog: "1.12.0";\n}\n\n')
 
     current_bytes = sum(len(s) for s in output)
@@ -33,7 +34,7 @@ def generate_kumi(mode="normal", size_mb=1.0):
             for d in range(depth):
                 indent = "  " * d
                 block += f"{indent}@if platform(linux) {{\n"
-            block += f"{indent}  target leaf_{i} {{ type: executable; sources: \"main.cpp\"; }}\n"
+            block += f'{indent}  target leaf_{i} {{ type: executable; sources: "main.cpp"; }}\n'
             for d in range(depth - 1, -1, -1):
                 indent = "  " * d
                 block += f"{indent}}}\n"
@@ -77,7 +78,7 @@ def generate_kumi(mode="normal", size_mb=1.0):
                     f"mixin plugin_{i} {{\n"
                     f"  public {{\n"
                     f'    defines: "PLUGIN_ID={i}";\n'
-                    f"    include-dirs: \"plugins/{i}/include\";\n"
+                    f'    include-dirs: "plugins/{i}/include";\n'
                     f"  }}\n"
                     f"}}\n\n"
                 )
@@ -100,6 +101,6 @@ def run_generator(mode, size_mb=1.0):
 
 if __name__ == "__main__":
     # Generate all modes for testing
-    run_generator("normal", 10.0)
+    run_generator("normal", 0.1)
     # run_generator("flat", 2.0)
     # run_generator("nested", 1.0)

@@ -1,68 +1,89 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
-#include <cstring>
 #include <memory>
+#include <span>
 #include <string_view>
 #include <vector>
 
 namespace kumi {
 
-class Arena
+class Arena final
 {
-    std::vector<std::unique_ptr<char[]>> blocks_;
-    char* current_{nullptr};
-    size_t remaining_{0};
-    static constexpr size_t BLOCK_SIZE = static_cast<const size_t>(64 * 1'024);
+    std::vector<std::vector<std::byte>> blocks_;
+    std::span<std::byte> current_block_;
+
+    static constexpr std::size_t BLOCK_SIZE = static_cast<const std::size_t>(64 * 1'024);
 
   public:
     constexpr Arena() = default;
 
     Arena(const Arena&) = delete;
-    Arena(Arena&&) noexcept = default;
-
     auto operator=(const Arena&) -> Arena& = delete;
+    Arena(Arena&&) noexcept = default;
     auto operator=(Arena&&) noexcept -> Arena& = default;
 
     [[nodiscard]]
     auto store(std::string_view str) -> std::string_view
     {
-        if (str.empty()) {
+        if (str.empty()) [[unlikely]] {
             return {};
         }
 
-        if (str.size() > remaining_) [[unlikely]] {
-            allocate_block();
+        if (str.size() > current_block_.size()) [[unlikely]] {
+            allocate_block(str.size());
         }
 
-        char* dest = current_;
-        std::memcpy(dest, str.data(), str.size());
-        current_ += str.size();
-        remaining_ -= str.size();
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        char* const dest_ptr = reinterpret_cast<char*>(current_block_.data());
 
-        return {dest, str.size()};
+        std::ranges::copy(str, dest_ptr);
+
+        current_block_ = current_block_.subspan(str.size());
+
+        return {dest_ptr, str.size()};
     }
 
+    /**
+     * @brief Creates an object in the arena.
+     * Returns a reference to avoid cppcoreguidelines-owning-memory (T* suggests ownership).
+     */
+    template<typename T, typename... Args>
     [[nodiscard]]
-    auto size() const noexcept -> size_t
+    auto make(Args&&... args) -> T&
     {
-        return (blocks_.size() * BLOCK_SIZE) - remaining_;
+        void* ptr = current_block_.data();
+        std::size_t space = current_block_.size();
+
+        if (!std::align(alignof(T), sizeof(T), ptr, space)) [[unlikely]] {
+            allocate_block(sizeof(T) + alignof(T));
+            ptr = current_block_.data();
+            space = current_block_.size();
+            std::align(alignof(T), sizeof(T), ptr, space);
+        }
+
+        // Advance current_block_ to the new aligned position + size
+        const std::size_t offset = current_block_.size() - space + sizeof(T);
+        current_block_ = current_block_.subspan(offset);
+
+        // Construct and return reference (semantics: Arena owns it, you use it)
+        return *new (ptr) T(std::forward<Args>(args)...);
     }
 
     void clear() noexcept
     {
         blocks_.clear();
-        current_ = nullptr;
-        remaining_ = 0;
+        current_block_ = {};
     }
 
   private:
-    void allocate_block()
+    void allocate_block(std::size_t min_required)
     {
-        auto block = std::make_unique<char[]>(BLOCK_SIZE);
-        current_ = block.get();
-        remaining_ = BLOCK_SIZE;
-        blocks_.push_back(std::move(block));
+        const std::size_t size = std::max(BLOCK_SIZE, min_required);
+        auto& block = blocks_.emplace_back();
+        block.resize(size);
+        current_block_ = std::span{block};
     }
 };
 

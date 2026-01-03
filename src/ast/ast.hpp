@@ -53,6 +53,8 @@ struct LogicalExpr;
 ///
 /// Every AST node includes position information for error reporting and
 /// debugging. The position is a byte offset into the source file.
+///
+/// @note There is no default constructor to allow aggregate initialization.
 struct NodeBase
 {
     std::uint32_t position{}; ///< Character offset in source file

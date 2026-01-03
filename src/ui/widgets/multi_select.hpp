@@ -1,31 +1,32 @@
+/// @file multi_select.hpp
+/// @brief Multi-selection menu widget for terminal UI
+
 #pragma once
 
 #include "cli/colors.hpp"
-#include "cli/tui/core/ansi.hpp"
-#include "cli/tui/core/input.hpp"
-#include "cli/tui/core/terminal_utils.hpp"
+#include "ui/core/ansi.hpp"
+#include "ui/core/input.hpp"
+#include "ui/core/terminal_utils.hpp"
+#include "ui/widgets/common/symbols.hpp"
+#include "ui/widgets/common/terminal_state.hpp"
 
 #include <print>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace kumi {
-
-namespace multiselect_symbols {
-
-constexpr std::string_view CHECKED = "☑";
-constexpr std::string_view UNCHECKED = "☐";
-
-} // namespace multiselect_symbols
+namespace kumi::ui {
 
 class MultiSelect
 {
   public:
-    MultiSelect(std::string_view prompt, std::vector<std::string> options)
+    MultiSelect(std::string_view prompt,
+                std::vector<std::string> options,
+                TerminalState term_state = TerminalState{})
         : prompt_(prompt),
           options_(std::move(options)),
-          selected_(options_.size(), false)
+          selected_(options_.size(), false),
+          term_state_(term_state)
     {}
 
     [[nodiscard]]
@@ -43,21 +44,16 @@ class MultiSelect
                         render();
                     }
                     break;
-
                 case Key::ARROW_DOWN:
                     if (current_index_ < static_cast<int>(options_.size()) - 1) {
                         current_index_++;
                         render();
                     }
                     break;
-
                 case Key::PRINTABLE: handle_input(event.character); break;
-
-                case Key::ENTER: std::println(""); return get_selected_options();
-
-                case Key::CTRL_C: std::println(""); std::exit(0);
-
-                default: break;
+                case Key::ENTER:     std::println(""); return get_selected_options();
+                case Key::CTRL_C:    std::println(""); std::exit(0);
+                default:             break;
             }
         }
     }
@@ -96,19 +92,28 @@ class MultiSelect
         }
 
         std::print("\r{}", ansi::CLEAR_LINE);
-        std::println("{}{}{}:", color::BOLD, prompt_, color::RESET);
+        std::println(
+          "{}{}{}{}:", term_state_.color(color::BOLD), prompt_, term_state_.color(color::RESET));
 
         for (int i = 0; i < static_cast<int>(options_.size()); ++i) {
             std::print("\r{}", ansi::CLEAR_LINE);
 
             const std::string_view checkbox =
-              selected_[i] ? multiselect_symbols::CHECKED : multiselect_symbols::UNCHECKED;
+              selected_[i] ? symbols::CHECKBOX_CHECKED : symbols::CHECKBOX_UNCHECKED;
 
             if (i == current_index_) {
-                std::println(
-                  "  {}{}{}{} {}", color::CYAN, color::BOLD, checkbox, color::RESET, options_[i]);
+                std::println("  {}{}{}{}{} {}",
+                             term_state_.color(color::CYAN),
+                             term_state_.color(color::BOLD),
+                             checkbox,
+                             term_state_.color(color::RESET),
+                             options_[i]);
             } else {
-                std::println("  {}{}{} {}", color::DIM, checkbox, color::RESET, options_[i]);
+                std::println("  {}{}{}{} {}",
+                             term_state_.color(color::DIM),
+                             checkbox,
+                             term_state_.color(color::RESET),
+                             options_[i]);
             }
         }
 
@@ -120,7 +125,8 @@ class MultiSelect
     std::vector<std::string> options_;
     std::vector<bool> selected_;
     int current_index_{0};
+    TerminalState term_state_;
     bool rendered_once_{false};
 };
 
-} // namespace kumi
+} // namespace kumi::ui

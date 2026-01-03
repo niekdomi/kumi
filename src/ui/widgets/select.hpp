@@ -1,31 +1,33 @@
+/// @file select.hpp
+/// @brief Single-selection menu widget for terminal UI
+
 #pragma once
 
 #include "cli/colors.hpp"
-#include "cli/tui/core/ansi.hpp"
-#include "cli/tui/core/input.hpp"
-#include "cli/tui/core/terminal_utils.hpp"
+#include "ui/core/ansi.hpp"
+#include "ui/core/input.hpp"
+#include "ui/core/terminal_utils.hpp"
+#include "ui/widgets/common/symbols.hpp"
+#include "ui/widgets/common/terminal_state.hpp"
 
 #include <print>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace kumi {
-
-namespace select_symbols {
-
-constexpr std::string_view SELECTED = "●";
-constexpr std::string_view UNSELECTED = "○";
-
-} // namespace select_symbols
+namespace kumi::ui {
 
 class Select
 {
   public:
-    Select(std::string_view prompt, std::vector<std::string> options, int default_index = 0)
+    Select(std::string_view prompt,
+           std::vector<std::string> options,
+           int default_index = 0,
+           TerminalState term_state = TerminalState{})
         : prompt_(prompt),
           options_(std::move(options)),
-          selected_index_(default_index)
+          selected_index_(default_index),
+          term_state_(term_state)
     {
         if (selected_index_ < 0 || selected_index_ >= static_cast<int>(options_.size())) {
             selected_index_ = 0;
@@ -91,21 +93,25 @@ class Select
         }
 
         std::print("\r{}", ansi::CLEAR_LINE);
-        std::println("{}{}{}:", color::BOLD, prompt_, color::RESET);
+        std::println(
+          "{}{}{}:", term_state_.color(color::BOLD), prompt_, term_state_.color(color::RESET));
 
         for (int i = 0; i < static_cast<int>(options_.size()); ++i) {
             std::print("\r{}", ansi::CLEAR_LINE);
 
             if (i == selected_index_) {
                 std::println("  {}{}{}{} {}",
-                             color::CYAN,
-                             color::BOLD,
-                             select_symbols::SELECTED,
-                             color::RESET,
+                             term_state_.color(color::CYAN),
+                             term_state_.color(color::BOLD),
+                             symbols::RADIO_SELECTED,
+                             term_state_.color(color::RESET),
                              options_[i]);
             } else {
-                std::println(
-                  "  {}{}{} {}", color::DIM, select_symbols::UNSELECTED, color::RESET, options_[i]);
+                std::println("  {}{}{} {}",
+                             term_state_.color(color::DIM),
+                             symbols::RADIO_UNSELECTED,
+                             term_state_.color(color::RESET),
+                             options_[i]);
             }
         }
 
@@ -116,7 +122,8 @@ class Select
     std::string prompt_;
     std::vector<std::string> options_;
     int selected_index_;
+    TerminalState term_state_;
     bool rendered_once_{false};
 };
 
-} // namespace kumi
+} // namespace kumi::ui

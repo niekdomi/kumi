@@ -1,7 +1,11 @@
+/// @file download_progress.hpp
+/// @brief Package download progress tracker
+
 #pragma once
 
-#include "cli/tui/core/ansi.hpp"
-#include "cli/tui/widgets/progress_bar.hpp"
+#include "pkg/ui/primitives/progress_bar.hpp"
+#include "ui/core/ansi.hpp"
+#include "ui/widgets/common/terminal_state.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -9,19 +13,20 @@
 #include <thread>
 #include <unistd.h>
 
-namespace kumi {
+namespace kumi::pkg::ui {
 
-class DownloadProgressTracker
+/// @brief Tracks and displays download progress for packages
+///
+/// Shows a progress bar with download count and optional speed information.
+class DownloadProgressTracker final
 {
   public:
-    explicit DownloadProgressTracker(int total_packages, int bar_width = 40)
+    explicit DownloadProgressTracker(int total_packages,
+                                     int bar_width = 40,
+                                     kumi::ui::TerminalState term_state = kumi::ui::TerminalState{})
         : total_(total_packages),
-          current_(0),
-          bar_(bar_width),
-          is_running_(false),
-          is_tty_(isatty(STDOUT_FILENO) != 0),
-          color_enabled_(is_tty_ && (std::getenv("NO_COLOR") == nullptr)),
-          start_time_(std::chrono::steady_clock::now())
+          bar_(bar_width, term_state),
+          term_state_(term_state)
     {}
 
     ~DownloadProgressTracker()
@@ -41,9 +46,8 @@ class DownloadProgressTracker
         }
 
         is_running_.store(true);
-        start_time_ = std::chrono::steady_clock::now();
 
-        if (!is_tty_) {
+        if (!term_state_.is_tty) {
             std::println("Downloading {} packages...", total_);
             return;
         }
@@ -72,7 +76,7 @@ class DownloadProgressTracker
             animation_thread_.join();
         }
 
-        if (is_tty_) {
+        if (term_state_.is_tty) {
             std::print("\r{}", ansi::CLEAR_LINE);
             std::print("{}", ansi::CURSOR_SHOW);
             static_cast<void>(std::fflush(stdout));
@@ -95,14 +99,12 @@ class DownloadProgressTracker
     }
 
     int total_;
-    std::atomic<int> current_;
+    std::atomic<int> current_{0};
     ProgressBar bar_;
-    std::atomic<bool> is_running_;
-    bool is_tty_;
-    bool color_enabled_;
+    std::atomic<bool> is_running_{false};
+    kumi::ui::TerminalState term_state_;
     std::atomic<double> speed_mbps_{0.0};
-    std::chrono::steady_clock::time_point start_time_;
     std::thread animation_thread_;
 };
 
-} // namespace kumi
+} // namespace kumi::pkg::ui
