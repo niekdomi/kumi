@@ -101,6 +101,6 @@ def run_generator(mode, size_mb=1.0):
 
 if __name__ == "__main__":
     # Generate all modes for testing
-    run_generator("normal", 0.1)
+    run_generator("normal", 10)
     # run_generator("flat", 2.0)
     # run_generator("nested", 1.0)

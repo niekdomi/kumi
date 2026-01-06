@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-namespace kumi::ansi {
+namespace kumi::ui::ansi {
 
 // Cursor control
 constexpr std::string_view CURSOR_HIDE = "\033[?25l";
@@ -67,4 +67,4 @@ inline auto move_to_column(int col) -> std::string
     return std::format("\033[{}G", col);
 }
 
-} // namespace kumi::ansi
+} // namespace kumi::ui::ansi

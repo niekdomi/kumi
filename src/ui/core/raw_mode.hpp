@@ -13,7 +13,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-namespace kumi {
+namespace kumi::ui {
 
 /// @brief RAII wrapper for terminal raw mode configuration
 ///
@@ -85,4 +85,4 @@ class RawMode final
     struct termios original_termios_{}; ///< Original terminal settings
 };
 
-} // namespace kumi
+} // namespace kumi::ui

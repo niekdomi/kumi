@@ -5,7 +5,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-namespace kumi {
+namespace kumi::ui {
 
 struct TerminalSize
 {
@@ -26,4 +26,4 @@ inline auto get_terminal_size() -> std::expected<TerminalSize, std::string>
     };
 }
 
-} // namespace kumi
+} // namespace kumi::ui

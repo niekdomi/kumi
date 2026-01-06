@@ -6,7 +6,11 @@ InheritParentConfig: true
 #       not lint error in third-party code.
 
 Checks: >
+  -cert-err58-cpp,
+  -clang-analyzer-*,
   -cppcoreguidelines-avoid-do-while,
+  -fuchsia-statically-constructed-objects,
+  -misc-include-cleaner,
   -misc-use-anonymous-namespace,
   -modernize-use-trailing-return-type,
   -readability-container-data-pointer,

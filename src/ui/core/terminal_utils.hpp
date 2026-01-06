@@ -4,7 +4,7 @@
 
 #include <print>
 
-namespace kumi::terminal {
+namespace kumi::ui::terminal {
 
 inline void clear_screen()
 {
@@ -36,4 +36,4 @@ inline void move_cursor_down(int n = 1)
     static_cast<void>(std::fflush(stdout));
 }
 
-} // namespace kumi::terminal
+} // namespace kumi::ui::terminal

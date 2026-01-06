@@ -13,7 +13,7 @@
 #include <optional>
 #include <unistd.h>
 
-namespace kumi {
+namespace kumi::ui {
 
 /// @brief Enumeration of recognized keyboard input types
 enum class Key : std::uint8_t
@@ -156,4 +156,4 @@ inline auto wait_for_input() -> InputEvent
     }
 }
 
-} // namespace kumi
+} // namespace kumi::ui

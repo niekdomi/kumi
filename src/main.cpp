@@ -1,12 +1,11 @@
 /// @file main.cpp
 /// @brief Entry point for the Kumi build tool
 
-#include "lex/lexer.hpp"
-// #include "parse/parser.hpp"
-#include "support/diagnostic_printer.hpp"
+#include "lang/lex/lexer.hpp"
+// #include "lang/parse/parser.hpp"
+#include "diagnostics/diagnostic_printer.hpp"
 
 #include <chrono>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <print>
@@ -52,7 +51,7 @@ auto main(int argc, char** argv) -> int
     const std::string source = buffer.str();
 
     // Lex
-    kumi::Lexer lexer(source);
+    kumi::lang::Lexer lexer(source);
 
     const auto mem_before = get_peak_memory_mb();
     const auto start_lex = std::chrono::high_resolution_clock::now();
@@ -66,13 +65,13 @@ auto main(int argc, char** argv) -> int
       std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
 
     if (!tokens_result.has_value()) {
-        kumi::DiagnosticPrinter printer(source, filename);
+        kumi::diagnostics::DiagnosticPrinter printer(source, filename);
         const auto& lex_error = tokens_result.error();
         // Convert LexError to ParseError for diagnostic printing
-        kumi::ParseError parse_err{.message = lex_error.message,
-                                   .position = lex_error.position,
-                                   .label = lex_error.label,
-                                   .help = lex_error.help};
+        kumi::lang::ParseError parse_err{.message = lex_error.message,
+                                         .position = lex_error.position,
+                                         .label = lex_error.label,
+                                         .help = lex_error.help};
         printer.print_error(parse_err);
         return 1;
     }
@@ -90,7 +89,7 @@ auto main(int argc, char** argv) -> int
     std::println("╰─────────────────────────────────────────╯");
 
     // Parse
-    // kumi::Parser parser(tokens);
+    // kumi::lang::Parser parser(tokens);
     const auto start_parse = std::chrono::high_resolution_clock::now();
     // auto ast_result = parser.parse();
     const auto end_parse = std::chrono::high_resolution_clock::now();
@@ -99,7 +98,7 @@ auto main(int argc, char** argv) -> int
 
     // Check for parse errors
     // if (!ast_result.has_value()) {
-    //     kumi::DiagnosticPrinter printer(source, filename);
+    //     kumi::diagnostics::DiagnosticPrinter printer(source, filename);
     //     printer.print_error(ast_result.error());
     //     return 1;
     // }
