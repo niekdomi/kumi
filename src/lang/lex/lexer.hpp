@@ -124,11 +124,12 @@ class Lexer final
     }
 
     /// @brief Peeks at next character without advancing
+    /// @param k lookahead, defaults to 0
     /// @return Next character, or '\0' if at EOF
     [[nodiscard]]
-    auto peek(std::uint32_t look_ahead = 0) const noexcept -> char
+    auto peek(std::uint32_t k = 0) const noexcept -> char
     {
-        const auto pos = position_ + look_ahead;
+        const auto pos = position_ + k;
         if (pos >= input_.size()) [[unlikely]] {
             return '\0';
         }
