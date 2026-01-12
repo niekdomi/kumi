@@ -140,3 +140,4 @@ struct Token final
 static_assert(sizeof(Token) == 24);
 
 } // namespace kumi::lang
+

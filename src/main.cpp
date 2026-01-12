@@ -33,7 +33,7 @@ auto get_peak_memory_mb() -> double
 auto main(int argc, char** argv) -> int
 {
     if (argc < 2) {
-        std::cerr << "Usage: kumi <file.kumi>\n";
+        std::println(std::cerr, "Error: No input file provided");
         return 1;
     }
 
@@ -42,7 +42,7 @@ auto main(int argc, char** argv) -> int
     // Read file
     std::ifstream file(filename);
     if (!file) {
-        std::cerr << "Error: Could not open file '" << filename << "'\n";
+        std::println(std::cerr, "Error: Could not open file '{}'", filename);
         return 1;
     }
 

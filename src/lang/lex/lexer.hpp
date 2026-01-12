@@ -59,7 +59,7 @@ class Lexer final
     /// @return Current character before advancing, or '\0' if at EOF
     auto advance() noexcept -> char
     {
-        return input_[position_++];
+        return input_.at(position_++);
     }
 
     /// @brief Checks if lexer has reached end of input
@@ -132,7 +132,7 @@ class Lexer final
         if (pos >= input_.size()) [[unlikely]] {
             return '\0';
         }
-        return input_[pos];
+        return input_.at(pos);
     }
 
     /// @brief Skips whitespace characters (space, tab, newline, ...)
@@ -370,9 +370,9 @@ class Lexer final
 
             if (c == '\\') {
                 advance(); // Consume '\'
-                const char next = peek();
                 // Validate escape sequence
-                if (next != '"' && next != 'n' && next != 't' && next != 'r' && next != '\\')
+                if (const char next = peek();
+                    next != '"' && next != 'n' && next != 't' && next != 'r' && next != '\\')
                   [[unlikely]]
                 {
                     return error<Token>(std::format("invalid escape sequence: '\\{}'", next),
@@ -468,3 +468,4 @@ class Lexer final
 };
 
 } // namespace kumi::lang
+
