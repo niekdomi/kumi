@@ -15,46 +15,47 @@ namespace kumi::ui::symbols {
 // Status Indicators
 //===----------------------------------------------------------------------===//
 
-constexpr std::string_view SUCCESS = "✓";
-constexpr std::string_view ERROR = "✗";
-constexpr std::string_view WARNING = "⚠";
-constexpr std::string_view INFO = "ℹ";
+static constexpr std::string_view SUCCESS = "✓";
+static constexpr std::string_view ERROR = "✗";
+static constexpr std::string_view WARNING = "⚠";
+static constexpr std::string_view INFO = "ℹ";
 
 //===----------------------------------------------------------------------===//
 // Progress & Activity
 //===----------------------------------------------------------------------===//
 
-constexpr std::array<std::string_view, 10> SPINNER_DOTS =
+static constexpr std::array<std::string_view, 10> SPINNER_DOTS =
   {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
 
-constexpr std::string_view PROGRESS_FILLED = "━";
-constexpr std::string_view PROGRESS_EMPTY = "─";
+static constexpr std::string_view PROGRESS_FILLED = "━";
+static constexpr std::string_view PROGRESS_EMPTY = "─";
 
 //===----------------------------------------------------------------------===//
 // Selection Indicators
 //===----------------------------------------------------------------------===//
 
-constexpr std::string_view RADIO_SELECTED = "●";
-constexpr std::string_view RADIO_UNSELECTED = "○";
+static constexpr std::string_view RADIO_SELECTED = "●";
+static constexpr std::string_view RADIO_UNSELECTED = "○";
 
-constexpr std::string_view CHECKBOX_CHECKED = "☑";
-constexpr std::string_view CHECKBOX_UNCHECKED = "☐";
+static constexpr std::string_view CHECKBOX_CHECKED = "☑";
+static constexpr std::string_view CHECKBOX_UNCHECKED = "☐";
 
 //===----------------------------------------------------------------------===//
 // Tree & Hierarchy
 //===----------------------------------------------------------------------===//
 
-constexpr std::string_view TREE_BRANCH = "└─";
-constexpr std::string_view TREE_BRANCH_MID = "├─";
-constexpr std::string_view TREE_PIPE = "│";
-constexpr std::string_view TREE_SPACE = "  ";
+static constexpr std::string_view TREE_BRANCH = "└─";
+static constexpr std::string_view TREE_BRANCH_MID = "├─";
+static constexpr std::string_view TREE_PIPE = "│";
+static constexpr std::string_view TREE_SPACE = "  ";
 
 //===----------------------------------------------------------------------===//
 // Operations
 //===----------------------------------------------------------------------===//
 
-constexpr std::string_view ADDED = "+";
-constexpr std::string_view REMOVED = "-";
-constexpr std::string_view UPDATED = "~";
+static constexpr std::string_view ADDED = "+";
+static constexpr std::string_view REMOVED = "-";
+static constexpr std::string_view UPDATED = "~";
 
 } // namespace kumi::ui::symbols
+
