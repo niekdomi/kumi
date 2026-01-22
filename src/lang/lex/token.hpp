@@ -117,7 +117,7 @@ enum class TokenType : std::uint8_t
     NUMBER,     ///< Integer literal - `123`, `42`, `0`
     TRUE,       ///< Boolean literal - `true`
     FALSE,      ///< Boolean literal - `false`
-    COMMENT,    ///< Comment - `// ...` or `/* ... */`
+    COMMENT,    ///< TODO: REMOVE
 
     //===-----------------------------------------------------------------===//
     // Special
@@ -132,6 +132,7 @@ enum class TokenType : std::uint8_t
 /// for error reporting and debugging.
 struct Token final
 {
+    // TODO(domi): Handle comments ()
     std::string_view value;   ///< Textual value. String literals include quotes (e.g., `"hello"`)
     std::uint32_t position{}; ///< Starting position in source text
     TokenType type{};         ///< Type of the token

@@ -18,7 +18,6 @@
 #include <span>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace kumi::lang {
@@ -119,12 +118,12 @@ class Parser final
     }
 
     /// @brief Peeks at next token without advancing
-    /// @param look_ahead Number of tokens to look ahead (default: 0)
-    /// @return Token at position + look_ahead, or EOF token if out of bounds
+    /// @param k lookahead, defaults to 0
+    /// @return Token at position + k, or EOF token if at EOF
     [[nodiscard]]
-    auto peek(std::uint32_t look_ahead = 0) const noexcept -> const Token&
+    auto peek(std::uint32_t k = 0) const noexcept -> const Token&
     {
-        const auto pos = position_ + look_ahead;
+        const auto pos = position_ + k;
         if (pos >= tokens_.size()) [[unlikely]] {
             return tokens_.back();
         }
@@ -172,7 +171,7 @@ class Parser final
     /// @brief Parses a single dependency specification
     /// @return DependencySpec
     [[nodiscard]]
-    auto parse_dependency_spec() -> std::expected<DependencySpec, ParseError>
+    auto parse_dependency_spec(AST& ast) -> std::expected<DependencySpec, ParseError>
     {
         const auto start_pos = peek().position;
         const auto name_token = TRY(expect(TokenType::IDENTIFIER));
@@ -235,7 +234,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_dependencies() -> std::expected<Statement, ParseError>
+    auto parse_dependencies(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::DEPENDENCIES));
@@ -258,7 +257,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_diagnostic() -> std::expected<Statement, ParseError>
+    auto parse_diagnostic(AST& ast) -> std::expected<Statement, ParseError>
     {
         DiagnosticLevel level{};
 
@@ -293,7 +292,7 @@ class Parser final
     /// @brief Parses a condition expression for if statements
     /// @return Condition (LogicalExpr | ComparisonExpr | UnaryExpr)
     [[nodiscard]]
-    auto parse_condition() -> std::expected<Condition, ParseError>
+    auto parse_condition(AST& ast) -> std::expected<Condition, ParseError>
     {
         const auto start_pos = peek().position;
         auto first_comparison = TRY(parse_comparison_expr());
@@ -332,7 +331,7 @@ class Parser final
     /// @brief Parses a comparison expression
     /// @return ComparisonExpr with optional operator and right side
     [[nodiscard]]
-    auto parse_comparison_expr() -> std::expected<ComparisonExpr, ParseError>
+    auto parse_comparison_expr(AST& ast) -> std::expected<ComparisonExpr, ParseError>
     {
         const auto start_pos = peek().position;
         auto left = TRY(parse_unary_expr());
@@ -374,7 +373,7 @@ class Parser final
     /// @brief Parses a unary expression with optional 'not'
     /// @return UnaryExpr
     [[nodiscard]]
-    auto parse_unary_expr() -> std::expected<UnaryExpr, ParseError>
+    auto parse_unary_expr(AST& ast) -> std::expected<UnaryExpr, ParseError>
     {
         const auto start_pos = peek().position;
         const bool is_negated = match(TokenType::NOT);
@@ -444,7 +443,7 @@ class Parser final
     /// @brief Parses an iterable expression for for-loops
     /// @return Iterable (List | Range | FunctionCall)
     [[nodiscard]]
-    auto parse_iterable() -> std::expected<Iterable, ParseError>
+    auto parse_iterable(AST& ast) -> std::expected<Iterable, ParseError>
     {
         // List: [a, b, c]
         if (peek().type == TokenType::LEFT_BRACKET) {
@@ -472,7 +471,7 @@ class Parser final
     /// @brief Parses a list expression
     /// @return List with vector of Values
     [[nodiscard]]
-    auto parse_list() -> std::expected<List, ParseError>
+    auto parse_list(AST& ast) -> std::expected<List, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::LEFT_BRACKET));
@@ -500,7 +499,7 @@ class Parser final
     /// @brief Parses a range expression
     /// @return Range with start and end values
     [[nodiscard]]
-    auto parse_range() -> std::expected<Range, ParseError>
+    auto parse_range(AST& ast) -> std::expected<Range, ParseError>
     {
         const auto start_pos = peek().position;
         const auto start_token = TRY(expect(TokenType::NUMBER));
@@ -536,7 +535,7 @@ class Parser final
     /// @brief Parses a function call
     /// @return FunctionCall with name and arguments
     [[nodiscard]]
-    auto parse_function_call() -> std::expected<FunctionCall, ParseError>
+    auto parse_function_call(AST& ast) -> std::expected<FunctionCall, ParseError>
     {
         const auto start_pos = peek().position;
         const auto name_token = TRY(expect(TokenType::IDENTIFIER));
@@ -564,7 +563,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_for() -> std::expected<Statement, ParseError>
+    auto parse_for(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::AT_FOR));
@@ -586,7 +585,7 @@ class Parser final
 
     [[nodiscard]]
 
-    auto parse_if() -> std::expected<Statement, ParseError>
+    auto parse_if(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::AT_IF));
@@ -617,7 +616,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_import() -> std::expected<Statement, ParseError>
+    auto parse_import(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::AT_IMPORT));
         const auto path = TRY(expect(TokenType::STRING));
@@ -629,7 +628,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_install() -> std::expected<Statement, ParseError>
+    auto parse_install(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::INSTALL));
         TRY(expect(TokenType::LEFT_BRACE));
@@ -642,7 +641,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_loop_control() -> std::expected<Statement, ParseError>
+    auto parse_loop_control(AST& ast) -> std::expected<Statement, ParseError>
     {
         LoopControl control{};
 
@@ -668,7 +667,7 @@ class Parser final
     /// @brief Parses a single option specification
     /// @return OptionSpec
     [[nodiscard]]
-    auto parse_option_spec() -> std::expected<OptionSpec, ParseError>
+    auto parse_option_spec(AST& ast) -> std::expected<OptionSpec, ParseError>
     {
         const auto start_pos = peek().position;
         const auto name_token = TRY(expect(TokenType::IDENTIFIER));
@@ -695,7 +694,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_options() -> std::expected<Statement, ParseError>
+    auto parse_options(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::OPTIONS));
@@ -718,7 +717,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_mixin() -> std::expected<Statement, ParseError>
+    auto parse_mixin(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::MIXIN));
@@ -736,7 +735,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_package() -> std::expected<Statement, ParseError>
+    auto parse_package(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::PACKAGE));
         TRY(expect(TokenType::LEFT_BRACE));
@@ -750,7 +749,7 @@ class Parser final
 
     [[nodiscard]]
 
-    auto parse_project() -> std::expected<Statement, ParseError>
+    auto parse_project(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::PROJECT));
         const auto identifier = TRY(expect(TokenType::IDENTIFIER));
@@ -765,7 +764,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_properties() -> std::expected<std::vector<Property>, ParseError>
+    auto parse_properties(AST& ast) -> std::expected<std::vector<Property>, ParseError>
     {
         std::vector<Property> properties{};
         properties.reserve(8);
@@ -778,7 +777,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_property() -> std::expected<Property, ParseError>
+    auto parse_property(AST& ast) -> std::expected<Property, ParseError>
     {
         const auto identifier = TRY(expect_identifier_or_keyword());
         TRY(expect(TokenType::COLON));
@@ -802,7 +801,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_scripts() -> std::expected<Statement, ParseError>
+    auto parse_scripts(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::SCRIPTS));
         TRY(expect(TokenType::LEFT_BRACE));
@@ -817,7 +816,7 @@ class Parser final
     /// @brief Parses a value or expression for property values
     /// @return Value
     [[nodiscard]]
-    auto parse_value_or_expression() -> std::expected<Value, ParseError>
+    auto parse_value_or_expression(AST& ast) -> std::expected<Value, ParseError>
     {
         // Properties can have lists, function calls, or simple values
         // All are now properly represented as Value types
@@ -838,7 +837,7 @@ class Parser final
 
     [[nodiscard]]
 
-    auto parse_statement() -> std::expected<Statement, ParseError>
+    auto parse_statement(AST& ast) -> std::expected<Statement, ParseError>
     {
         switch (peek().type) {
             // Top-level declarations
@@ -918,7 +917,7 @@ class Parser final
     }
 
     [[nodiscard]] [[nodiscard]]
-    auto parse_profile() -> std::expected<Statement, ParseError>
+    auto parse_profile(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::PROFILE));
@@ -949,7 +948,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_target() -> std::expected<Statement, ParseError>
+    auto parse_target(AST& ast) -> std::expected<Statement, ParseError>
     {
         const auto start_pos = peek().position;
         TRY(expect(TokenType::TARGET));
@@ -981,7 +980,7 @@ class Parser final
 
     [[nodiscard]]
 
-    auto parse_value() -> std::expected<Value, ParseError>
+    auto parse_value(AST& ast) -> std::expected<Value, ParseError>
     {
         switch (peek().type) {
             case TokenType::STRING: {
@@ -1025,7 +1024,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_visibility_block() -> std::expected<Statement, ParseError>
+    auto parse_visibility_block(AST& ast) -> std::expected<Statement, ParseError>
     {
         Visibility visibility{};
 
@@ -1051,7 +1050,7 @@ class Parser final
     }
 
     [[nodiscard]]
-    auto parse_workspace() -> std::expected<Statement, ParseError>
+    auto parse_workspace(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::WORKSPACE));
         TRY(expect(TokenType::LEFT_BRACE));
