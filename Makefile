@@ -1,4 +1,4 @@
-.PHONY: all run clean conan test test-rerun test-verbose lint check-format format sort-dictionary cleanup-dictionary check-cspell-ignored docker-dev-build docker-dev docker-make docker-test docker-publish-ci coverage coverage-clean coverage-report
+.PHONY: all run clean conan test test-rerun-failed test-verbose clean lint lint-diff check-format format
 
 # -----------------------------
 # Build Configuration
@@ -21,8 +21,7 @@ all: $(BUILD_STAMP)
 
 $(BUILD_STAMP): $(SOURCES) $(SOURCES_CMAKE) $(CONAN_STAMP)
 	@echo "Building project ($(BUILD_TYPE), Coverage=$(ENABLE_COVERAGE)..."
-	@cmake --preset $(CMAKE_PRESET) \
-		-DENABLE_COVERAGE=$(ENABLE_COVERAGE) \
+	@cmake --preset $(CMAKE_PRESET)
 	@cmake --build --preset $(CMAKE_PRESET)
 	@touch $@
 	@echo "Build complete."

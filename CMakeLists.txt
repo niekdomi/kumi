@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.30)
-project(kumi VERSION 0.1.0 DESCRIPTION "C/C++ build system generator" LANGUAGES CXX)
+project(
+    kumi
+    VERSION 0.1.0
+    DESCRIPTION "C/C++ build system generator"
+    LANGUAGES
+        CXX
+)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -57,8 +63,8 @@ add_compile_options(
     -Wpoison-system-directories
     #
     # Suppress warnings for extensions used by dependencies
-	-Wno-gnu-statement-expression
-	-Wno-gnu-case-range
+    -Wno-gnu-statement-expression
+    -Wno-gnu-case-range
 )
 
 # ------------------------------------------------------------------
@@ -80,7 +86,6 @@ if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 endif()
 
-
 find_program(MOLD_LINKER mold)
 if(MOLD_LINKER)
     message(STATUS "  Linker:   mold (${MOLD_LINKER})")
@@ -89,22 +94,38 @@ else()
     message(STATUS "  Linker:   default")
 endif()
 
-
 find_package(Catch2 CONFIG REQUIRED)
 
 # ------------------------------------------------------------------
-# Version Header Generation
+# Main Executable Target
 # ------------------------------------------------------------------
-# set(VERSION_IN_FILE "${CMAKE_SOURCE_DIR}/src/version.hpp.in")
-# set(VERSION_OUT_FILE "${CMAKE_BINARY_DIR}/generated/version.hpp")
 
-# file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated")
-# configure_file(${VERSION_IN_FILE} ${VERSION_OUT_FILE} @ONLY)
+# Collect all source files
+file(GLOB_RECURSE KUMI_SOURCES "src/*.cpp")
+file(GLOB_RECURSE KUMI_HEADERS "src/*.hpp")
+
+# Create executable
+add_executable(kumi ${KUMI_SOURCES})
+target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------
-# Project subdirs
+# Test Executable Target
 # ------------------------------------------------------------------
-add_subdirectory(src)
 
+# Collect all test files
+file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
+
+# Create test executable
+add_executable(kumi_tests ${TEST_SOURCES})
+target_include_directories(
+    kumi_tests
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/tests
+)
+target_link_libraries(kumi_tests PRIVATE Catch2::Catch2WithMain)
+
+# Register tests with CTest
 enable_testing()
-add_subdirectory(tests)
+include(Catch)
+catch_discover_tests(kumi_tests)
