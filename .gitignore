@@ -4,12 +4,12 @@
 /build
 .cache
 compile_commands.json
+CMakeUserPresets.json
 
 # Compiled objects and binaries
 *.o
 *.obj
 *.exe
-*.xmake
 
 # ---------------------------
 # Test output
