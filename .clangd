@@ -1,6 +1,6 @@
 ---
 CompileFlags:
-  CompilationDatabase: .
+  CompilationDatabase: build/Debug
   Compiler: clang
 
 Documentation:

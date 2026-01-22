@@ -62,7 +62,7 @@ add_compile_options(
     # Cross-Platform
     -Wpoison-system-directories
     #
-    # Suppress warnings for extensions used by dependencies
+    # Ignore non-standard C++ features
     -Wno-gnu-statement-expression
     -Wno-gnu-case-range
 )
@@ -100,11 +100,9 @@ find_package(Catch2 CONFIG REQUIRED)
 # Main Executable Target
 # ------------------------------------------------------------------
 
-# Collect all source files
 file(GLOB_RECURSE KUMI_SOURCES "src/*.cpp")
 file(GLOB_RECURSE KUMI_HEADERS "src/*.hpp")
 
-# Create executable
 add_executable(kumi ${KUMI_SOURCES})
 target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -112,10 +110,8 @@ target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
 # Test Executable Target
 # ------------------------------------------------------------------
 
-# Collect all test files
 file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
 
-# Create test executable
 add_executable(kumi_tests ${TEST_SOURCES})
 target_include_directories(
     kumi_tests
@@ -124,8 +120,3 @@ target_include_directories(
         ${CMAKE_SOURCE_DIR}/tests
 )
 target_link_libraries(kumi_tests PRIVATE Catch2::Catch2WithMain)
-
-# Register tests with CTest
-enable_testing()
-include(Catch)
-catch_discover_tests(kumi_tests)

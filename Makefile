@@ -1,4 +1,4 @@
-.PHONY: all run clean conan test test-rerun-failed test-verbose clean lint lint-diff check-format format
+.PHONY: all run clean conan test clean lint lint-diff check-format format
 
 # -----------------------------
 # Build Configuration
@@ -20,9 +20,17 @@ SOURCES_CMAKE := $(shell find src tests . -name 'CMakeLists.txt')
 all: $(BUILD_STAMP)
 
 $(BUILD_STAMP): $(SOURCES) $(SOURCES_CMAKE) $(CONAN_STAMP)
-	@echo "Building project ($(BUILD_TYPE), Coverage=$(ENABLE_COVERAGE)..."
-	@cmake --preset $(CMAKE_PRESET)
-	@cmake --build --preset $(CMAKE_PRESET)
+	@echo "Building project ($(BUILD_TYPE))..."
+	@if [ -f CMakeUserPresets.json ]; then \
+		echo "Using CMake presets..."; \
+		cmake --preset $(CMAKE_PRESET); \
+		cmake --build --preset $(CMAKE_PRESET); \
+	else \
+		echo "CMakeUserPresets.json not found, using traditional CMake..."; \
+		mkdir -p $(TARGET); \
+		cmake -S . -B $(TARGET) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_TOOLCHAIN_FILE=$(TARGET)/conan_toolchain.cmake; \
+		cmake --build $(TARGET); \
+	fi
 	@touch $@
 	@echo "Build complete."
 
@@ -40,13 +48,7 @@ $(CONAN_STAMP): conanfile.txt
 conan: $(CONAN_STAMP)
 
 test: $(BUILD_STAMP)
-	@ctest --preset $(CMAKE_PRESET) --output-on-failure
-
-test-rerun-failed: $(BUILD_STAMP)
-	@ctest --preset $(CMAKE_PRESET) --rerun-failed --output-on-failure
-
-test-verbose: $(BUILD_STAMP)
-	@ctest --preset $(CMAKE_PRESET) --verbose
+	@$(TARGET)/kumi_tests
 
 clean:
 	@rm -rf build CMakeFiles CMakeCache.txt CMakeUserPresets.json .cache
