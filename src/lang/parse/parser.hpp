@@ -748,7 +748,6 @@ class Parser final
     }
 
     [[nodiscard]]
-
     auto parse_project(AST& ast) -> std::expected<Statement, ParseError>
     {
         TRY(expect(TokenType::PROJECT));

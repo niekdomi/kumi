@@ -56,7 +56,7 @@ class Lexer final
     std::uint32_t position_{0}; ///< Current position in input_
 
     /// @brief Advances to next character and updates position
-    /// @return Current character before advancing, or '\0' if at EOF
+    /// @return Current character before advancing, or 0 if at EOF
     auto advance() noexcept -> char
     {
         return input_.at(position_++);
@@ -469,4 +469,3 @@ class Lexer final
 };
 
 } // namespace kumi::lang
-

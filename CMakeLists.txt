@@ -13,6 +13,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_VERIFY_INTERFACE_HEADER_SETS ON)
 set(CMAKE_COLOR_DIAGNOSTICS ON)
 
+# This warning is a false positive
+if(CMAKE_TOOLCHAIN_FILE)
+    mark_as_advanced(CMAKE_TOOLCHAIN_FILE)
+endif()
+
 # ------------------------------------------------------------------
 # Compiler Flags
 # ------------------------------------------------------------------
@@ -26,7 +31,7 @@ add_compile_options(
 # Release link-time optimizations
 add_link_options($<$<CONFIG:Release>:-flto=full>)
 
-# Warning flags (applies to all targets)
+# Warning flags
 add_compile_options(
     # Core
     -WCL4
