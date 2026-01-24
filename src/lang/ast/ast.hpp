@@ -4,7 +4,7 @@
 /// The hierarchy:
 /// - Expressions: Values, operators, function calls
 /// - Statements: Declarations, control flow, properties
-/// - Declarations: Top-level constructs (project, target, ...)
+/// - Declarations: Top-level constructs (`project`, `target`, ...)
 ///
 /// @see Parser for AST construction from tokens
 /// @see Lexer for tokenization of source files
@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <optional>
 #include <span>
-#include <string>
 #include <string_view>
 #include <variant>
 #include <vector>

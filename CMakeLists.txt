@@ -99,6 +99,7 @@ else()
     message(STATUS "  Linker:   default")
 endif()
 
+find_package(cpr REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 
 # ------------------------------------------------------------------
@@ -110,6 +111,7 @@ file(GLOB_RECURSE KUMI_HEADERS "src/*.hpp")
 
 add_executable(kumi ${KUMI_SOURCES})
 target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(kumi PRIVATE cpr::cpr)
 
 # ------------------------------------------------------------------
 # Test Executable Target

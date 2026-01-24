@@ -4,6 +4,7 @@
 #include "lang/lex/lexer.hpp"
 // #include "lang/parse/parser.hpp"
 #include "diagnostics/diagnostic_printer.hpp"
+#include "lang/ast/ast.hpp"
 
 #include <chrono>
 #include <fstream>

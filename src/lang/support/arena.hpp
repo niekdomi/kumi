@@ -59,6 +59,9 @@ class Arena final
     /// @brief Default size for new blocks
     static constexpr std::size_t BLOCK_SIZE = 4'096;
 
+    // TODO(domi): Find an appropriate default for BLOCK_SIZE or make this size
+    // generic based on input somehow or e.g., first block is 4KB, then 8KB, ...
+
     /// @brief Allocate a new memory block and make it current
     /// @param min_size Minimum size required; actual size is max(BLOCK_SIZE, min_size)
     auto allocate_block(std::size_t min_size) -> void
@@ -75,6 +78,7 @@ class Arena final
     [[nodiscard]]
     auto allocate_bytes(std::size_t size, std::size_t alignment) -> void*
     {
+        // NOLINTNEXTLINE(misc-const-correctness) -> false positive
         void* ptr = current_block_.data();
         std::size_t space = current_block_.size();
 
@@ -93,3 +97,4 @@ class Arena final
 };
 
 } // namespace kumi::lang
+
