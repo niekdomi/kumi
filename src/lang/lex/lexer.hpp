@@ -40,10 +40,9 @@ class Lexer final
         while (true) {
             const auto token = TRY(next_token());
 
-            const bool is_eof = (token.type == TokenType::END_OF_FILE);
             tokens.push_back(token);
 
-            if (is_eof) [[unlikely]] {
+            if (token.type == TokenType::END_OF_FILE) [[unlikely]] {
                 break;
             }
         }
