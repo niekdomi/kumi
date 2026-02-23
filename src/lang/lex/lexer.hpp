@@ -410,7 +410,7 @@ class Lexer final
         const auto text = input_.substr(start_pos, position_ - start_pos);
 
         // No valid identifier characters were consumed
-        if (text.empty()) {
+        if (text.empty()) [[unlikely]] {
             return error<Token>(std::format("unexpected character: '{}'", peek()),
                                 position_,
                                 "invalid character here",
