@@ -102,7 +102,7 @@ using Value = std::variant<std::string_view, ///< String literal or identifier: 
 /// sources: ["main.cpp", "utils.cpp", "helper.cpp"];
 /// @for module in [core, renderer, audio] { ... }
 /// ```
-struct List final : NodeBase
+struct List final : public NodeBase
 {
     std::uint32_t element_start_idx{}; ///< Index of the start of list elements
     std::uint32_t element_end_idx{};   ///< Index of the end of list elements
@@ -125,7 +125,7 @@ static_assert(sizeof(List) == 12);
 /// @for i in 0..10 { ... }      // 0, 1, 2, ..., 9
 /// @for worker in 1..8 { ... }  // 1, 2, 3, ..., 7
 /// ```
-struct Range final : NodeBase
+struct Range final : public NodeBase
 {
     std::uint32_t start_idx{}; ///< Index of the start value
     std::uint32_t end_idx{};   ///< Index of the end value
@@ -152,7 +152,7 @@ static_assert(sizeof(Range) == 12);
 /// @if arch(x86_64, arm64) { ... }
 /// files: find("resources", "*.png");
 /// ```
-struct FunctionCall final : NodeBase
+struct FunctionCall final : public NodeBase
 {
     std::uint32_t name_idx{};      ///< Index of function name (platform, glob, arch, ...)
     std::uint32_t arg_start_idx{}; ///< Index of the start of positional arguments
@@ -230,7 +230,7 @@ struct UnaryOperand final
 /// @if not platform(windows) { ... }
 /// @if not feature(networking) { ... }
 /// ```
-struct UnaryExpr final : NodeBase
+struct UnaryExpr final : public NodeBase
 {
     bool is_negated{false}; ///< True if prefixed with 'not'
     UnaryOperand operand;   ///< The operand to potentially negate
@@ -254,7 +254,7 @@ static_assert(sizeof(UnaryExpr) == 16);
 /// @if version == 2 { ... }
 /// @if arch(x86_64) { ... }  // Unary expression without comparison
 /// ```
-struct ComparisonExpr final : NodeBase
+struct ComparisonExpr final : public NodeBase
 {
     std::uint32_t left_idx{};               ///< Index of Left-hand side expression
     std::optional<ComparisonOperator> op;   ///< Comparison operator (if binary)
@@ -280,7 +280,7 @@ static_assert(sizeof(ComparisonExpr) == 20);
 /// @if config(debug) or option(FORCE_LOGGING) { ... }
 /// @if a and b and c { ... }
 /// ```
-struct LogicalExpr final : NodeBase
+struct LogicalExpr final : public NodeBase
 {
     std::uint32_t operand_start_idx{}; ///< Index of the start of comparison operands
     LogicalOperator op;                ///< Operator: `and` or `or`
@@ -344,7 +344,7 @@ using Iterable = std::variant<List,        ///< Explicit list of values
 /// cxx_standard: 20;                          // Integer value
 /// warnings: "all", "extra", "pedantic";      // Multiple string values
 /// ```
-struct Property final : NodeBase
+struct Property final : public NodeBase
 {
     std::uint32_t name_idx{};        ///< Index of the function name (type, sources, defines, ...)
     std::uint32_t value_start_idx{}; ///< Index of the start of property values (one or more)
@@ -389,7 +389,7 @@ using DependencyValue = std::variant<std::string_view, ///< Version string: "1.0
 ///     tag: "v1.90";
 /// };
 /// ```
-struct DependencySpec final : NodeBase
+struct DependencySpec final : public NodeBase
 {
     std::uint32_t name_idx{};         ///< Index of the dependency name (package identifier)
     DependencyValue value;            ///< Version, git URL, path, or system
@@ -427,7 +427,7 @@ static_assert(sizeof(DependencySpec) == 48);
 ///     choices: "debug", "info", "warning", "error";
 /// };
 /// ```
-struct OptionSpec final : NodeBase
+struct OptionSpec final : public NodeBase
 {
     std::uint32_t name_idx{};             ///< Index of the option name
     Value default_value;                  ///< Default value
@@ -478,7 +478,7 @@ using Statement = std::variant<ProjectDecl,
 ///     license: "MIT";
 /// }
 /// ```
-struct ProjectDecl final : NodeBase
+struct ProjectDecl final : public NodeBase
 {
     std::uint32_t name_idx{};           ///< Index of the project name
     std::uint32_t property_start_idx{}; ///< Index of the start of project configuration properties
@@ -505,7 +505,7 @@ static_assert(sizeof(ProjectDecl) == 16);
 ///     warnings-as-errors: true;
 /// }
 /// ```
-struct WorkspaceDecl final : NodeBase
+struct WorkspaceDecl final : public NodeBase
 {
     std::uint32_t property_start_idx{}; ///< Index of the start of workspace configuration
     std::uint32_t property_end_idx{};   ///< Index of the end of workspace configuration
@@ -543,7 +543,7 @@ static_assert(sizeof(WorkspaceDecl) == 12);
 ///     }
 /// }
 /// ```
-struct TargetDecl final : NodeBase
+struct TargetDecl final : public NodeBase
 {
     std::uint32_t name_idx{};        ///< Index of the target name
     std::uint32_t mixin_start_idx{}; ///< Index of the start of mixins to apply
@@ -574,7 +574,7 @@ static_assert(sizeof(TargetDecl) == 24);
 ///     };
 /// }
 /// ```
-struct DependenciesDecl final : NodeBase
+struct DependenciesDecl final : public NodeBase
 {
     std::uint32_t dep_start_idx{}; ///< Index of the start of list of dependency specifications
     std::uint32_t dep_end_idx{};   ///< Index of the end of list of dependency specifications
@@ -604,7 +604,7 @@ static_assert(sizeof(DependenciesDecl) == 12);
 ///     };
 /// }
 /// ```
-struct OptionsDecl final : NodeBase
+struct OptionsDecl final : public NodeBase
 {
     std::uint32_t option_start_idx{}; ///< Index of the start of build option specifications
     std::uint32_t option_end_idx{};   ///< Index of the end of build option specifications
@@ -636,7 +636,7 @@ static_assert(sizeof(OptionsDecl) == 12);
 ///     }
 /// }
 /// ```
-struct MixinDecl final : NodeBase
+struct MixinDecl final : public NodeBase
 {
     std::uint32_t name_idx{};       ///< Index of the mixin name
     std::uint32_t body_start_idx{}; ///< Index of the start of mixin body
@@ -668,7 +668,7 @@ static_assert(sizeof(MixinDecl) == 16);
 ///     debug-info: none;
 /// }
 /// ```
-struct ProfileDecl final : NodeBase
+struct ProfileDecl final : public NodeBase
 {
     std::uint32_t name_idx{};           ///< Index of the profile name (debug, release, ...)
     std::uint32_t mixin_start_idx{};    ///< Index of the start of mixins to apply
@@ -697,7 +697,7 @@ static_assert(sizeof(ProfileDecl) == 24);
 ///     targets: myapp, mylib;
 /// }
 /// ```
-struct InstallDecl final : NodeBase
+struct InstallDecl final : public NodeBase
 {
     std::uint32_t property_start_idx{}; ///< Index of the start of installation configuration
     std::uint32_t property_end_idx{};   ///< Index of the end of installation configuration
@@ -724,7 +724,7 @@ static_assert(sizeof(InstallDecl) == 12);
 ///     license: "MIT";
 /// }
 /// ```
-struct PackageDecl final : NodeBase
+struct PackageDecl final : public NodeBase
 {
     std::uint32_t property_start_idx{}; ///< Index of the start of package configuration
     std::uint32_t property_end_idx{};   ///< Index of the end of package configuration
@@ -749,7 +749,7 @@ static_assert(sizeof(PackageDecl) == 12);
 ///     post_build: "./cleanup.sh";
 /// }
 /// ```
-struct ScriptsDecl final : NodeBase
+struct ScriptsDecl final : public NodeBase
 {
     std::uint32_t script_start_idx{}; ///< Index of the start of build script hooks
     std::uint32_t script_end_idx{};   ///< Index of the end of build script hooks
@@ -798,7 +798,7 @@ enum class Visibility : std::uint8_t
 ///     }
 /// }
 /// ```
-struct VisibilityBlock final : NodeBase
+struct VisibilityBlock final : public NodeBase
 {
     Visibility visibility{};            ///< Visibility level
     std::uint32_t property_start_idx{}; ///< Index of the start of properties with this visibility
@@ -834,7 +834,7 @@ static_assert(sizeof(VisibilityBlock) == 16);
 ///     sources: "linux.cpp";
 /// }
 /// ```
-struct IfStmt final : NodeBase
+struct IfStmt final : public NodeBase
 {
     Condition condition;          ///< Condition to evaluate
     std::uint32_t then_start_idx; ///< Index of start of then block statements
@@ -877,7 +877,7 @@ static_assert(sizeof(IfStmt) == 44);
 ///     }
 /// }
 /// ```
-struct ForStmt final : NodeBase
+struct ForStmt final : public NodeBase
 {
     std::uint32_t variable_name_idx{}; ///< Index of the loop variable name
     Iterable iterable;                 ///< Collection to iterate over
@@ -913,7 +913,7 @@ enum class LoopControl : std::uint8_t
 ///     sources: ${file};
 /// }
 /// ```
-struct LoopControlStmt final : NodeBase
+struct LoopControlStmt final : public NodeBase
 {
     LoopControl control{LoopControl::BREAK}; ///< Break or continue
 };
@@ -955,7 +955,7 @@ enum class DiagnosticLevel : std::uint8_t
 ///
 /// @info "Configuring with ${project.name} v${project.version}";
 /// ```
-struct DiagnosticStmt final : NodeBase
+struct DiagnosticStmt final : public NodeBase
 {
     DiagnosticLevel level{};     ///< Message severity
     std::uint32_t message_idx{}; ///< Index of the diagnostics message text
@@ -978,7 +978,7 @@ static_assert(sizeof(DiagnosticStmt) == 12);
 /// @import "common/mixins.kumi";
 /// @import "../shared/options.kumi";
 /// ```
-struct ImportStmt final : NodeBase
+struct ImportStmt final : public NodeBase
 {
     std::uint32_t path_idx{}; ///< Index of the import path string
 };
