@@ -1,0 +1,16 @@
+#pragma once
+
+#include <string>
+
+namespace {PROJECT_NAME} {
+
+class Example {
+public:
+    Example() = default;
+    
+    std::string greet() const {
+        return "Hello from {PROJECT_NAME}!";
+    }
+};
+
+} // namespace {PROJECT_NAME}

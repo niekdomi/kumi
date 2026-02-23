@@ -1,10 +1,16 @@
 ---
 InheritParentConfig: true
 
-# TODO: The following checks should be removed since those are linting
-# warnings caused by Catch2. (We must not lint error in third-party code.)
+# TODO: The following checks (beside -readability-container-data-pointer) should
+#       be removed since those are linting # warnings caused by Catch2. (We must
+#       not lint error in third-party code.
 
 Checks: >
+  -cert-err58-cpp,
+  -clang-analyzer-*,
   -cppcoreguidelines-avoid-do-while,
+  -fuchsia-statically-constructed-objects,
+  -misc-include-cleaner,
   -misc-use-anonymous-namespace,
   -modernize-use-trailing-return-type,
+  -readability-container-data-pointer,

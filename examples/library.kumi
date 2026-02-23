@@ -6,17 +6,17 @@ project mylib {
 
 target mylib {
     type: static_library;
-    
+
     public {
         include_dirs: "include";
         headers: "mylib.hpp";
     }
-    
+
     private {
         sources: "impl.cpp", "internal.cpp";
         cxx_standard: 23;
     }
-    
+
     interface {
         defines: "MYLIB_INTERFACE";
     }

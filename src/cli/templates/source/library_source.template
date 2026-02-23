@@ -1,0 +1,7 @@
+#include "{PROJECT_NAME}/{PROJECT_NAME}.hpp"
+
+namespace {PROJECT_NAME} {
+
+// Implementation goes here
+
+} // namespace {PROJECT_NAME}

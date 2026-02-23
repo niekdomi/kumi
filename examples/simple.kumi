@@ -9,11 +9,11 @@ target myapp {
     type: executable;
     sources: "main.cpp", "utils.cpp";
     cxx_standard: 20;
-    
+
     public {
         include_dirs: "include";
     }
-    
+
     private {
         defines: "DEBUG_MODE";
         warnings: "all";

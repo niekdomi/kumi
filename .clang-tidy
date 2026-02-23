@@ -1,6 +1,8 @@
 ---
 UseColor: true
 FormatStyle: file
+HeaderFilterRegex: ".*/(src|tests)/.*"
+SystemHeaders: false
 
 Checks: >
   *,
