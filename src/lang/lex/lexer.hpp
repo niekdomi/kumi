@@ -39,7 +39,6 @@ class Lexer final
 
         while (true) {
             const auto token = TRY(next_token());
-
             tokens.push_back(token);
 
             if (token.type == TokenType::END_OF_FILE) [[unlikely]] {
@@ -138,7 +137,7 @@ class Lexer final
     /// @brief Skips whitespace characters (space, tab, newline, ...)
     auto skip_whitespace() noexcept -> void
     {
-        while (is_space(peek())) {
+        while (!at_end() && is_space(peek())) {
             ++position_;
         }
     }
@@ -323,7 +322,7 @@ class Lexer final
     {
         const auto start_pos = position_;
 
-        while (is_digit(peek())) {
+        while (!at_end() && is_digit(peek())) {
             ++position_;
         }
 
@@ -402,7 +401,7 @@ class Lexer final
     {
         const auto start_pos = position_;
 
-        while (is_identifier(peek())) {
+        while (!at_end() && is_identifier(peek())) {
             ++position_;
         }
 

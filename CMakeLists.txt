@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
+
 project(
     kumi
     VERSION 0.1.0
@@ -99,6 +100,10 @@ else()
     message(STATUS "  Linker:   default")
 endif()
 
+# ------------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------------
+
 find_package(cpr REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 
@@ -111,6 +116,7 @@ file(GLOB_RECURSE KUMI_HEADERS "src/*.hpp")
 
 add_executable(kumi ${KUMI_SOURCES})
 target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
 target_link_libraries(kumi PRIVATE cpr::cpr)
 
 # ------------------------------------------------------------------

@@ -991,10 +991,10 @@ static_assert(sizeof(ImportStmt) == 8);
 
 /// @brief Root AST node representing a complete Kumi build file
 ///
-/// The AST uses a Structure of Arrays (SoA) design pattern for memory
-/// efficiency and cache locality. Instead of storing child nodes directly in
-/// parent nodes, all nodes of the same type are stored in contiguous vectors
-/// and reference them via start/end indices.
+/// The AST uses a type-separated storage pattern for memory efficiency and
+/// cache locality. Instead of storing child nodes directly in parent nodes,
+/// all nodes of the same type are stored in contiguous vectors and reference
+/// them via start/end indices.
 struct AST final
 {
     Arena string_storage; ///<  Arena allocator for all string data

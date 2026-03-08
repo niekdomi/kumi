@@ -11,7 +11,7 @@ TARGET := build/$(BUILD_TYPE)
 CONAN_STAMP := build/.conan.$(BUILD_TYPE).stamp
 BUILD_STAMP := build/.build.$(BUILD_TYPE).$(ENABLE_COVERAGE).stamp
 
-SOURCES := $(shell find src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) ! -path "*/build/*")
+SOURCES := $(shell find src tests -type f \( -name '*.cpp' -o -name '*.hpp' \))
 SOURCES_CMAKE := $(shell find src tests . -name 'CMakeLists.txt')
 
 # -----------------------------
@@ -35,15 +35,16 @@ $(BUILD_STAMP): $(SOURCES) $(SOURCES_CMAKE) $(CONAN_STAMP)
 	@echo "Build complete."
 
 CONAN_CMD := conan
-$(CONAN_STAMP): conanfile.txt
+$(CONAN_STAMP): conanfile.txt clang.profile
 	$(call check_tool,$(CONAN_CMD))
-	@echo "Running Conan ($(BUILD_TYPE))..."
+	@printf "Running Conan ($(BUILD_TYPE))...\n"
 	@$(CONAN_CMD) install . \
 		--profile:host=clang.profile \
 		--profile:build=clang.profile \
 		--build=missing \
 		-s build_type=$(BUILD_TYPE)
 	@touch $@
+	@printf "✓ Conan setup complete\n"
 
 conan: $(CONAN_STAMP)
 
