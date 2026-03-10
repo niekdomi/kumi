@@ -1,0 +1,81 @@
+(* Top-Level Structure *)
+KumiFile            = { Statement } ;
+Statement           = ProjectDecl 
+                    | WorkspaceDecl 
+                    | TargetDecl 
+                    | DependenciesDecl 
+                    | OptionsDecl 
+                    | MixinDecl 
+                    | ProfileDecl 
+                    | InstallDecl 
+                    | PackageDecl 
+                    | ScriptsDecl 
+                    | ConditionalBlock 
+                    | ForLoop 
+                    | VisibilityBlock 
+                    | PropertyAssignment 
+                    | DiagnosticStmt 
+                    | ImportStmt ;
+
+(* Root Declarations *)
+ProjectDecl         = "project" Identifier "{" { PropertyAssignment } "}" ;
+WorkspaceDecl       = "workspace" "{" { PropertyAssignment } "}" ;
+TargetDecl          = "target" Identifier [ "with" MixinList ] "{" { TargetContent } "}" ;
+MixinList           = Identifier { "," Identifier } ;
+TargetContent       = PropertyAssignment | VisibilityBlock | Statement ;
+
+DependenciesDecl    = "dependencies" "{" { DependencySpec } "}" ;
+DependencySpec      = Identifier [ "?" ] ":" DependencyValue [ DependencyOptions ] ";" ;
+DependencyValue     = String | Identifier | FunctionCall ;
+DependencyOptions   = "{" { PropertyAssignment } "}" ;
+
+OptionsDecl         = "options" "{" { OptionSpec } "}" ;
+OptionSpec          = Identifier ":" Value [ OptionConstraints ] ";" ;
+OptionConstraints   = "{" { PropertyAssignment } "}" ;
+
+MixinDecl           = "mixin" Identifier "{" { PropertyAssignment | VisibilityBlock } "}" ;
+ProfileDecl         = "profile" Identifier [ "with" MixinList ] "{" { PropertyAssignment } "}" ;
+InstallDecl         = "install" "{" { PropertyAssignment } "}" ;
+PackageDecl         = "package" "{" { PropertyAssignment } "}" ;
+ScriptsDecl         = "scripts" "{" { PropertyAssignment } "}" ;
+
+(* Control Flow & Blocks *)
+ConditionalBlock    = "@if" Condition "{" { Statement } "}" 
+                      { "@else-if" Condition "{" { Statement } "}" }
+                      [ "@else" "{" { Statement } "}" ] ;
+
+ForLoop             = "@for" Identifier "in" Iterable "{" { Statement } "}" ;
+Iterable            = List | Range | FunctionCall ;
+
+VisibilityBlock     = ( "public" | "private" | "interface" ) "{" { PropertyAssignment } "}" ;
+LoopControl         = ( "@break" | "@continue" ) ";" ;
+
+(* Properties & Assignments *)
+PropertyAssignment  = Identifier ":" ValueList ";" ;
+ValueList           = Value { "," Value } ;
+
+(* Expressions & Conditions *)
+Condition           = LogicalExpr ;
+LogicalExpr         = ComparisonExpr { ( "and" | "or" ) ComparisonExpr } ;
+ComparisonExpr      = UnaryExpr [ ComparisonOp UnaryExpr ] ;
+ComparisonOp        = "==" | "!=" | "<" | ">" | "<=" | ">=" ;
+UnaryExpr           = [ "not" ] PrimaryExpr ;
+PrimaryExpr         = FunctionCall | Value | "(" LogicalExpr ")" ;
+
+(* Values & Literals *)
+Value               = String | Number | Boolean | Identifier ;
+List                = "[" [ Value { "," Value } ] "]" ;
+Range               = Number ".." Number ;
+FunctionCall        = Identifier "(" [ ArgumentList ] ")" [ FunctionOptions ] ;
+ArgumentList        = Value { "," Value } ;
+FunctionOptions     = "{" { PropertyAssignment } "}" ;
+
+(* Basic Tokens *)
+Identifier          = ( Letter | "_" ) { Letter | Digit | "_" | "-" } ;
+String              = '"' { Character } '"' ;
+Number              = Digit { Digit } ;
+Boolean             = "true" | "false" ;
+
+(* Directives *)
+DiagnosticStmt      = ( "@error" | "@warning" | "@info" | "@debug" ) String ";" ;
+ImportStmt          = "@import" String ";" ;
