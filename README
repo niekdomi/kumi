@@ -10,21 +10,8 @@ Pretty much WIP
 REQUIREMENTS
 ------------
 
-- Clang 21+
-- Clang-format 21+
-- uv (conan 2+, gersemi 19+)
-
-
-BUILD PROJECT
--------------
-
-- Create a virtual environment (e.g., with uv) and install dependencies:
-    - `uv venv`
-    - `uv pip install conan gersemi`
-
-- Build the project:
-    - Run `make`
-    - To build the release build: `make BUILD_TYPE=Release`
+- Rust 1.85+
+- Cargo
 
 
 LICENSE

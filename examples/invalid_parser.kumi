@@ -1,0 +1,11 @@
+project test_parse_errors {
+    version: "1.0.0";
+    invalid_prop: @invalid_token;   // invalid token, probably a lexer error
+    
+    // Invalid property syntax (missing semicolon)
+    broken_prop: true
+    
+    // Invalid if statement (missing parenthesis or block)
+    @if option(foo) {
+        
+    // Missing closing brace for project
