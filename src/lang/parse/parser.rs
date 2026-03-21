@@ -676,7 +676,10 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     fn parse_if(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
         let start_pos = self.peek(0).position;
-        self.expect(TokenType::AtIf)?;
+        // When called from @else-if branch, AtIf was not emitted — only skip if present
+        if self.peek(0).ttype == TokenType::AtIf {
+            self.advance();
+        }
         let condition = self.parse_condition(ast)?;
 
         self.expect(TokenType::LeftBrace)?;
