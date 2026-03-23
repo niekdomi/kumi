@@ -178,8 +178,8 @@ pub struct Token {
     pub position: u32,
     /// Length of the token in the source text
     pub length: u32,
-    /// Type of the token
-    pub ttype: TokenType,
+    /// Kind of the token
+    pub kind: TokenType,
     /// 1-based position of comment(s) on line(s) above this token (0 = none)
     pub leading: u32,
     /// 1-based position of comment on same line after this token (0 = none)

@@ -41,11 +41,9 @@ fn run_parser_test(filename: &str) {
 
     let mut open_braces = Vec::new();
     for token in &tokens {
-        if token.ttype == lang::lex::TokenType::LeftBrace {
+        if token.kind == lang::lex::TokenType::LeftBrace {
             open_braces.push(token.position);
-        } else if token.ttype == lang::lex::TokenType::RightBrace
-            && open_braces.pop().is_none()
-        {
+        } else if token.kind == lang::lex::TokenType::RightBrace && open_braces.pop().is_none() {
             lex_errors.push(Diagnostic::new(
                 "unexpected closing brace",
                 token.position,

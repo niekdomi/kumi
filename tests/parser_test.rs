@@ -549,7 +549,7 @@ fn if_function_call_condition() {
         panic!("expected UnaryExpr")
     };
     assert!(!unary.is_negated);
-    assert_eq!(unary.operand.ttype, OperandType::FunctionCall);
+    assert_eq!(unary.operand.kind, OperandType::FunctionCall);
 }
 
 #[test]
@@ -951,7 +951,7 @@ fn condition_unary_identifier() {
         panic!("expected UnaryExpr")
     };
     assert!(!unary.is_negated);
-    assert_eq!(unary.operand.ttype, OperandType::Value);
+    assert_eq!(unary.operand.kind, OperandType::Value);
 }
 
 #[test]
@@ -964,7 +964,7 @@ fn condition_not_function_call() {
         panic!("expected UnaryExpr")
     };
     assert!(unary.is_negated);
-    assert_eq!(unary.operand.ttype, OperandType::FunctionCall);
+    assert_eq!(unary.operand.kind, OperandType::FunctionCall);
 }
 
 //===---------------------------------------------------------------------===//

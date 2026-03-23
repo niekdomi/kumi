@@ -49,7 +49,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 Ok(Some(token)) => {
                     self.tokens.push(token);
 
-                    if token.ttype == TokenType::EndOfFile {
+                    if token.kind == TokenType::EndOfFile {
                         break;
                     }
                 }
@@ -123,7 +123,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             let mut token = Token {
                 position: self.position,
                 length: 0,
-                ttype: TokenType::EndOfFile,
+                kind: TokenType::EndOfFile,
                 leading: 0,
                 trailing: 0,
             };
@@ -194,7 +194,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 return Ok(Token {
                     position: start_pos,
                     length: self.position - start_pos,
-                    ttype: tt,
+                    kind: tt,
                     leading: 0,
                     trailing: 0,
                 });
@@ -216,7 +216,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Ok(Token {
                 position: start_pos,
                 length: self.position - start_pos,
-                ttype: TokenType::NotEqual,
+                kind: TokenType::NotEqual,
                 leading: 0,
                 trailing: 0,
             });
@@ -251,11 +251,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 Some(idx) => self.position += (idx + 2) as u32,
                 None => {
                     self.position = self.input.len() as u32;
-                    return Err(Diagnostic::new(
-                        "unterminated block comment",
-                        start_pos,
-                        "",
-                    ));
+                    return Err(Diagnostic::new("unterminated block comment", start_pos, ""));
                 }
             }
         } else {
@@ -289,7 +285,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Ok(Token {
                 position: start_pos,
                 length: self.position - start_pos,
-                ttype: TokenType::Range,
+                kind: TokenType::Range,
                 leading: 0,
                 trailing: 0,
             });
@@ -310,7 +306,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Ok(Token {
                 position: start_pos,
                 length: self.position - start_pos,
-                ttype: TokenType::Equal,
+                kind: TokenType::Equal,
                 leading: 0,
                 trailing: 0,
             });
@@ -331,7 +327,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Token {
                 position: start_pos,
                 length: self.position - start_pos,
-                ttype: TokenType::GreaterEqual,
+                kind: TokenType::GreaterEqual,
                 leading: 0,
                 trailing: 0,
             };
@@ -341,7 +337,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Token {
             position: start_pos,
             length: self.position - start_pos,
-            ttype: TokenType::Greater,
+            kind: TokenType::Greater,
             leading: 0,
             trailing: 0,
         }
@@ -355,7 +351,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Token {
                 position: start_pos,
                 length: self.position - start_pos,
-                ttype: TokenType::LessEqual,
+                kind: TokenType::LessEqual,
                 leading: 0,
                 trailing: 0,
             };
@@ -365,7 +361,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Token {
             position: start_pos,
             length: self.position - start_pos,
-            ttype: TokenType::Less,
+            kind: TokenType::Less,
             leading: 0,
             trailing: 0,
         }
@@ -382,20 +378,20 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Token {
             position: start_pos,
             length: self.position - start_pos,
-            ttype: TokenType::Number,
+            kind: TokenType::Number,
             leading: 0,
             trailing: 0,
         }
     }
 
     #[inline(always)]
-    fn lex_single_char(&mut self, ttype: TokenType) -> Token {
+    fn lex_single_char(&mut self, kind: TokenType) -> Token {
         let position = self.position;
         self.advance();
         Token {
             position,
             length: 1,
-            ttype,
+            kind,
             leading: 0,
             trailing: 0,
         }
@@ -455,7 +451,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Ok(Token {
             position: start_pos,
             length: self.position - start_pos,
-            ttype: TokenType::String,
+            kind: TokenType::String,
             leading: 0,
             trailing: 0,
         })
@@ -513,7 +509,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 return Ok(Token {
                     position: start_pos,
                     length: self.position - start_pos,
-                    ttype: tt,
+                    kind: tt,
                     leading: 0,
                     trailing: 0,
                 });
@@ -523,7 +519,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Ok(Token {
             position: start_pos,
             length: self.position - start_pos,
-            ttype: TokenType::Identifier,
+            kind: TokenType::Identifier,
             leading: 0,
             trailing: 0,
         })

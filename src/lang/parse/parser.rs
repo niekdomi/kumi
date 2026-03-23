@@ -20,7 +20,7 @@ impl<'a> Parser<'a> {
     pub fn parse(mut self, file_path: &'a str) -> Ast<'a> {
         let mut ast = Ast::new(file_path);
 
-        while self.peek(0).ttype != TokenType::EndOfFile {
+        while self.peek(0).kind != TokenType::EndOfFile {
             match self.parse_statement(&mut ast) {
                 Ok(stmt) => ast.statements.push(stmt),
                 Err(err) => {
@@ -35,15 +35,15 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn synchronize(&mut self) {
-        if self.peek(0).ttype == TokenType::EndOfFile {
+        if self.peek(0).kind == TokenType::EndOfFile {
             return;
         }
         self.advance();
-        while self.peek(0).ttype != TokenType::EndOfFile {
-            if self.tokens[self.position - 1].ttype == TokenType::Semicolon {
+        while self.peek(0).kind != TokenType::EndOfFile {
+            if self.tokens[self.position - 1].kind == TokenType::Semicolon {
                 return;
             }
-            match self.peek(0).ttype {
+            match self.peek(0).kind {
                 TokenType::Project
                 | TokenType::Workspace
                 | TokenType::Target
@@ -81,17 +81,17 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    fn expect(&mut self, ttype: TokenType) -> Result<&'a Token, Diagnostic> {
-        if self.peek(0).ttype != ttype {
+    fn expect(&mut self, kind: TokenType) -> Result<&'a Token, Diagnostic> {
+        if self.peek(0).kind != kind {
             let peek_token = self.peek(0);
 
             let mut error_pos = peek_token.position;
-            if ttype == TokenType::Semicolon && self.position > 0 {
+            if kind == TokenType::Semicolon && self.position > 0 {
                 let prev_token = &self.tokens[self.position - 1];
                 error_pos = prev_token.position + prev_token.length;
             }
 
-            let expected_str = match ttype {
+            let expected_str = match kind {
                 TokenType::LeftBrace => "{",
                 TokenType::RightBrace => "}",
                 TokenType::LeftBracket => "[",
@@ -104,11 +104,17 @@ impl<'a> Parser<'a> {
                 TokenType::Identifier => "identifier",
                 TokenType::String => "string",
                 TokenType::Number => "number",
-                _ => return Err(Diagnostic::new(
-                    format!("expected '{:?}', got '{}'", ttype, self.get_string(peek_token)),
-                    error_pos,
-                    "",
-                )),
+                _ => {
+                    return Err(Diagnostic::new(
+                        format!(
+                            "expected '{:?}', got '{}'",
+                            kind,
+                            self.get_string(peek_token)
+                        ),
+                        error_pos,
+                        "",
+                    ));
+                }
             };
 
             let value = self.get_string(peek_token);
@@ -122,8 +128,8 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    fn match_token(&mut self, ttype: TokenType) -> bool {
-        if self.peek(0).ttype == ttype {
+    fn match_token(&mut self, kind: TokenType) -> bool {
+        if self.peek(0).kind == kind {
             self.advance();
             true
         } else {
@@ -143,8 +149,8 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn expect_identifier_or_keyword(&mut self) -> Result<&'a Token, Diagnostic> {
-        let ttype = self.peek(0).ttype;
-        if ttype == TokenType::Identifier || ttype.is_keyword() {
+        let kind = self.peek(0).kind;
+        if kind == TokenType::Identifier || kind.is_keyword() {
             Ok(self.advance())
         } else {
             let token = self.peek(0);
@@ -157,6 +163,19 @@ impl<'a> Parser<'a> {
                 "identifiers must start with a letter or underscore, followed by letters or digits",
             ))
         }
+    }
+
+    /// Returns the end byte offset (exclusive) of a token.
+    #[inline(always)]
+    fn end_of(&self, token: &Token) -> u32 {
+        token.position + token.length
+    }
+
+    /// Returns the end byte offset of the previously consumed token.
+    #[inline(always)]
+    fn prev_end(&self) -> u32 {
+        let prev = &self.tokens[self.position - 1];
+        prev.position + prev.length
     }
 
     #[inline(always)]
@@ -173,19 +192,20 @@ impl<'a> Parser<'a> {
         idx
     }
 
-    /// Helper: expect keyword, `{`, parse properties, `}`. Returns (start_pos, prop_start, prop_end).
+    /// Helper: expect keyword, `{`, parse properties, `}`. Returns (start_pos, end_pos, prop_start, prop_end).
     #[inline(always)]
     fn parse_property_block(
         &mut self,
         ast: &mut Ast<'a>,
         keyword: TokenType,
-    ) -> Result<(u32, u32, u32), Diagnostic> {
+    ) -> Result<(u32, u32, u32, u32), Diagnostic> {
         let start_pos = self.peek(0).position;
         self.expect(keyword)?;
         self.expect(TokenType::LeftBrace)?;
         let (start, end) = self.parse_properties(ast)?;
-        self.expect(TokenType::RightBrace)?;
-        Ok((start_pos, start, end))
+        let close = self.expect(TokenType::RightBrace)?;
+        let end_pos = self.end_of(close);
+        Ok((start_pos, end_pos, start, end))
     }
 
     /// Helper: parse optional `with ident, ident, ...` mixin list. Returns (start_idx, end_idx).
@@ -206,7 +226,7 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_statement(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        match self.peek(0).ttype {
+        match self.peek(0).kind {
             TokenType::Project => self.parse_project(ast),
             TokenType::Workspace => self.parse_workspace(ast),
             TokenType::Target => self.parse_target(ast),
@@ -227,7 +247,7 @@ impl<'a> Parser<'a> {
             TokenType::AtImport => self.parse_import(ast),
 
             TokenType::Identifier => {
-                if self.peek(1).ttype == TokenType::Colon {
+                if self.peek(1).kind == TokenType::Colon {
                     self.parse_property(ast).map(Statement::Property)
                 } else {
                     let token = self.advance();
@@ -256,17 +276,17 @@ impl<'a> Parser<'a> {
     fn parse_statement_block(&mut self, ast: &mut Ast<'a>) -> Result<(u32, u32), Diagnostic> {
         let start_idx = ast.all_statements.len() as u32;
 
-        while self.peek(0).ttype != TokenType::RightBrace
-            && self.peek(0).ttype != TokenType::EndOfFile
+        while self.peek(0).kind != TokenType::RightBrace
+            && self.peek(0).kind != TokenType::EndOfFile
         {
-            let ttype = self.peek(0).ttype;
-            let next_ttype = self.peek(1).ttype;
+            let kind = self.peek(0).kind;
+            let next_ttype = self.peek(1).kind;
 
-            let is_property = (ttype == TokenType::Identifier || ttype.is_keyword())
+            let is_property = (kind == TokenType::Identifier || kind.is_keyword())
                 && next_ttype == TokenType::Colon;
-            let is_visibility = ttype == TokenType::Public
-                || ttype == TokenType::Private
-                || ttype == TokenType::Interface;
+            let is_visibility = kind == TokenType::Public
+                || kind == TokenType::Private
+                || kind == TokenType::Interface;
 
             let stmt_res = if is_property {
                 self.parse_property(ast).map(Statement::Property)
@@ -292,8 +312,8 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     fn parse_properties(&mut self, ast: &mut Ast<'a>) -> Result<(u32, u32), Diagnostic> {
         let start_idx = ast.all_properties.len() as u32;
-        while self.peek(0).ttype != TokenType::RightBrace
-            && self.peek(0).ttype != TokenType::EndOfFile
+        while self.peek(0).kind != TokenType::RightBrace
+            && self.peek(0).kind != TokenType::EndOfFile
         {
             match self.parse_property(ast) {
                 Ok(prop) => ast.all_properties.push(prop),
@@ -324,9 +344,10 @@ impl<'a> Parser<'a> {
         let value_end_idx = ast.all_values.len() as u32;
 
         self.expect(TokenType::Semicolon)?;
+        let end_pos = self.prev_end();
 
         Ok(Property {
-            base: NodeBase::new(name_token.position),
+            base: NodeBase::new(name_token.position, end_pos),
             name_idx,
             value_start_idx,
             value_end_idx,
@@ -343,9 +364,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
         let (property_start_idx, property_end_idx) = self.parse_properties(ast)?;
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::ProjectDecl(ProjectDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             property_start_idx,
             property_end_idx,
@@ -354,10 +376,10 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_workspace(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        let (start_pos, property_start_idx, property_end_idx) =
+        let (start_pos, end_pos, property_start_idx, property_end_idx) =
             self.parse_property_block(ast, TokenType::Workspace)?;
         Ok(Statement::WorkspaceDecl(WorkspaceDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             property_start_idx,
             property_end_idx,
         }))
@@ -375,9 +397,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
         let (body_start_idx, body_end_idx) = self.parse_statement_block(ast)?;
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::TargetDecl(TargetDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             mixin_start_idx,
             mixin_end_idx,
@@ -393,8 +416,8 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
 
         let dep_start_idx = ast.all_dependencies.len() as u32;
-        while self.peek(0).ttype != TokenType::RightBrace
-            && self.peek(0).ttype != TokenType::EndOfFile
+        while self.peek(0).kind != TokenType::RightBrace
+            && self.peek(0).kind != TokenType::EndOfFile
         {
             match self.parse_dependency_spec(ast) {
                 Ok(dep) => ast.all_dependencies.push(dep),
@@ -407,9 +430,10 @@ impl<'a> Parser<'a> {
         let dep_end_idx = ast.all_dependencies.len() as u32;
 
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::DependenciesDecl(DependenciesDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             dep_start_idx,
             dep_end_idx,
         }))
@@ -427,14 +451,14 @@ impl<'a> Parser<'a> {
         let is_optional = self.match_token(TokenType::Question);
         self.expect(TokenType::Colon)?;
 
-        let value = if self.peek(0).ttype == TokenType::Identifier
-            && self.peek(1).ttype == TokenType::LeftParen
+        let value = if self.peek(0).kind == TokenType::Identifier
+            && self.peek(1).kind == TokenType::LeftParen
         {
             DependencyValue::FunctionCall(self.parse_function_call(ast)?)
-        } else if self.peek(0).ttype == TokenType::String {
+        } else if self.peek(0).kind == TokenType::String {
             let str_token = self.expect(TokenType::String)?;
             DependencyValue::String(self.get_string(str_token))
-        } else if self.peek(0).ttype == TokenType::Identifier {
+        } else if self.peek(0).kind == TokenType::Identifier {
             let id_token = self.expect(TokenType::Identifier)?;
             let val = self.get_string(id_token);
             if val != "system" {
@@ -449,7 +473,7 @@ impl<'a> Parser<'a> {
             }
             let name_idx = self.push_string(ast, "system");
             DependencyValue::FunctionCall(FunctionCall {
-                base: NodeBase::new(id_token.position),
+                base: NodeBase::new(id_token.position, self.end_of(id_token)),
                 name_idx,
                 arg_start_idx: ast.all_values.len() as u32,
                 arg_end_idx: ast.all_values.len() as u32,
@@ -472,9 +496,10 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(TokenType::Semicolon)?;
+        let end_pos = self.prev_end();
 
         Ok(DependencySpec {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             value,
             option_start_idx,
@@ -492,7 +517,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftParen)?;
 
         let arg_start_idx = ast.all_values.len() as u32;
-        if self.peek(0).ttype != TokenType::RightParen {
+        if self.peek(0).kind != TokenType::RightParen {
             let val = self.parse_value(ast)?;
             ast.all_values.push(val);
             while self.match_token(TokenType::Comma) {
@@ -502,9 +527,10 @@ impl<'a> Parser<'a> {
         }
         let arg_end_idx = ast.all_values.len() as u32;
         self.expect(TokenType::RightParen)?;
+        let end_pos = self.prev_end();
 
         Ok(FunctionCall {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             arg_start_idx,
             arg_end_idx,
@@ -518,8 +544,8 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
 
         let option_start_idx = ast.all_options.len() as u32;
-        while self.peek(0).ttype != TokenType::RightBrace
-            && self.peek(0).ttype != TokenType::EndOfFile
+        while self.peek(0).kind != TokenType::RightBrace
+            && self.peek(0).kind != TokenType::EndOfFile
         {
             match self.parse_option_spec(ast) {
                 Ok(spec) => ast.all_options.push(spec),
@@ -532,8 +558,9 @@ impl<'a> Parser<'a> {
         let option_end_idx = ast.all_options.len() as u32;
 
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
         Ok(Statement::OptionsDecl(OptionsDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             option_start_idx,
             option_end_idx,
         }))
@@ -559,8 +586,9 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(TokenType::Semicolon)?;
+        let end_pos = self.prev_end();
         Ok(OptionSpec {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             default_value,
             constraint_start_idx,
@@ -578,9 +606,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
         let (body_start_idx, body_end_idx) = self.parse_statement_block(ast)?;
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::MixinDecl(MixinDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             body_start_idx,
             body_end_idx,
@@ -599,9 +628,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
         let (property_start_idx, property_end_idx) = self.parse_properties(ast)?;
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::ProfileDecl(ProfileDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             name_idx,
             mixin_start_idx,
             mixin_end_idx,
@@ -612,10 +642,10 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_install(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        let (start_pos, property_start_idx, property_end_idx) =
+        let (start_pos, end_pos, property_start_idx, property_end_idx) =
             self.parse_property_block(ast, TokenType::Install)?;
         Ok(Statement::InstallDecl(InstallDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             property_start_idx,
             property_end_idx,
         }))
@@ -623,10 +653,10 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_package(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        let (start_pos, property_start_idx, property_end_idx) =
+        let (start_pos, end_pos, property_start_idx, property_end_idx) =
             self.parse_property_block(ast, TokenType::Package)?;
         Ok(Statement::PackageDecl(PackageDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             property_start_idx,
             property_end_idx,
         }))
@@ -634,10 +664,10 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_scripts(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        let (start_pos, script_start_idx, script_end_idx) =
+        let (start_pos, end_pos, script_start_idx, script_end_idx) =
             self.parse_property_block(ast, TokenType::Scripts)?;
         Ok(Statement::ScriptsDecl(ScriptsDecl {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             script_start_idx,
             script_end_idx,
         }))
@@ -664,9 +694,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
         let (property_start_idx, property_end_idx) = self.parse_properties(ast)?;
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::VisibilityBlock(VisibilityBlock {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             visibility,
             property_start_idx,
             property_end_idx,
@@ -677,7 +708,7 @@ impl<'a> Parser<'a> {
     fn parse_if(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
         let start_pos = self.peek(0).position;
         // When called from @else-if branch, AtIf was not emitted — only skip if present
-        if self.peek(0).ttype == TokenType::AtIf {
+        if self.peek(0).kind == TokenType::AtIf {
             self.advance();
         }
         let condition = self.parse_condition(ast)?;
@@ -688,24 +719,27 @@ impl<'a> Parser<'a> {
 
         let mut else_start_idx = ast.all_statements.len() as u32;
         let mut else_end_idx = else_start_idx;
+        let mut end_pos = self.prev_end();
 
-        if self.peek(0).ttype == TokenType::AtElseIf {
+        if self.peek(0).kind == TokenType::AtElseIf {
             self.advance();
             let else_if = self.parse_if(ast)?;
             else_start_idx = ast.all_statements.len() as u32;
             ast.all_statements.push(else_if);
             else_end_idx = ast.all_statements.len() as u32;
-        } else if self.peek(0).ttype == TokenType::AtElse {
+            end_pos = self.prev_end();
+        } else if self.peek(0).kind == TokenType::AtElse {
             self.advance();
             self.expect(TokenType::LeftBrace)?;
             let (start, end) = self.parse_statement_block(ast)?;
             else_start_idx = start;
             else_end_idx = end;
             self.expect(TokenType::RightBrace)?;
+            end_pos = self.prev_end();
         }
 
         Ok(Statement::IfStmt(IfStmt {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             condition,
             then_start_idx,
             then_end_idx,
@@ -727,9 +761,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBrace)?;
         let (body_start_idx, body_end_idx) = self.parse_statement_block(ast)?;
         self.expect(TokenType::RightBrace)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::ForStmt(ForStmt {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             variable_name_idx,
             iterable,
             body_start_idx,
@@ -756,8 +791,9 @@ impl<'a> Parser<'a> {
             ));
         };
         self.expect(TokenType::Semicolon)?;
+        let end_pos = self.prev_end();
         Ok(Statement::LoopControlStmt(LoopControlStmt {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             control,
         }))
     }
@@ -788,9 +824,10 @@ impl<'a> Parser<'a> {
         let message_token = self.expect(TokenType::String)?;
         let message_idx = self.push_string(ast, self.get_string(message_token));
         self.expect(TokenType::Semicolon)?;
+        let end_pos = self.prev_end();
 
         Ok(Statement::DiagnosticStmt(DiagnosticStmt {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             level,
             message_idx,
         }))
@@ -803,8 +840,9 @@ impl<'a> Parser<'a> {
         let path_token = self.expect(TokenType::String)?;
         let path_idx = self.push_string(ast, self.get_string(path_token));
         self.expect(TokenType::Semicolon)?;
+        let end_pos = self.prev_end();
         Ok(Statement::ImportStmt(ImportStmt {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             path_idx,
         }))
     }
@@ -814,9 +852,9 @@ impl<'a> Parser<'a> {
         let start_pos = self.peek(0).position;
         let first_comparison = self.parse_comparison_expr(ast)?;
 
-        let ttype = self.peek(0).ttype;
-        if ttype == TokenType::And || ttype == TokenType::Or {
-            let logical_op = if ttype == TokenType::And {
+        let kind = self.peek(0).kind;
+        if kind == TokenType::And || kind == TokenType::Or {
+            let logical_op = if kind == TokenType::And {
                 LogicalOperator::And
             } else {
                 LogicalOperator::Or
@@ -825,15 +863,16 @@ impl<'a> Parser<'a> {
             let operand_start_idx = ast.all_comparison_exprs.len() as u32;
             ast.all_comparison_exprs.push(first_comparison);
 
-            while self.peek(0).ttype == ttype {
+            while self.peek(0).kind == kind {
                 self.advance();
                 let comp = self.parse_comparison_expr(ast)?;
                 ast.all_comparison_exprs.push(comp);
             }
             let operand_end_idx = ast.all_comparison_exprs.len() as u32;
 
+            let end_pos = self.prev_end();
             Ok(Condition::LogicalExpr(LogicalExpr {
-                base: NodeBase::new(start_pos),
+                base: NodeBase::new(start_pos, end_pos),
                 operand_start_idx,
                 op: logical_op,
                 operand_end_idx,
@@ -853,7 +892,7 @@ impl<'a> Parser<'a> {
         let left_idx = ast.all_unary_exprs.len() as u32;
         ast.all_unary_exprs.push(left);
 
-        let op = match self.peek(0).ttype {
+        let op = match self.peek(0).kind {
             TokenType::Equal => Some(ComparisonOperator::Equal),
             TokenType::NotEqual => Some(ComparisonOperator::NotEqual),
             TokenType::Less => Some(ComparisonOperator::Less),
@@ -869,15 +908,17 @@ impl<'a> Parser<'a> {
             let right_idx = ast.all_unary_exprs.len() as u32;
             ast.all_unary_exprs.push(right);
 
+            let end_pos = self.prev_end();
             Ok(ComparisonExpr {
-                base: NodeBase::new(start_pos),
+                base: NodeBase::new(start_pos, end_pos),
                 left_idx,
                 op: Some(operator),
                 right_idx: Some(right_idx),
             })
         } else {
+            let end_pos = self.prev_end();
             Ok(ComparisonExpr {
-                base: NodeBase::new(start_pos),
+                base: NodeBase::new(start_pos, end_pos),
                 left_idx,
                 op: None,
                 right_idx: None,
@@ -893,16 +934,17 @@ impl<'a> Parser<'a> {
         if self.match_token(TokenType::LeftParen) {
             let inner = self.parse_condition(ast)?;
             self.expect(TokenType::RightParen)?;
+            let end_pos = self.prev_end();
 
             match inner {
                 Condition::LogicalExpr(logical) => {
                     let idx = ast.all_logical_exprs.len() as u32;
                     ast.all_logical_exprs.push(logical);
                     return Ok(UnaryExpr {
-                        base: NodeBase::new(start_pos),
+                        base: NodeBase::new(start_pos, end_pos),
                         is_negated,
                         operand: UnaryOperand {
-                            ttype: OperandType::LogicalExpr,
+                            kind: OperandType::LogicalExpr,
                             idx,
                         },
                     });
@@ -913,7 +955,7 @@ impl<'a> Parser<'a> {
                     let operand_end_idx = ast.all_comparison_exprs.len() as u32;
 
                     let logical = LogicalExpr {
-                        base: NodeBase::new(start_pos),
+                        base: NodeBase::new(start_pos, end_pos),
                         operand_start_idx,
                         op: LogicalOperator::And,
                         operand_end_idx,
@@ -922,17 +964,17 @@ impl<'a> Parser<'a> {
                     ast.all_logical_exprs.push(logical);
 
                     return Ok(UnaryExpr {
-                        base: NodeBase::new(start_pos),
+                        base: NodeBase::new(start_pos, end_pos),
                         is_negated,
                         operand: UnaryOperand {
-                            ttype: OperandType::LogicalExpr,
+                            kind: OperandType::LogicalExpr,
                             idx,
                         },
                     });
                 }
                 Condition::UnaryExpr(inner_unary) => {
                     return Ok(UnaryExpr {
-                        base: NodeBase::new(start_pos),
+                        base: NodeBase::new(start_pos, end_pos),
                         is_negated: is_negated ^ inner_unary.is_negated,
                         operand: inner_unary.operand,
                     });
@@ -940,16 +982,16 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.peek(0).ttype == TokenType::Identifier && self.peek(1).ttype == TokenType::LeftParen
-        {
+        if self.peek(0).kind == TokenType::Identifier && self.peek(1).kind == TokenType::LeftParen {
             let func = self.parse_function_call(ast)?;
             let idx = ast.all_function_calls.len() as u32;
             ast.all_function_calls.push(func);
+            let end_pos = self.prev_end();
             return Ok(UnaryExpr {
-                base: NodeBase::new(start_pos),
+                base: NodeBase::new(start_pos, end_pos),
                 is_negated,
                 operand: UnaryOperand {
-                    ttype: OperandType::FunctionCall,
+                    kind: OperandType::FunctionCall,
                     idx,
                 },
             });
@@ -958,12 +1000,13 @@ impl<'a> Parser<'a> {
         let value = self.parse_value(ast)?;
         let idx = ast.all_values.len() as u32;
         ast.all_values.push(value);
+        let end_pos = self.prev_end();
 
         Ok(UnaryExpr {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             is_negated,
             operand: UnaryOperand {
-                ttype: OperandType::Value,
+                kind: OperandType::Value,
                 idx,
             },
         })
@@ -971,14 +1014,13 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_iterable(&mut self, ast: &mut Ast<'a>) -> Result<Iterable, Diagnostic> {
-        if self.peek(0).ttype == TokenType::LeftBracket {
+        if self.peek(0).kind == TokenType::LeftBracket {
             return self.parse_list(ast).map(Iterable::List);
         }
-        if self.peek(0).ttype == TokenType::Number && self.peek(1).ttype == TokenType::Range {
+        if self.peek(0).kind == TokenType::Number && self.peek(1).kind == TokenType::Range {
             return self.parse_range(ast).map(Iterable::Range);
         }
-        if self.peek(0).ttype == TokenType::Identifier && self.peek(1).ttype == TokenType::LeftParen
-        {
+        if self.peek(0).kind == TokenType::Identifier && self.peek(1).kind == TokenType::LeftParen {
             return self.parse_function_call(ast).map(Iterable::FunctionCall);
         }
 
@@ -999,7 +1041,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::LeftBracket)?;
 
         let element_start_idx = ast.all_values.len() as u32;
-        if self.peek(0).ttype != TokenType::RightBracket {
+        if self.peek(0).kind != TokenType::RightBracket {
             let val = self.parse_value(ast)?;
             ast.all_values.push(val);
             while self.match_token(TokenType::Comma) {
@@ -1010,9 +1052,10 @@ impl<'a> Parser<'a> {
         let element_end_idx = ast.all_values.len() as u32;
 
         self.expect(TokenType::RightBracket)?;
+        let end_pos = self.prev_end();
 
         Ok(List {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             element_start_idx,
             element_end_idx,
         })
@@ -1051,8 +1094,9 @@ impl<'a> Parser<'a> {
             ));
         }
 
+        let end_pos = self.end_of(end_token);
         Ok(Range {
-            base: NodeBase::new(start_pos),
+            base: NodeBase::new(start_pos, end_pos),
             start_idx: start_val,
             end_idx: end_val,
         })
@@ -1060,7 +1104,7 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn parse_value(&mut self, _ast: &mut Ast<'a>) -> Result<Value<'a>, Diagnostic> {
-        match self.peek(0).ttype {
+        match self.peek(0).kind {
             TokenType::String => {
                 let token = self.advance();
                 let s = self.get_string(token);

@@ -60,7 +60,7 @@ fn top_level_keywords() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -70,20 +70,20 @@ fn top_level_project_declaration() {
     let input = "project myapp {\n    version: \"1.0.0\";\n}";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::Project);
-    assert_eq!(tokens[1].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::Project);
+    assert_eq!(tokens[1].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[1]), "myapp");
-    assert_eq!(tokens[2].ttype, TokenType::LeftBrace);
+    assert_eq!(tokens[2].kind, TokenType::LeftBrace);
 
-    assert_eq!(tokens[3].ttype, TokenType::Identifier);
+    assert_eq!(tokens[3].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[3]), "version");
-    assert_eq!(tokens[4].ttype, TokenType::Colon);
-    assert_eq!(tokens[5].ttype, TokenType::String);
+    assert_eq!(tokens[4].kind, TokenType::Colon);
+    assert_eq!(tokens[5].kind, TokenType::String);
     assert_eq!(text(input, &tokens[5]), "\"1.0.0\"");
-    assert_eq!(tokens[6].ttype, TokenType::Semicolon);
+    assert_eq!(tokens[6].kind, TokenType::Semicolon);
 
-    assert_eq!(tokens[7].ttype, TokenType::RightBrace);
-    assert_eq!(tokens[8].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[7].kind, TokenType::RightBrace);
+    assert_eq!(tokens[8].kind, TokenType::EndOfFile);
 }
 
 //===---------------------------------------------------------------------===//
@@ -100,7 +100,7 @@ fn visibility_keywords() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -123,7 +123,7 @@ fn control_flow_keywords() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -133,16 +133,16 @@ fn control_flow_conditional_with_function_call() {
     let input = "@if platform(windows) { }";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::AtIf);
-    assert_eq!(tokens[1].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::AtIf);
+    assert_eq!(tokens[1].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[1]), "platform");
-    assert_eq!(tokens[2].ttype, TokenType::LeftParen);
-    assert_eq!(tokens[3].ttype, TokenType::Identifier);
+    assert_eq!(tokens[2].kind, TokenType::LeftParen);
+    assert_eq!(tokens[3].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[3]), "windows");
-    assert_eq!(tokens[4].ttype, TokenType::RightParen);
-    assert_eq!(tokens[5].ttype, TokenType::LeftBrace);
-    assert_eq!(tokens[6].ttype, TokenType::RightBrace);
-    assert_eq!(tokens[7].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[4].kind, TokenType::RightParen);
+    assert_eq!(tokens[5].kind, TokenType::LeftBrace);
+    assert_eq!(tokens[6].kind, TokenType::RightBrace);
+    assert_eq!(tokens[7].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -150,19 +150,19 @@ fn control_flow_for_loop_with_range() {
     let input = "@for worker in 0..7 { }";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::AtFor);
-    assert_eq!(tokens[1].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::AtFor);
+    assert_eq!(tokens[1].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[1]), "worker");
-    assert_eq!(tokens[2].ttype, TokenType::In);
-    assert_eq!(tokens[3].ttype, TokenType::Number);
+    assert_eq!(tokens[2].kind, TokenType::In);
+    assert_eq!(tokens[3].kind, TokenType::Number);
     assert_eq!(text(input, &tokens[3]), "0");
-    assert_eq!(tokens[4].ttype, TokenType::Range);
+    assert_eq!(tokens[4].kind, TokenType::Range);
     assert_eq!(text(input, &tokens[4]), "..");
-    assert_eq!(tokens[5].ttype, TokenType::Number);
+    assert_eq!(tokens[5].kind, TokenType::Number);
     assert_eq!(text(input, &tokens[5]), "7");
-    assert_eq!(tokens[6].ttype, TokenType::LeftBrace);
-    assert_eq!(tokens[7].ttype, TokenType::RightBrace);
-    assert_eq!(tokens[8].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[6].kind, TokenType::LeftBrace);
+    assert_eq!(tokens[7].kind, TokenType::RightBrace);
+    assert_eq!(tokens[8].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -170,23 +170,23 @@ fn control_flow_for_loop_with_list() {
     let input = "@for module in [core, renderer, audio] { }";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::AtFor);
-    assert_eq!(tokens[1].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::AtFor);
+    assert_eq!(tokens[1].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[1]), "module");
-    assert_eq!(tokens[2].ttype, TokenType::In);
-    assert_eq!(tokens[3].ttype, TokenType::LeftBracket);
-    assert_eq!(tokens[4].ttype, TokenType::Identifier);
+    assert_eq!(tokens[2].kind, TokenType::In);
+    assert_eq!(tokens[3].kind, TokenType::LeftBracket);
+    assert_eq!(tokens[4].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[4]), "core");
-    assert_eq!(tokens[5].ttype, TokenType::Comma);
-    assert_eq!(tokens[6].ttype, TokenType::Identifier);
+    assert_eq!(tokens[5].kind, TokenType::Comma);
+    assert_eq!(tokens[6].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[6]), "renderer");
-    assert_eq!(tokens[7].ttype, TokenType::Comma);
-    assert_eq!(tokens[8].ttype, TokenType::Identifier);
+    assert_eq!(tokens[7].kind, TokenType::Comma);
+    assert_eq!(tokens[8].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[8]), "audio");
-    assert_eq!(tokens[9].ttype, TokenType::RightBracket);
-    assert_eq!(tokens[10].ttype, TokenType::LeftBrace);
-    assert_eq!(tokens[11].ttype, TokenType::RightBrace);
-    assert_eq!(tokens[12].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[9].kind, TokenType::RightBracket);
+    assert_eq!(tokens[10].kind, TokenType::LeftBrace);
+    assert_eq!(tokens[11].kind, TokenType::RightBrace);
+    assert_eq!(tokens[12].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -194,19 +194,19 @@ fn control_flow_for_loop_with_function_call() {
     let input = "@for file in glob(\"*.cpp\") { }";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::AtFor);
-    assert_eq!(tokens[1].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::AtFor);
+    assert_eq!(tokens[1].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[1]), "file");
-    assert_eq!(tokens[2].ttype, TokenType::In);
-    assert_eq!(tokens[3].ttype, TokenType::Identifier);
+    assert_eq!(tokens[2].kind, TokenType::In);
+    assert_eq!(tokens[3].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[3]), "glob");
-    assert_eq!(tokens[4].ttype, TokenType::LeftParen);
-    assert_eq!(tokens[5].ttype, TokenType::String);
+    assert_eq!(tokens[4].kind, TokenType::LeftParen);
+    assert_eq!(tokens[5].kind, TokenType::String);
     assert_eq!(text(input, &tokens[5]), "\"*.cpp\"");
-    assert_eq!(tokens[6].ttype, TokenType::RightParen);
-    assert_eq!(tokens[7].ttype, TokenType::LeftBrace);
-    assert_eq!(tokens[8].ttype, TokenType::RightBrace);
-    assert_eq!(tokens[9].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[6].kind, TokenType::RightParen);
+    assert_eq!(tokens[7].kind, TokenType::LeftBrace);
+    assert_eq!(tokens[8].kind, TokenType::RightBrace);
+    assert_eq!(tokens[9].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -263,7 +263,7 @@ fn diagnostic_directive_keywords() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -282,7 +282,7 @@ fn logical_operator_keywords() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -304,7 +304,7 @@ fn braces_brackets_parens() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -319,7 +319,7 @@ fn delimiters() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -329,13 +329,13 @@ fn delimiter_property_assignment_sequence() {
     let input = "sources: \"*.cpp\";";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[0]), "sources");
-    assert_eq!(tokens[1].ttype, TokenType::Colon);
-    assert_eq!(tokens[2].ttype, TokenType::String);
+    assert_eq!(tokens[1].kind, TokenType::Colon);
+    assert_eq!(tokens[2].kind, TokenType::String);
     assert_eq!(text(input, &tokens[2]), "\"*.cpp\"");
-    assert_eq!(tokens[3].ttype, TokenType::Semicolon);
-    assert_eq!(tokens[4].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[3].kind, TokenType::Semicolon);
+    assert_eq!(tokens[4].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -343,19 +343,19 @@ fn delimiter_comma_separated_list() {
     let input = "authors: \"Alice\", \"Bob\", \"Charlie\";";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::Identifier);
+    assert_eq!(tokens[0].kind, TokenType::Identifier);
     assert_eq!(text(input, &tokens[0]), "authors");
-    assert_eq!(tokens[1].ttype, TokenType::Colon);
-    assert_eq!(tokens[2].ttype, TokenType::String);
+    assert_eq!(tokens[1].kind, TokenType::Colon);
+    assert_eq!(tokens[2].kind, TokenType::String);
     assert_eq!(text(input, &tokens[2]), "\"Alice\"");
-    assert_eq!(tokens[3].ttype, TokenType::Comma);
-    assert_eq!(tokens[4].ttype, TokenType::String);
+    assert_eq!(tokens[3].kind, TokenType::Comma);
+    assert_eq!(tokens[4].kind, TokenType::String);
     assert_eq!(text(input, &tokens[4]), "\"Bob\"");
-    assert_eq!(tokens[5].ttype, TokenType::Comma);
-    assert_eq!(tokens[6].ttype, TokenType::String);
+    assert_eq!(tokens[5].kind, TokenType::Comma);
+    assert_eq!(tokens[6].kind, TokenType::String);
     assert_eq!(text(input, &tokens[6]), "\"Charlie\"");
-    assert_eq!(tokens[7].ttype, TokenType::Semicolon);
-    assert_eq!(tokens[8].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[7].kind, TokenType::Semicolon);
+    assert_eq!(tokens[8].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -368,7 +368,7 @@ fn special_operators() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -378,13 +378,13 @@ fn special_operator_range_expression() {
     let input = "0..10";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::Number);
+    assert_eq!(tokens[0].kind, TokenType::Number);
     assert_eq!(text(input, &tokens[0]), "0");
-    assert_eq!(tokens[1].ttype, TokenType::Range);
+    assert_eq!(tokens[1].kind, TokenType::Range);
     assert_eq!(text(input, &tokens[1]), "..");
-    assert_eq!(tokens[2].ttype, TokenType::Number);
+    assert_eq!(tokens[2].kind, TokenType::Number);
     assert_eq!(text(input, &tokens[2]), "10");
-    assert_eq!(tokens[3].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[3].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -409,7 +409,7 @@ fn comparison_operators() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -419,11 +419,11 @@ fn comparison_operators_adjacent_without_whitespace() {
     let input = "!=>=<===";
     let tokens = lex_ok(input);
 
-    assert_eq!(tokens[0].ttype, TokenType::NotEqual);
-    assert_eq!(tokens[1].ttype, TokenType::GreaterEqual);
-    assert_eq!(tokens[2].ttype, TokenType::LessEqual);
-    assert_eq!(tokens[3].ttype, TokenType::Equal);
-    assert_eq!(tokens[4].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[0].kind, TokenType::NotEqual);
+    assert_eq!(tokens[1].kind, TokenType::GreaterEqual);
+    assert_eq!(tokens[2].kind, TokenType::LessEqual);
+    assert_eq!(tokens[3].kind, TokenType::Equal);
+    assert_eq!(tokens[4].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -485,7 +485,7 @@ fn identifier_valid() {
 
     for input in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, TokenType::Identifier, "input: {input}");
+        assert_eq!(token.kind, TokenType::Identifier, "input: {input}");
         assert_eq!(text(input, &token), *input, "input: {input}");
     }
 }
@@ -496,7 +496,7 @@ fn identifier_keyword_like() {
 
     for input in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, TokenType::Identifier, "input: {input}");
+        assert_eq!(token.kind, TokenType::Identifier, "input: {input}");
         assert_eq!(text(input, &token), *input, "input: {input}");
     }
 }
@@ -526,7 +526,7 @@ fn string_simple() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, TokenType::String, "input: {input}");
+        assert_eq!(token.kind, TokenType::String, "input: {input}");
         assert_eq!(text(input, &token), expected, "input: {input}");
     }
 }
@@ -543,7 +543,7 @@ fn string_escape_sequences() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, TokenType::String, "input: {input}");
+        assert_eq!(token.kind, TokenType::String, "input: {input}");
         assert_eq!(text(input, &token), expected, "input: {input}");
     }
 }
@@ -588,7 +588,7 @@ fn number_literals() {
 
     for input in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, TokenType::Number, "input: {input}");
+        assert_eq!(token.kind, TokenType::Number, "input: {input}");
         assert_eq!(text(input, &token), *input, "input: {input}");
     }
 }
@@ -599,7 +599,7 @@ fn boolean_literals() {
 
     for &(input, expected) in cases {
         let token = lex_single(input);
-        assert_eq!(token.ttype, expected, "input: {input}");
+        assert_eq!(token.kind, expected, "input: {input}");
         assert_eq!(text(input, &token), input, "input: {input}");
     }
 }
@@ -616,7 +616,7 @@ fn comment_line_skipped() {
     for input in cases {
         let tokens = lex_ok(input);
         assert_eq!(tokens.len(), 1, "input: {input}");
-        assert_eq!(tokens[0].ttype, TokenType::EndOfFile, "input: {input}");
+        assert_eq!(tokens[0].kind, TokenType::EndOfFile, "input: {input}");
     }
 }
 
@@ -632,7 +632,7 @@ fn comment_block_skipped() {
     for input in cases {
         let tokens = lex_ok(input);
         assert_eq!(tokens.len(), 1, "input: {input}");
-        assert_eq!(tokens[0].ttype, TokenType::EndOfFile, "input: {input}");
+        assert_eq!(tokens[0].kind, TokenType::EndOfFile, "input: {input}");
     }
 }
 
@@ -653,7 +653,7 @@ fn comment_block_unterminated_multiline() {
 fn comment_leading_attached_to_next_token() {
     let input = "// leading\nproject";
     let tokens = lex_ok(input);
-    assert_eq!(tokens[0].ttype, TokenType::Project);
+    assert_eq!(tokens[0].kind, TokenType::Project);
     assert_ne!(tokens[0].leading, 0, "leading comment should be attached");
 }
 
@@ -661,7 +661,7 @@ fn comment_leading_attached_to_next_token() {
 fn comment_trailing_attached_to_previous_token() {
     let input = "project // trailing";
     let tokens = lex_ok(input);
-    assert_eq!(tokens[0].ttype, TokenType::Project);
+    assert_eq!(tokens[0].kind, TokenType::Project);
     assert_ne!(tokens[0].trailing, 0, "trailing comment should be attached");
 }
 
@@ -673,7 +673,7 @@ fn comment_trailing_attached_to_previous_token() {
 fn eof_empty_input() {
     let tokens = lex_ok("");
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[0].kind, TokenType::EndOfFile);
     assert_eq!(tokens[0].position, 0);
 }
 
@@ -681,7 +681,7 @@ fn eof_empty_input() {
 fn eof_whitespace_only() {
     let tokens = lex_ok("   \n\t  ");
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[0].kind, TokenType::EndOfFile);
 }
 
 #[test]
@@ -690,7 +690,7 @@ fn eof_after_tokens() {
     assert_eq!(tokens.len(), 3);
     assert_eq!(tokens[0].position, 0);
     assert_eq!(tokens[1].position, 8);
-    assert_eq!(tokens[2].ttype, TokenType::EndOfFile);
+    assert_eq!(tokens[2].kind, TokenType::EndOfFile);
 }
 
 #[test]

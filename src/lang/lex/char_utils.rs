@@ -1,64 +1,53 @@
-bitflags::bitflags! {
-    pub struct CharType: u8 {
-        const DIGIT = 1 << 0;
-        const ALPHA = 1 << 1;
-        const IDENT = 1 << 2;
-        const SPACE = 1 << 3;
-    }
+#[derive(Copy, Clone, Default)]
+struct CharProperties {
+    is_alpha: bool,
+    is_digit: bool,
+    is_ident: bool,
+    is_space: bool,
 }
 
-const fn compute_map() -> [u8; 256] {
-    let mut table = [0u8; 256];
-    let mut i = 0usize;
+const LOOKUP_TABLE: [CharProperties; 256] = {
+    let mut table = [CharProperties {
+        is_alpha: false,
+        is_digit: false,
+        is_ident: false,
+        is_space: false,
+    }; 256];
+
+    let mut i = 0;
     while i < 256 {
         let c = i as u8;
+        let mut props = CharProperties {
+            is_alpha: matches!(c, b'a'..=b'z' | b'A'..=b'Z'),
+            is_digit: matches!(c, b'0'..=b'9'),
+            is_ident: matches!(c, b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' | b' ' | b'_' | b'-'),
+            is_space: matches!(c, b' ' | 0x09..=0x0D),
+        };
 
-        if c >= b'0' && c <= b'9' {
-            table[i] |= CharType::DIGIT.bits();
-            table[i] |= CharType::IDENT.bits();
-        }
+        props.is_ident = props.is_digit || props.is_alpha || matches!(c, b'_' | b'-');
 
-        if (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z') {
-            table[i] |= CharType::ALPHA.bits();
-            table[i] |= CharType::IDENT.bits();
-        }
-
-        if c == b'_' || c == b'-' {
-            table[i] |= CharType::IDENT.bits();
-        }
-
-        if c == b' ' || (c >= 0x09 && c <= 0x0d) {
-            table[i] |= CharType::SPACE.bits();
-        }
-
+        table[i] = props;
         i += 1;
     }
     table
-}
-
-static LOOKUP_TABLE: [u8; 256] = compute_map();
+};
 
 #[inline(always)]
-pub fn is_type(c: u8, flag: CharType) -> bool {
-    (LOOKUP_TABLE[c as usize] & flag.bits()) != 0
-}
-
-#[inline(always)]
-pub fn is_space(c: u8) -> bool {
-    is_type(c, CharType::SPACE)
+pub fn is_alpha(c: u8) -> bool {
+    LOOKUP_TABLE[c as usize].is_alpha
 }
 
 #[inline(always)]
 pub fn is_digit(c: u8) -> bool {
-    is_type(c, CharType::DIGIT)
-}
-
-#[inline(always)]
-pub fn is_alpha(c: u8) -> bool {
-    is_type(c, CharType::ALPHA)
+    LOOKUP_TABLE[c as usize].is_digit
 }
 
 #[inline(always)]
 pub fn is_identifier(c: u8) -> bool {
-    is_type(c, CharType::IDENT)
+    LOOKUP_TABLE[c as usize].is_ident
+}
+
+#[inline(always)]
+pub fn is_space(c: u8) -> bool {
+    LOOKUP_TABLE[c as usize].is_space
 }

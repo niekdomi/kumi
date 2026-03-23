@@ -16,18 +16,22 @@ use std::mem::size_of;
 
 /// Base class for all AST nodes providing source location tracking
 ///
-/// Every AST node includes position information for error reporting and
-/// debugging. The position is a byte offset into the source file.
+/// Every AST node includes a source range (start + end byte offsets) for
+/// error reporting, diagnostics, and tooling (LSP, formatter). The range
+/// covers the full syntactic extent of the node, from the first token to
+/// the last (inclusive of closing braces, semicolons, etc.).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NodeBase {
-    /// Character offset in source file
-    pub idx: u32,
+    /// Index of the start byte offset in source file
+    pub start_idx: u32,
+    /// Index of the end byte offset in source file
+    pub end_idx: u32,
 }
-const _: () = assert!(size_of::<NodeBase>() == 4);
+const _: () = assert!(size_of::<NodeBase>() == 8);
 
 impl NodeBase {
-    pub fn new(idx: u32) -> Self {
-        Self { idx }
+    pub fn new(start_idx: u32, end_idx: u32) -> Self {
+        Self { start_idx, end_idx }
     }
 }
 
@@ -86,7 +90,7 @@ pub struct List {
     /// Index of the end of list elements
     pub element_end_idx: u32,
 }
-const _: () = assert!(size_of::<List>() == 12);
+const _: () = assert!(size_of::<List>() == 16);
 
 /// Represents a numeric range for iteration
 ///
@@ -111,7 +115,7 @@ pub struct Range {
     /// Index of the end value
     pub end_idx: u32,
 }
-const _: () = assert!(size_of::<Range>() == 12);
+const _: () = assert!(size_of::<Range>() == 16);
 
 /// Represents a function call expression
 ///
@@ -142,7 +146,7 @@ pub struct FunctionCall {
     /// Index of the end of positional arguments
     pub arg_end_idx: u32,
 }
-const _: () = assert!(size_of::<FunctionCall>() == 16);
+const _: () = assert!(size_of::<FunctionCall>() == 20);
 
 /// Primary expression (leaf nodes in expression tree)
 ///
@@ -210,7 +214,7 @@ pub enum OperandType {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UnaryOperand {
-    pub ttype: OperandType,
+    pub kind: OperandType,
     /// Index of the operand
     pub idx: u32,
 }
@@ -238,7 +242,7 @@ pub struct UnaryExpr {
     /// The operand to potentially negate
     pub operand: UnaryOperand,
 }
-const _: () = assert!(size_of::<UnaryExpr>() == 16);
+const _: () = assert!(size_of::<UnaryExpr>() == 20);
 
 /// Represents a comparison expression
 ///
@@ -266,7 +270,7 @@ pub struct ComparisonExpr {
     /// Index of the right-hand side expression (if binary)
     pub right_idx: Option<u32>,
 }
-const _: () = assert!(size_of::<ComparisonExpr>() == 20);
+const _: () = assert!(size_of::<ComparisonExpr>() == 24);
 
 /// Represents a logical expression (AND/OR of comparisons)
 ///
@@ -295,7 +299,7 @@ pub struct LogicalExpr {
     /// Index of the end of comparison operands
     pub operand_end_idx: u32,
 }
-const _: () = assert!(size_of::<LogicalExpr>() == 16);
+const _: () = assert!(size_of::<LogicalExpr>() == 20);
 
 /// Top-level condition type used in if statements
 ///
@@ -315,7 +319,7 @@ pub enum Condition {
     /// not feature(x), platform(linux)
     UnaryExpr(UnaryExpr),
 }
-const _: () = assert!(size_of::<Condition>() == 20);
+const _: () = assert!(size_of::<Condition>() == 24);
 
 /// Iterable expression for for-loops
 ///
@@ -339,7 +343,7 @@ pub enum Iterable {
     /// Function returning iterable (e.g., glob)
     FunctionCall(FunctionCall),
 }
-const _: () = assert!(size_of::<Iterable>() == 20);
+const _: () = assert!(size_of::<Iterable>() == 24);
 
 //===----------------------------------------------------------------------===//
 // Properties
@@ -374,7 +378,7 @@ pub struct Property {
     /// Index of the end of property values (one or more)
     pub value_end_idx: u32,
 }
-const _: () = assert!(size_of::<Property>() == 16);
+const _: () = assert!(size_of::<Property>() == 20);
 
 //===----------------------------------------------------------------------===//
 // Dependencies
@@ -472,7 +476,7 @@ pub struct OptionSpec<'a> {
     /// index of the end of constraints such as `min`
     pub constraint_end_idx: u32,
 }
-const _: () = assert!(size_of::<OptionSpec>() == 40);
+const _: () = assert!(size_of::<OptionSpec>() == 48);
 
 //===----------------------------------------------------------------------===//
 // Top-Level Declarations
@@ -498,7 +502,7 @@ pub enum Statement {
     ImportStmt(ImportStmt),
     Property(Property),
 }
-const _: () = assert!(size_of::<Statement>() == 40);
+const _: () = assert!(size_of::<Statement>() == 48);
 
 /// Represents a project declaration
 ///
@@ -528,7 +532,7 @@ pub struct ProjectDecl {
     /// Index of the end of project configuration properties
     pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<ProjectDecl>() == 16);
+const _: () = assert!(size_of::<ProjectDecl>() == 20);
 
 /// Represents a workspace declaration
 ///
@@ -556,7 +560,7 @@ pub struct WorkspaceDecl {
     /// Index of the end of workspace configuration
     pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<WorkspaceDecl>() == 12);
+const _: () = assert!(size_of::<WorkspaceDecl>() == 16);
 
 /// Represents a target declaration
 ///
@@ -602,7 +606,7 @@ pub struct TargetDecl {
     /// Index of the end of target body as `properties`
     pub body_end_idx: u32,
 }
-const _: () = assert!(size_of::<TargetDecl>() == 24);
+const _: () = assert!(size_of::<TargetDecl>() == 28);
 
 /// Represents a dependencies declaration
 ///
@@ -632,7 +636,7 @@ pub struct DependenciesDecl {
     /// Index of the end of list of dependency specifications
     pub dep_end_idx: u32,
 }
-const _: () = assert!(size_of::<DependenciesDecl>() == 12);
+const _: () = assert!(size_of::<DependenciesDecl>() == 16);
 
 /// Represents an options declaration
 ///
@@ -664,7 +668,7 @@ pub struct OptionsDecl {
     /// Index of the end of build option specifications
     pub option_end_idx: u32,
 }
-const _: () = assert!(size_of::<OptionsDecl>() == 12);
+const _: () = assert!(size_of::<OptionsDecl>() == 16);
 
 /// Represents a mixin declaration
 ///
@@ -700,7 +704,7 @@ pub struct MixinDecl {
     /// Index of the end of mixin body
     pub body_end_idx: u32,
 }
-const _: () = assert!(size_of::<MixinDecl>() == 16);
+const _: () = assert!(size_of::<MixinDecl>() == 20);
 
 /// Represents a profile declaration
 ///
@@ -739,7 +743,7 @@ pub struct ProfileDecl {
     /// Index of the end of profile configuration
     pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<ProfileDecl>() == 24);
+const _: () = assert!(size_of::<ProfileDecl>() == 28);
 
 /// Represents an install declaration
 ///
@@ -767,7 +771,7 @@ pub struct InstallDecl {
     /// Index of the end of installation configuration
     pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<InstallDecl>() == 12);
+const _: () = assert!(size_of::<InstallDecl>() == 16);
 
 /// Represents a package declaration
 ///
@@ -796,7 +800,7 @@ pub struct PackageDecl {
     /// Index of the end of package configuration
     pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<PackageDecl>() == 12);
+const _: () = assert!(size_of::<PackageDecl>() == 16);
 
 /// Represents a scripts declaration
 ///
@@ -823,7 +827,7 @@ pub struct ScriptsDecl {
     /// Index of the end of build script hooks
     pub script_end_idx: u32,
 }
-const _: () = assert!(size_of::<ScriptsDecl>() == 12);
+const _: () = assert!(size_of::<ScriptsDecl>() == 16);
 
 //===----------------------------------------------------------------------===//
 // Visibility Blocks
@@ -879,7 +883,7 @@ pub struct VisibilityBlock {
     /// Index of the end of properties with this visibility
     pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<VisibilityBlock>() == 16);
+const _: () = assert!(size_of::<VisibilityBlock>() == 20);
 
 //===----------------------------------------------------------------------===//
 // Control Flow Statements
@@ -922,7 +926,7 @@ pub struct IfStmt {
     /// Index of end of else block statements
     pub else_end_idx: u32,
 }
-const _: () = assert!(size_of::<IfStmt>() == 40);
+const _: () = assert!(size_of::<IfStmt>() == 48);
 
 /// Represents a for-loop statement
 ///
@@ -968,7 +972,7 @@ pub struct ForStmt {
     /// Index of the end of loop body statements
     pub body_end_idx: u32,
 }
-const _: () = assert!(size_of::<ForStmt>() == 36);
+const _: () = assert!(size_of::<ForStmt>() == 44);
 
 /// Loop control operation type
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1004,7 +1008,7 @@ pub struct LoopControlStmt {
     /// Break or continue
     pub control: LoopControl,
 }
-const _: () = assert!(size_of::<LoopControlStmt>() == 8);
+const _: () = assert!(size_of::<LoopControlStmt>() == 12);
 
 //===----------------------------------------------------------------------===//
 // Diagnostic and Import Statements
@@ -1053,7 +1057,7 @@ pub struct DiagnosticStmt {
     /// Index of the diagnostics message text
     pub message_idx: u32,
 }
-const _: () = assert!(size_of::<DiagnosticStmt>() == 12);
+const _: () = assert!(size_of::<DiagnosticStmt>() == 16);
 
 /// Represents an import statement
 ///
@@ -1076,7 +1080,7 @@ pub struct ImportStmt {
     /// Index of the import path string
     pub path_idx: u32,
 }
-const _: () = assert!(size_of::<ImportStmt>() == 8);
+const _: () = assert!(size_of::<ImportStmt>() == 12);
 
 //===----------------------------------------------------------------------===//
 // Root AST
