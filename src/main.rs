@@ -88,6 +88,22 @@ fn run_parser_test(filename: &str) {
         }
     }
 
+    let mem_after_parse = get_peak_memory_mb();
+
+    let check_start = Instant::now();
+    let checker = lang::semantic::Checker::new();
+    let check_errors = checker.check(&ast);
+    let check_ns = check_start.elapsed().as_nanos() as f64;
+
+    if !check_errors.is_empty() {
+        has_errors = true;
+        for e in &check_errors {
+            printer.print_error(e);
+        }
+    }
+
+    let mem_after_check = get_peak_memory_mb();
+
     let size_mb = (source.len() as f64) / 1_000_000.0;
     let token_count = tokens.len();
 
@@ -102,24 +118,26 @@ fn run_parser_test(filename: &str) {
 
     let lex_ms = lex_ns / 1_000_000.0;
     let parse_ms = parse_ns / 1_000_000.0;
-    let total_ms = lex_ms + parse_ms;
+    let check_ms = check_ns / 1_000_000.0;
+    let total_ms = lex_ms + parse_ms + check_ms;
 
     let lex_throughput = if lex_ms > 0.0 { size_mb / (lex_ms / 1000.0) } else { 0.0 };
     let parse_throughput = if parse_ms > 0.0 { size_mb / (parse_ms / 1000.0) } else { 0.0 };
+    let check_throughput = if check_ms > 0.0 { size_mb / (check_ms / 1000.0) } else { 0.0 };
     let total_throughput = if total_ms > 0.0 { size_mb / (total_ms / 1000.0) } else { 0.0 };
-
-    let mem_after = get_peak_memory_mb();
 
     println!("╭─────────────────────────────────────────╮");
     println!("│ Performance Metrics                     │");
     println!("├─────────────────────────────────────────┤");
     println!("│ Lexing:  {:>10.4} ms {:>10.2} MB/s  │", lex_ms, lex_throughput);
     println!("│ Parsing: {:>10.4} ms {:>10.2} MB/s  │", parse_ms, parse_throughput);
+    println!("│ Check:   {:>10.4} ms {:>10.2} MB/s  │", check_ms, check_throughput);
     println!("│ Total:   {:>10.4} ms {:>10.2} MB/s  │", total_ms, total_throughput);
     println!("├─────────────────────────────────────────┤");
     println!("│ Lex Memory:   {:>13.2} MB          │", mem_after_lex - mem_before);
-    println!("│ Parse Memory: {:>13.2} MB          │", mem_after - mem_after_lex);
-    println!("│ Peak RSS:     {:>13.2} MB          │", mem_after - mem_before);
+    println!("│ Parse Memory: {:>13.2} MB          │", mem_after_parse - mem_after_lex);
+    println!("│ Check Memory: {:>13.2} MB          │", mem_after_check - mem_after_parse);
+    println!("│ Peak RSS:     {:>13.2} MB          │", mem_after_check - mem_before);
     println!("╰─────────────────────────────────────────╯");
 
     if has_errors {
@@ -142,42 +160,80 @@ fn main() {
         return;
     }
 
+    macro_rules! check_help {
+        ($args:expr, $name:literal) => {
+            if $args.help {
+                cli::args::print_subcommand_help($name);
+                return;
+            }
+        };
+    }
+
     match cli.command.unwrap() {
         Commands::Build(args) => {
+            check_help!(args, "build");
             println!("Building project...");
             if args.release {
                 println!("  Profile: release");
             }
         }
         Commands::Run(args) => {
+            check_help!(args, "run");
             println!("Running project...");
             if !args.args.is_empty() {
                 println!("  Arguments: {:?}", args.args);
             }
         }
         Commands::Clean(args) => {
+            check_help!(args, "clean");
             println!("Cleaning project artifacts...");
             if args.all {
                 println!("  Removing all caches and dependencies");
             }
         }
         Commands::Init(args) => {
+            check_help!(args, "init");
             if let Err(e) = cli::init::run(args) {
                 eprintln!("Error initializing project: {}", e);
                 std::process::exit(1);
             }
         }
-        Commands::Add(args) => println!("Adding dependency: {}", args.name),
+        Commands::Add(args) => {
+            check_help!(args, "add");
+            match args.name {
+                Some(name) => println!("Adding dependency: {}", name),
+                None => {
+                    eprintln!("Error: missing required argument <name>");
+                    cli::args::print_subcommand_help("add");
+                    std::process::exit(1);
+                }
+            }
+        }
         Commands::Update(args) => {
+            check_help!(args, "update");
             if let Some(name) = args.name {
                 println!("Updating dependency: {}", name);
             } else {
                 println!("Updating all dependencies");
             }
         }
-        Commands::Remove(args) => println!("Removing dependency: {}", args.name),
-        Commands::Fmt(_args) => println!("Formatting kumi files..."),
+        Commands::Remove(args) => {
+            check_help!(args, "remove");
+            match args.name {
+                Some(name) => println!("Removing dependency: {}", name),
+                None => {
+                    eprintln!("Error: missing required argument <name>");
+                    cli::args::print_subcommand_help("remove");
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::Fmt(args) => {
+            check_help!(args, "fmt");
+            println!("Formatting kumi files...");
+        }
         Commands::Serve(args) => {
+            check_help!(args, "serve");
             println!("Starting Kumi LSP Server...");
             if let Some(port) = args.port {
                 println!("  Listening on TCP port {}", port);
@@ -186,12 +242,23 @@ fn main() {
             }
         }
         Commands::Check(args) => {
+            check_help!(args, "check");
             if let Some(ref file) = args.file {
                 run_parser_test(file);
             } else {
                 println!("Checking project... (Fast validation without build)");
             }
         }
-        Commands::Search(args) => println!("Searching for packages matching: {}", args.query),
+        Commands::Search(args) => {
+            check_help!(args, "search");
+            match args.query {
+                Some(query) => println!("Searching for packages matching: {}", query),
+                None => {
+                    eprintln!("Error: missing required argument <query>");
+                    cli::args::print_subcommand_help("search");
+                    std::process::exit(1);
+                }
+            }
+        }
     }
 }
