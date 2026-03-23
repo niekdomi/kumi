@@ -1,6 +1,10 @@
 use clap::{Args, Parser, Subcommand};
 use owo_colors::{OwoColorize, Stream};
 
+// TODO: Refactor the Commands, so its less fragile and easier to extend. e.g.,
+// we shouldn't define "[options]", this should be inferred by the amounts of
+// options available. So we should making the Command handling smarter in general
+
 macro_rules! paint {
     ($val:expr, $stream:expr, $style:ident) => {
         $val.if_supports_color($stream, |t| t.$style())
@@ -26,44 +30,145 @@ impl GroupColor {
     }
 }
 
-struct HelpGroup {
-    title: &'static str,
-    color: GroupColor,
-    commands: &'static [(&'static str, &'static str)],
+struct Command {
+    name: &'static str,
+    summary: &'static str,
+    arguments: &'static str,
+    options: &'static [(&'static str, &'static str)],
 }
 
-const HELP_GROUPS: &[HelpGroup] = &[
-    HelpGroup {
+struct CommandGroup {
+    title: &'static str,
+    color: GroupColor,
+    commands: &'static [Command],
+}
+
+const COMMANDS: &[CommandGroup] = &[
+    CommandGroup {
         title: "Build",
         color: GroupColor::Cyan,
         commands: &[
-            ("build", "Compile the project [--release] [--target] [--jobs]"),
-            ("run", "Build and execute a target [--release] [--target]"),
-            ("clean", "Remove build artifacts"),
-            ("check", "Type-check without building"),
+            Command {
+                name: "build",
+                summary: "Compile the project",
+                arguments: "[options]",
+                options: &[
+                    ("--release", "Build with release optimizations"),
+                    ("--target <name>", "Build a specific target"),
+                    ("-j, --jobs <n>", "Number of parallel jobs"),
+                    ("-v, --verbose", "Print verbose output"),
+                ],
+            },
+            Command {
+                name: "run",
+                summary: "Build and execute a target",
+                arguments: "[options] [-- <args>...]",
+                options: &[
+                    ("--release", "Build with release optimizations"),
+                    ("--target <name>", "Build and run a specific target"),
+                    ("-- <args>...", "Arguments to pass to the executable"),
+                ],
+            },
+            Command {
+                name: "clean",
+                summary: "Remove build artifacts",
+                arguments: "[options]",
+                options: &[
+                    ("--release", "Clean release artifacts"),
+                    ("--all", "Clean all artifacts and caches"),
+                ],
+            },
+            Command {
+                name: "check",
+                summary: "Type-check without building",
+                arguments: "[options] [file]",
+                options: &[
+                    ("--target <name>", "Check a specific target"),
+                    ("<file>", "Kumi file to parse and check"),
+                ],
+            },
         ],
     },
-    HelpGroup {
+    CommandGroup {
         title: "Project",
         color: GroupColor::Green,
-        commands: &[("init", "Create a new project")],
+        commands: &[Command {
+            name: "init",
+            summary: "Create a new project",
+            arguments: "[options]",
+            options: &[
+                ("--name <name>", "Name of the project"),
+                ("--lib", "Create a library project"),
+                ("--bare", "Create a bare project without the TUI template"),
+            ],
+        }],
     },
-    HelpGroup {
+    CommandGroup {
         title: "Dependencies",
         color: GroupColor::Yellow,
         commands: &[
-            ("add", "Add a dependency"),
-            ("update", "Update dependencies [<name>]"),
-            ("remove", "Remove a dependency"),
-            ("search", "Search for packages in the registry"),
+            Command {
+                name: "add",
+                summary: "Add a dependency",
+                arguments: "<name> [options]",
+                options: &[
+                    ("<name>", "Name of the package to add"),
+                    ("--version <ver>", "Version string"),
+                    ("--git <url>", "Git repository URL"),
+                    ("--dev", "Add as a development dependency"),
+                ],
+            },
+            Command {
+                name: "update",
+                summary: "Update dependencies",
+                arguments: "[name]",
+                options: &[("<name>", "Name of the package to update (or all if omitted)")],
+            },
+            Command {
+                name: "remove",
+                summary: "Remove a dependency",
+                arguments: "<name>",
+                options: &[("<name>", "Name of the package to remove")],
+            },
+            Command {
+                name: "search",
+                summary: "Search for packages in the registry",
+                arguments: "<query>",
+                options: &[("<query>", "Package name to search for")],
+            },
         ],
     },
-    HelpGroup {
+    CommandGroup {
         title: "Tooling",
         color: GroupColor::Magenta,
-        commands: &[("serve", "Start the LSP server"), ("fmt", "Format kumi files [--check]")],
+        commands: &[
+            Command {
+                name: "serve",
+                summary: "Start the LSP server",
+                arguments: "[options]",
+                options: &[
+                    ("--port <port>", "Port to listen on (TCP mode)"),
+                    ("--stdio", "Communicate via stdin/stdout"),
+                ],
+            },
+            Command {
+                name: "fmt",
+                summary: "Format kumi files",
+                arguments: "[options] [file]",
+                options: &[
+                    ("--check", "Check formatting without applying changes"),
+                    ("<file>", "Specific file to format"),
+                ],
+            },
+        ],
     },
 ];
+
+fn find_command(name: &str) -> Option<(&'static CommandGroup, &'static Command)> {
+    COMMANDS
+        .iter()
+        .find_map(|g| g.commands.iter().find(|c| c.name == name).map(|c| (g, c)))
+}
 
 pub fn print_help() {
     let s = Stream::Stdout;
@@ -77,23 +182,51 @@ pub fn print_help() {
     );
     println!();
 
-    let max_cmd_len = HELP_GROUPS
+    let max_cmd_len = COMMANDS
         .iter()
-        .flat_map(|g| g.commands.iter().map(|(cmd, _)| cmd.len()))
+        .flat_map(|g| g.commands.iter().map(|c| c.name.len()))
         .max()
         .unwrap_or(0);
 
-    for group in HELP_GROUPS {
+    for group in COMMANDS {
         println!("{}", paint!(group.title, s, bold));
-        for (cmd, desc) in group.commands {
-            let padded = format!("{:width$}", cmd, width = max_cmd_len);
-            println!("  {}   {}", group.color.paint(&padded), paint!(desc, s, dimmed));
+        for cmd in group.commands {
+            let padded = format!("{:width$}", cmd.name, width = max_cmd_len);
+            println!("  {}   {}", group.color.paint(&padded), paint!(cmd.summary, s, dimmed));
         }
         println!();
     }
 
     println!("{} kumi build --release --target myapp", paint!("Example:", s, dimmed));
     println!("{} kumi help <command>", paint!("        ", s, dimmed));
+}
+
+pub fn print_subcommand_help(name: &str) {
+    let s = Stream::Stdout;
+    let (group, cmd) = match find_command(name) {
+        Some(found) => found,
+        None => {
+            print_help();
+            return;
+        }
+    };
+
+    println!("{} — {}", paint!(cmd.name, s, bold), cmd.summary);
+    println!();
+    let usage = format!("kumi {} {}", cmd.name, cmd.arguments);
+    println!("{} {}", paint!("Usage:", s, bold), group.color.paint(usage.trim()));
+
+    if !cmd.options.is_empty() {
+        println!();
+        println!("{}", paint!("Options:", s, bold));
+
+        let max_opt_len = cmd.options.iter().map(|(opt, _)| opt.len()).max().unwrap_or(0);
+
+        for (opt, desc) in cmd.options {
+            let padded = format!("{:width$}", opt, width = max_opt_len);
+            println!("  {}   {}", paint!(&padded, s, green), paint!(desc, s, dimmed));
+        }
+    }
 }
 
 #[derive(Parser)]
@@ -125,7 +258,10 @@ pub enum Commands {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct BuildArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Build with release optimizations
     #[arg(long)]
     pub release: bool,
@@ -141,7 +277,10 @@ pub struct BuildArgs {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct RunArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Build with release optimizations
     #[arg(long)]
     pub release: bool,
@@ -154,7 +293,10 @@ pub struct RunArgs {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct CleanArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Clean release artifacts
     #[arg(long)]
     pub release: bool,
@@ -164,7 +306,10 @@ pub struct CleanArgs {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct InitArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Name of the project
     #[arg(long)]
     pub name: Option<String>,
@@ -177,9 +322,12 @@ pub struct InitArgs {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct AddArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Name of the package to add
-    pub name: String,
+    pub name: Option<String>,
     /// Version string
     #[arg(long)]
     pub version: Option<String>,
@@ -192,29 +340,40 @@ pub struct AddArgs {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct UpdateArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Name of the package to update (or all if not specified)
     pub name: Option<String>,
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct RemoveArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Name of the package to remove
-    pub name: String,
+    pub name: Option<String>,
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct FmtArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Check formatting without applying changes
     #[arg(long)]
     pub check: bool,
     /// Specific file to format
-    #[arg(long)]
-    pub path: Option<String>,
+    pub file: Option<String>,
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct ServeArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Port to listen on (TCP mode)
     #[arg(long)]
     pub port: Option<u16>,
@@ -224,17 +383,22 @@ pub struct ServeArgs {
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct CheckArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Check a specific target
     #[arg(long)]
     pub target: Option<String>,
-
     /// Kumi file to parse and check
     pub file: Option<String>,
 }
 
 #[derive(Args)]
+#[command(disable_help_flag = true)]
 pub struct SearchArgs {
+    #[arg(short, long)]
+    pub help: bool,
     /// Package name
-    pub query: String,
+    pub query: Option<String>,
 }
