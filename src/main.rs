@@ -94,10 +94,7 @@ fn run_parser_test(filename: &str) {
     println!("╭─────────────────────────────────────────╮");
     println!("│ File Analysis                           │");
     println!("├─────────────────────────────────────────┤");
-    println!(
-        "│ File:       {:<28}│",
-        filename.split('/').next_back().unwrap_or(filename)
-    );
+    println!("│ File:       {:<28}│", filename.split('/').next_back().unwrap_or(filename));
     println!("│ Size:       {:<7.2} MB{:<18}│", size_mb, "");
     println!("│ Tokens:     {:<28}│", token_count);
     println!("│ AST Nodes:  {:<28}│", ast.statements.len());
@@ -107,52 +104,22 @@ fn run_parser_test(filename: &str) {
     let parse_ms = parse_ns / 1_000_000.0;
     let total_ms = lex_ms + parse_ms;
 
-    let lex_throughput = if lex_ms > 0.0 {
-        size_mb / (lex_ms / 1000.0)
-    } else {
-        0.0
-    };
-    let parse_throughput = if parse_ms > 0.0 {
-        size_mb / (parse_ms / 1000.0)
-    } else {
-        0.0
-    };
-    let total_throughput = if total_ms > 0.0 {
-        size_mb / (total_ms / 1000.0)
-    } else {
-        0.0
-    };
+    let lex_throughput = if lex_ms > 0.0 { size_mb / (lex_ms / 1000.0) } else { 0.0 };
+    let parse_throughput = if parse_ms > 0.0 { size_mb / (parse_ms / 1000.0) } else { 0.0 };
+    let total_throughput = if total_ms > 0.0 { size_mb / (total_ms / 1000.0) } else { 0.0 };
 
     let mem_after = get_peak_memory_mb();
 
     println!("╭─────────────────────────────────────────╮");
     println!("│ Performance Metrics                     │");
     println!("├─────────────────────────────────────────┤");
-    println!(
-        "│ Lexing:  {:>10.4} ms {:>10.2} MB/s  │",
-        lex_ms, lex_throughput
-    );
-    println!(
-        "│ Parsing: {:>10.4} ms {:>10.2} MB/s  │",
-        parse_ms, parse_throughput
-    );
-    println!(
-        "│ Total:   {:>10.4} ms {:>10.2} MB/s  │",
-        total_ms, total_throughput
-    );
+    println!("│ Lexing:  {:>10.4} ms {:>10.2} MB/s  │", lex_ms, lex_throughput);
+    println!("│ Parsing: {:>10.4} ms {:>10.2} MB/s  │", parse_ms, parse_throughput);
+    println!("│ Total:   {:>10.4} ms {:>10.2} MB/s  │", total_ms, total_throughput);
     println!("├─────────────────────────────────────────┤");
-    println!(
-        "│ Lex Memory:   {:>13.2} MB          │",
-        mem_after_lex - mem_before
-    );
-    println!(
-        "│ Parse Memory: {:>13.2} MB          │",
-        mem_after - mem_after_lex
-    );
-    println!(
-        "│ Peak RSS:     {:>13.2} MB          │",
-        mem_after - mem_before
-    );
+    println!("│ Lex Memory:   {:>13.2} MB          │", mem_after_lex - mem_before);
+    println!("│ Parse Memory: {:>13.2} MB          │", mem_after - mem_after_lex);
+    println!("│ Peak RSS:     {:>13.2} MB          │", mem_after - mem_before);
     println!("╰─────────────────────────────────────────╯");
 
     if has_errors {
@@ -200,9 +167,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Add(args) => {
-            println!("Adding dependency: {}", args.name);
-        }
+        Commands::Add(args) => println!("Adding dependency: {}", args.name),
         Commands::Update(args) => {
             if let Some(name) = args.name {
                 println!("Updating dependency: {}", name);
@@ -210,12 +175,8 @@ fn main() {
                 println!("Updating all dependencies");
             }
         }
-        Commands::Remove(args) => {
-            println!("Removing dependency: {}", args.name);
-        }
-        Commands::Fmt(_args) => {
-            println!("Formatting kumi files...");
-        }
+        Commands::Remove(args) => println!("Removing dependency: {}", args.name),
+        Commands::Fmt(_args) => println!("Formatting kumi files..."),
         Commands::Serve(args) => {
             println!("Starting Kumi LSP Server...");
             if let Some(port) = args.port {
@@ -231,8 +192,6 @@ fn main() {
                 println!("Checking project... (Fast validation without build)");
             }
         }
-        Commands::Search(args) => {
-            println!("Searching for packages matching: {}", args.query);
-        }
+        Commands::Search(args) => println!("Searching for packages matching: {}", args.query),
     }
 }

@@ -1,6 +1,12 @@
 use clap::{Args, Parser, Subcommand};
 use owo_colors::{OwoColorize, Stream};
 
+macro_rules! paint {
+    ($val:expr, $stream:expr, $style:ident) => {
+        $val.if_supports_color($stream, |t| t.$style())
+    };
+}
+
 #[derive(Clone, Copy)]
 enum GroupColor {
     Cyan,
@@ -12,18 +18,10 @@ enum GroupColor {
 impl GroupColor {
     fn paint(self, text: &str) -> String {
         match self {
-            GroupColor::Cyan => text
-                .if_supports_color(Stream::Stdout, |t| t.cyan())
-                .to_string(),
-            GroupColor::Green => text
-                .if_supports_color(Stream::Stdout, |t| t.green())
-                .to_string(),
-            GroupColor::Yellow => text
-                .if_supports_color(Stream::Stdout, |t| t.yellow())
-                .to_string(),
-            GroupColor::Magenta => text
-                .if_supports_color(Stream::Stdout, |t| t.magenta())
-                .to_string(),
+            GroupColor::Cyan => paint!(text, Stream::Stdout, cyan).to_string(),
+            GroupColor::Green => paint!(text, Stream::Stdout, green).to_string(),
+            GroupColor::Yellow => paint!(text, Stream::Stdout, yellow).to_string(),
+            GroupColor::Magenta => paint!(text, Stream::Stdout, magenta).to_string(),
         }
     }
 }
@@ -39,10 +37,7 @@ const HELP_GROUPS: &[HelpGroup] = &[
         title: "Build",
         color: GroupColor::Cyan,
         commands: &[
-            (
-                "build",
-                "Compile the project [--release] [--target] [--jobs]",
-            ),
+            ("build", "Compile the project [--release] [--target] [--jobs]"),
             ("run", "Build and execute a target [--release] [--target]"),
             ("clean", "Remove build artifacts"),
             ("check", "Type-check without building"),
@@ -66,25 +61,19 @@ const HELP_GROUPS: &[HelpGroup] = &[
     HelpGroup {
         title: "Tooling",
         color: GroupColor::Magenta,
-        commands: &[
-            ("serve", "Start the LSP server"),
-            ("fmt", "Format kumi files [--check]"),
-        ],
+        commands: &[("serve", "Start the LSP server"), ("fmt", "Format kumi files [--check]")],
     },
 ];
 
 pub fn print_help() {
     let s = Stream::Stdout;
-    println!(
-        "{}",
-        "kumi \u{2014} a modern C++ build system".if_supports_color(s, |t| t.bold())
-    );
+    println!("{}", paint!("kumi \u{2014} a modern C++ build system", s, bold));
     println!();
     println!(
         "{} kumi {} {}",
-        "Usage:".if_supports_color(s, |t| t.bold()),
-        "<command>".if_supports_color(s, |t| t.cyan()),
-        "[options]".if_supports_color(s, |t| t.dimmed())
+        paint!("Usage:", s, bold),
+        paint!("<command>", s, cyan),
+        paint!("[options]", s, dimmed)
     );
     println!();
 
@@ -95,26 +84,16 @@ pub fn print_help() {
         .unwrap_or(0);
 
     for group in HELP_GROUPS {
-        println!("{}", group.title.if_supports_color(s, |t| t.bold()));
+        println!("{}", paint!(group.title, s, bold));
         for (cmd, desc) in group.commands {
             let padded = format!("{:width$}", cmd, width = max_cmd_len);
-            println!(
-                "  {}   {}",
-                group.color.paint(&padded),
-                desc.if_supports_color(s, |t| t.dimmed())
-            );
+            println!("  {}   {}", group.color.paint(&padded), paint!(desc, s, dimmed));
         }
         println!();
     }
 
-    println!(
-        "{} kumi build --release --target myapp",
-        "Example:".if_supports_color(s, |t| t.dimmed())
-    );
-    println!(
-        "{} kumi help <command>",
-        "        ".if_supports_color(s, |t| t.dimmed())
-    );
+    println!("{} kumi build --release --target myapp", paint!("Example:", s, dimmed));
+    println!("{} kumi help <command>", paint!("        ", s, dimmed));
 }
 
 #[derive(Parser)]

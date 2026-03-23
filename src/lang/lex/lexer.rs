@@ -201,11 +201,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             }
         }
 
-        Err(Diagnostic::new(
-            "unexpected character after '@'",
-            start_pos,
-            "",
-        ))
+        Err(Diagnostic::new("unexpected character after '@'", start_pos, ""))
     }
 
     #[inline(always)]
@@ -222,11 +218,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             });
         }
 
-        Err(Diagnostic::new(
-            "unexpected character after '!'",
-            start_pos,
-            "",
-        ))
+        Err(Diagnostic::new("unexpected character after '!'", start_pos, ""))
     }
 
     #[inline(always)]
@@ -238,11 +230,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         } else if self.match_string(b"/*") {
             true
         } else {
-            return Err(Diagnostic::new(
-                "unexpected character after '/'",
-                start_pos,
-                "",
-            ));
+            return Err(Diagnostic::new("unexpected character after '/'", start_pos, ""));
         };
 
         if is_block {
@@ -291,11 +279,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             });
         }
 
-        Err(Diagnostic::new(
-            "unexpected character after '.'",
-            start_pos,
-            "",
-        ))
+        Err(Diagnostic::new("unexpected character after '.'", start_pos, ""))
     }
 
     #[inline(always)]
@@ -312,11 +296,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             });
         }
 
-        Err(Diagnostic::new(
-            "unexpected character after '='",
-            start_pos,
-            "",
-        ))
+        Err(Diagnostic::new("unexpected character after '='", start_pos, ""))
     }
 
     #[inline(always)]
@@ -404,20 +384,12 @@ impl<'lex_impl> Lexer<'lex_impl> {
 
         while self.peek() != b'"' {
             if self.at_end() {
-                return Err(Diagnostic::new(
-                    "unterminated string literal",
-                    start_pos,
-                    "",
-                ));
+                return Err(Diagnostic::new("unterminated string literal", start_pos, ""));
             }
 
             match self.peek() {
                 b'\n' | b'\r' => {
-                    return Err(Diagnostic::new(
-                        "unterminated string literal",
-                        start_pos,
-                        "",
-                    ));
+                    return Err(Diagnostic::new("unterminated string literal", start_pos, ""));
                 }
                 b'\\' => {
                     self.advance(); // Consume '\'

@@ -106,11 +106,7 @@ impl<'a> Parser<'a> {
                 TokenType::Number => "number",
                 _ => {
                     return Err(Diagnostic::new(
-                        format!(
-                            "expected '{:?}', got '{}'",
-                            kind,
-                            self.get_string(peek_token)
-                        ),
+                        format!("expected '{:?}', got '{}'", kind, self.get_string(peek_token)),
                         error_pos,
                         "",
                     ));
@@ -155,10 +151,7 @@ impl<'a> Parser<'a> {
         } else {
             let token = self.peek(0);
             Err(Diagnostic::new(
-                format!(
-                    "expected identifier or keyword, got '{}'",
-                    self.get_string(token)
-                ),
+                format!("expected identifier or keyword, got '{}'", self.get_string(token)),
                 token.position,
                 "identifiers must start with a letter or underscore, followed by letters or digits",
             ))
@@ -463,10 +456,7 @@ impl<'a> Parser<'a> {
             let val = self.get_string(id_token);
             if val != "system" {
                 return Err(Diagnostic::new(
-                    format!(
-                        "expected version string, function call, or 'system', got '{}'",
-                        val
-                    ),
+                    format!("expected version string, function call, or 'system', got '{}'", val),
                     id_token.position,
                     "valid versions are strings like \"1.0.0\", function calls like git() or path(), or the 'system' keyword",
                 ));
@@ -782,10 +772,7 @@ impl<'a> Parser<'a> {
         } else {
             let token = self.peek(0);
             return Err(Diagnostic::new(
-                format!(
-                    "expected '@break' or '@continue', got '{}'",
-                    self.get_string(token)
-                ),
+                format!("expected '@break' or '@continue', got '{}'", self.get_string(token)),
                 token.position,
                 "loop control statements must be used inside @for loops",
             ));
@@ -854,11 +841,8 @@ impl<'a> Parser<'a> {
 
         let kind = self.peek(0).kind;
         if kind == TokenType::And || kind == TokenType::Or {
-            let logical_op = if kind == TokenType::And {
-                LogicalOperator::And
-            } else {
-                LogicalOperator::Or
-            };
+            let logical_op =
+                if kind == TokenType::And { LogicalOperator::And } else { LogicalOperator::Or };
 
             let operand_start_idx = ast.all_comparison_exprs.len() as u32;
             ast.all_comparison_exprs.push(first_comparison);

@@ -99,11 +99,7 @@ impl WizardConfig {
         Self {
             project_name: args.name.clone().unwrap_or(default_name),
             language: Language::Cpp,
-            project_type: if args.lib {
-                ProjectType::Library
-            } else {
-                ProjectType::Executable
-            },
+            project_type: if args.lib { ProjectType::Library } else { ProjectType::Executable },
             standard: "23".to_string(),
         }
     }
@@ -200,16 +196,8 @@ fn run_wizard(args: &InitArgs, default_name: String) -> WizardConfig {
             .interact_opt()
     );
 
-    let language = if lang_idx == 1 {
-        Language::C
-    } else {
-        Language::Cpp
-    };
-    let project_type = if type_idx == 1 {
-        ProjectType::Library
-    } else {
-        ProjectType::Executable
-    };
+    let language = if lang_idx == 1 { Language::C } else { Language::Cpp };
+    let project_type = if type_idx == 1 { ProjectType::Library } else { ProjectType::Executable };
 
     let standards = language.standards();
     let std_idx = prompt_opt!(

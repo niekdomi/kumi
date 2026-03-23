@@ -16,12 +16,7 @@ fn lex_ok(input: &str) -> Vec<Token> {
 // Helper: lex input that should produce exactly one token + EOF, return that token.
 fn lex_single(input: &str) -> Token {
     let tokens = lex_ok(input);
-    assert_eq!(
-        tokens.len(),
-        2,
-        "expected 1 token + EOF, got {}",
-        tokens.len()
-    );
+    assert_eq!(tokens.len(), 2, "expected 1 token + EOF, got {}", tokens.len());
     tokens[0]
 }
 
@@ -211,9 +206,7 @@ fn control_flow_for_loop_with_function_call() {
 
 #[test]
 fn control_flow_invalid_at_directives() {
-    let cases = &[
-        "@", "@invalid", "@123", "@-if", "@_else", "@IF", "@ELSE", "@For",
-    ];
+    let cases = &["@", "@invalid", "@123", "@-if", "@_else", "@IF", "@ELSE", "@For"];
     for input in cases {
         let error = lex_error(input);
         assert!(
@@ -274,11 +267,8 @@ fn diagnostic_directive_keywords() {
 
 #[test]
 fn logical_operator_keywords() {
-    let cases: &[(&str, TokenType)] = &[
-        ("and", TokenType::And),
-        ("or", TokenType::Or),
-        ("not", TokenType::Not),
-    ];
+    let cases: &[(&str, TokenType)] =
+        &[("and", TokenType::And), ("or", TokenType::Or), ("not", TokenType::Not)];
 
     for &(input, expected) in cases {
         let token = lex_single(input);
@@ -311,11 +301,8 @@ fn braces_brackets_parens() {
 
 #[test]
 fn delimiters() {
-    let cases: &[(&str, TokenType)] = &[
-        (":", TokenType::Colon),
-        (";", TokenType::Semicolon),
-        (",", TokenType::Comma),
-    ];
+    let cases: &[(&str, TokenType)] =
+        &[(":", TokenType::Colon), (";", TokenType::Semicolon), (",", TokenType::Comma)];
 
     for &(input, expected) in cases {
         let token = lex_single(input);
@@ -360,11 +347,8 @@ fn delimiter_comma_separated_list() {
 
 #[test]
 fn special_operators() {
-    let cases: &[(&str, TokenType)] = &[
-        ("?", TokenType::Question),
-        ("$", TokenType::Dollar),
-        ("..", TokenType::Range),
-    ];
+    let cases: &[(&str, TokenType)] =
+        &[("?", TokenType::Question), ("$", TokenType::Dollar), ("..", TokenType::Range)];
 
     for &(input, expected) in cases {
         let token = lex_single(input);
@@ -622,12 +606,7 @@ fn comment_line_skipped() {
 
 #[test]
 fn comment_block_skipped() {
-    let cases = &[
-        "/**/",
-        "/* comment */",
-        "/* multi\nline */",
-        "/* /* multiple /* */",
-    ];
+    let cases = &["/**/", "/* comment */", "/* multi\nline */", "/* /* multiple /* */"];
 
     for input in cases {
         let tokens = lex_ok(input);

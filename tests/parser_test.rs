@@ -7,11 +7,7 @@ fn parse(input: &str) -> (Vec<Token>, Ast<'_>) {
     let bytes = input.as_bytes();
     let lexer = Lexer::new(bytes);
     let (tokens, lex_errors) = lexer.tokenize();
-    assert!(
-        lex_errors.is_empty(),
-        "unexpected lex errors: {:?}",
-        lex_errors
-    );
+    assert!(lex_errors.is_empty(), "unexpected lex errors: {:?}", lex_errors);
     // SAFETY: tokens Vec won't be moved/dropped while ast is alive since we return both.
     // We need this because Parser borrows &[Token] but Ast outlives the parse call.
     let tokens_ref: &[Token] = unsafe { std::mem::transmute(tokens.as_slice()) };
@@ -23,21 +19,14 @@ fn parse(input: &str) -> (Vec<Token>, Ast<'_>) {
 /// Parse and assert no errors. Use via: `let (_tokens, ast) = parse_ok("...");`
 fn parse_ok(input: &str) -> (Vec<Token>, Ast<'_>) {
     let result = parse(input);
-    assert!(
-        result.1.errors.is_empty(),
-        "unexpected parse errors: {:?}",
-        result.1.errors
-    );
+    assert!(result.1.errors.is_empty(), "unexpected parse errors: {:?}", result.1.errors);
     result
 }
 
 /// Parse and assert at least one error.
 fn parse_err(input: &str) -> (Vec<Token>, Ast<'_>) {
     let result = parse(input);
-    assert!(
-        !result.1.errors.is_empty(),
-        "expected parse error but succeeded"
-    );
+    assert!(!result.1.errors.is_empty(), "expected parse error but succeeded");
     result
 }
 
@@ -73,15 +62,9 @@ fn project_with_properties() {
     let props = ast.get_properties(p.property_start_idx, p.property_end_idx);
     assert_eq!(props.len(), 2);
     assert_eq!(ast.get_string(props[0].name_idx), "version");
-    assert_eq!(
-        *ast.get_value(props[0].value_start_idx),
-        Value::String("\"1.0.0\"")
-    );
+    assert_eq!(*ast.get_value(props[0].value_start_idx), Value::String("\"1.0.0\""));
     assert_eq!(ast.get_string(props[1].name_idx), "standard");
-    assert_eq!(
-        *ast.get_value(props[1].value_start_idx),
-        Value::String("\"c++20\"")
-    );
+    assert_eq!(*ast.get_value(props[1].value_start_idx), Value::String("\"c++20\""));
 }
 
 #[test]
@@ -132,9 +115,8 @@ fn target_with_mixins() {
     };
     assert_eq!(ast.get_string(t.name_idx), "myapp");
 
-    let mixins: Vec<&str> = (t.mixin_start_idx..t.mixin_end_idx)
-        .map(|i| ast.get_string(i))
-        .collect();
+    let mixins: Vec<&str> =
+        (t.mixin_start_idx..t.mixin_end_idx).map(|i| ast.get_string(i)).collect();
     assert_eq!(mixins, vec!["strict", "warnings"]);
 }
 
@@ -240,10 +222,7 @@ fn dependencies_version_string() {
     assert_eq!(deps.len(), 1);
     assert_eq!(ast.get_string(deps[0].name_idx), "fmt");
     assert!(!deps[0].is_optional);
-    assert!(matches!(
-        deps[0].value,
-        DependencyValue::String("\"10.1.0\"")
-    ));
+    assert!(matches!(deps[0].value, DependencyValue::String("\"10.1.0\"")));
 }
 
 #[test]
@@ -411,9 +390,8 @@ fn profile_with_mixins() {
     let Statement::ProfileDecl(p) = ast.statements[0] else {
         panic!("expected ProfileDecl")
     };
-    let mixins: Vec<&str> = (p.mixin_start_idx..p.mixin_end_idx)
-        .map(|i| ast.get_string(i))
-        .collect();
+    let mixins: Vec<&str> =
+        (p.mixin_start_idx..p.mixin_end_idx).map(|i| ast.get_string(i)).collect();
     assert_eq!(mixins, vec!["strict"]);
 }
 
@@ -736,10 +714,7 @@ fn property_single_string_value() {
     let props = ast.get_properties(p.property_start_idx, p.property_end_idx);
     assert_eq!(props.len(), 1);
     assert_eq!(props[0].value_end_idx - props[0].value_start_idx, 1);
-    assert_eq!(
-        *ast.get_value(props[0].value_start_idx),
-        Value::String("\"1.0.0\"")
-    );
+    assert_eq!(*ast.get_value(props[0].value_start_idx), Value::String("\"1.0.0\""));
 }
 
 #[test]
@@ -785,10 +760,7 @@ fn property_boolean_value() {
         panic!("expected ProjectDecl")
     };
     let props = ast.get_properties(p.property_start_idx, p.property_end_idx);
-    assert_eq!(
-        *ast.get_value(props[0].value_start_idx),
-        Value::Boolean(true)
-    );
+    assert_eq!(*ast.get_value(props[0].value_start_idx), Value::Boolean(true));
 }
 
 #[test]
@@ -803,10 +775,7 @@ fn property_identifier_value() {
         panic!("expected ProjectDecl")
     };
     let props = ast.get_properties(p.property_start_idx, p.property_end_idx);
-    assert_eq!(
-        *ast.get_value(props[0].value_start_idx),
-        Value::Identifier("executable")
-    );
+    assert_eq!(*ast.get_value(props[0].value_start_idx), Value::Identifier("executable"));
 }
 
 #[test]
