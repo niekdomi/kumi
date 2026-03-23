@@ -280,10 +280,10 @@ impl<'a> Parser<'a> {
             && self.peek(0).kind != TokenType::EndOfFile
         {
             let kind = self.peek(0).kind;
-            let next_ttype = self.peek(1).kind;
+            let next_kind = self.peek(1).kind;
 
             let is_property = (kind == TokenType::Identifier || kind.is_keyword())
-                && next_ttype == TokenType::Colon;
+                && next_kind == TokenType::Colon;
             let is_visibility = kind == TokenType::Public
                 || kind == TokenType::Private
                 || kind == TokenType::Interface;
