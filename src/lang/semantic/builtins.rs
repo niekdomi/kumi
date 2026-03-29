@@ -263,5 +263,5 @@ pub fn dep_function_names_list() -> String {
 
 /// Format a list of valid values for use in error messages.
 pub fn format_valid_values(values: &[&str]) -> String {
-    values.iter().map(|v| format!("\"{}\"", v)).collect::<Vec<_>>().join(", ")
+    values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(", ")
 }

@@ -1,6 +1,6 @@
 use crate::diagnostics::Diagnostic;
-use crate::lang::lex::char_utils::*;
-use crate::lang::lex::token::*;
+use crate::lang::lex::char_utils::{is_digit, is_identifier, is_space};
+use crate::lang::lex::token::{Token, TokenType};
 use memchr::{memchr, memmem};
 
 /// Lexical analyzer that converts a byte-slice input into a stream of Tokens.
@@ -24,7 +24,7 @@ pub struct Lexer<'a> {
 
 impl<'lex_impl> Lexer<'lex_impl> {
     /// Constructs a lexer for the given input buffer.
-    pub fn new(input: &'lex_impl [u8]) -> Self {
+    pub const fn new(input: &'lex_impl [u8]) -> Self {
         Self {
             input,
             position: 0,
@@ -37,7 +37,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
     /// or a Diagnostic on failure.
     ///
     /// The returned vector contains tokens in the order they appear in the input.
-    /// The EndOfFile token is always emitted as the last token.
+    /// The `EndOfFile` token is always emitted as the last token.
     pub fn tokenize(mut self) -> (Vec<Token>, Vec<Diagnostic>) {
         self.tokens.reserve(self.input.len());
         let mut errors = Vec::new();
@@ -68,13 +68,13 @@ impl<'lex_impl> Lexer<'lex_impl> {
 
     /// Advance the current position by one byte.
     #[inline(always)]
-    fn advance(&mut self) {
+    const fn advance(&mut self) {
         self.position += 1;
     }
 
     /// Returns true if the lexer has reached the end of the input.
     #[inline(always)]
-    fn at_end(&self) -> bool {
+    const fn at_end(&self) -> bool {
         self.position as usize >= self.input.len()
     }
 
@@ -115,6 +115,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
     /// neighboring tokens. Leading comments are attached to the next emitted
     /// (non-comment) token and trailing comments are attached to the previous
     /// emitted token if they appear on the same line as the end of that token.
+    #[inline(always)]
     fn next_token(&mut self) -> Result<Option<Token>, Diagnostic> {
         self.skip_whitespace();
 
@@ -170,6 +171,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
     // Lexing Helpers
     //===------------------------------------------------------------------===//
 
+    #[inline(always)]
     fn lex_at(&mut self) -> Result<Token, Diagnostic> {
         static KEYWORDS: &[(&[u8], TokenType)] = &[
             (b"@else-if", TokenType::AtElseIf),
@@ -201,6 +203,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '@'", start_pos, ""))
     }
 
+    #[inline(always)]
     fn lex_bang(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
 
@@ -217,6 +220,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '!'", start_pos, ""))
     }
 
+    #[inline(always)]
     fn lex_comment(&mut self) -> Result<(), Diagnostic> {
         let start_pos = self.position;
 
@@ -230,12 +234,11 @@ impl<'lex_impl> Lexer<'lex_impl> {
 
         if is_block {
             let rem = &self.input[self.position as usize..];
-            match memmem::find(rem, b"*/") {
-                Some(idx) => self.position += (idx + 2) as u32,
-                None => {
-                    self.position = self.input.len() as u32;
-                    return Err(Diagnostic::new("unterminated block comment", start_pos, ""));
-                }
+            if let Some(idx) = memmem::find(rem, b"*/") {
+                self.position += (idx + 2) as u32
+            } else {
+                self.position = self.input.len() as u32;
+                return Err(Diagnostic::new("unterminated block comment", start_pos, ""));
             }
         } else {
             let rem = &self.input[self.position as usize..];
@@ -248,10 +251,10 @@ impl<'lex_impl> Lexer<'lex_impl> {
         // Classify and attach
         if let Some(last) = self.tokens.last_mut() {
             let between = &self.input[(last.position + last.length) as usize..start_pos as usize];
-            if !between.contains(&b'\n') {
-                last.trailing = start_pos + 1;
-            } else {
+            if between.contains(&b'\n') {
                 self.first_leading_comment_pos.get_or_insert(start_pos);
+            } else {
+                last.trailing = start_pos + 1;
             }
         } else {
             self.first_leading_comment_pos.get_or_insert(start_pos);
@@ -260,6 +263,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Ok(())
     }
 
+    #[inline(always)]
     fn lex_dot(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
 
@@ -276,6 +280,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '.'", start_pos, ""))
     }
 
+    #[inline(always)]
     fn lex_equal(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
 
@@ -292,6 +297,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '='", start_pos, ""))
     }
 
+    #[inline(always)]
     fn lex_greater(&mut self) -> Token {
         let start_pos = self.position;
 
@@ -315,6 +321,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
+    #[inline(always)]
     fn lex_less(&mut self) -> Token {
         let start_pos = self.position;
 
@@ -338,6 +345,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
+    #[inline(always)]
     fn lex_number(&mut self) -> Token {
         let start_pos = self.position;
 
@@ -354,7 +362,8 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
-    fn lex_single_char(&mut self, kind: TokenType) -> Token {
+    #[inline(always)]
+    const fn lex_single_char(&mut self, kind: TokenType) -> Token {
         let position = self.position;
         self.advance();
         Token {
@@ -366,6 +375,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
+    #[inline(always)]
     fn lex_string(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
         self.advance();
@@ -417,6 +427,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         })
     }
 
+    #[inline(always)]
     fn lex_identifier_or_keyword(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
         let input = self.input;

@@ -1,5 +1,12 @@
 use crate::diagnostics::Diagnostic;
-use crate::lang::ast::*;
+use crate::lang::ast::{
+    Ast, ComparisonExpr, ComparisonOperator, Condition, DependenciesDecl, DependencySpec,
+    DependencyValue, DiagnosticLevel, DiagnosticStmt, ForStmt, FunctionCall, IfStmt, InstallDecl,
+    Iterable, List, LogicalExpr, LogicalOperator, LoopControl, LoopControlStmt, MixinDecl,
+    NodeBase, OperandType, OptionSpec, OptionsDecl, PackageDecl, ProfileDecl, ProjectDecl,
+    Property, Range, ScriptDecl, Statement, TargetDecl, UnaryExpr, UnaryOperand, Value, Visibility,
+    VisibilityBlock, WorkspaceDecl,
+};
 use crate::lang::lex::{Token, TokenType};
 
 pub struct Parser<'a> {
@@ -9,7 +16,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(tokens: &'a [Token], source: &'a [u8]) -> Self {
+    pub const fn new(tokens: &'a [Token], source: &'a [u8]) -> Self {
         Self {
             tokens,
             position: 0,
@@ -115,7 +122,7 @@ impl<'a> Parser<'a> {
 
             let value = self.get_string(peek_token);
             return Err(Diagnostic::new(
-                format!("expected {}, got {}", expected_str, value),
+                format!("expected {expected_str}, got {value}"),
                 error_pos,
                 "",
             ));
@@ -160,7 +167,7 @@ impl<'a> Parser<'a> {
 
     /// Returns the end byte offset (exclusive) of a token.
     #[inline(always)]
-    fn end_of(&self, token: &Token) -> u32 {
+    const fn end_of(&self, token: &Token) -> u32 {
         token.position + token.length
     }
 
@@ -185,7 +192,7 @@ impl<'a> Parser<'a> {
         idx
     }
 
-    /// Helper: expect keyword, `{`, parse properties, `}`. Returns (start_pos, end_pos, prop_start, prop_end).
+    /// Helper: expect keyword, `{`, parse properties, `}`. Returns (`start_pos`, `end_pos`, `prop_start`, `prop_end`).
     #[inline(always)]
     fn parse_property_block(
         &mut self,
@@ -201,7 +208,7 @@ impl<'a> Parser<'a> {
         Ok((start_pos, end_pos, start, end))
     }
 
-    /// Helper: parse optional `with ident, ident, ...` mixin list. Returns (start_idx, end_idx).
+    /// Helper: parse optional `with ident, ident, ...` mixin list. Returns (`start_idx`, `end_idx`).
     #[inline(always)]
     fn parse_with_mixins(&mut self, ast: &mut Ast<'a>) -> Result<(u32, u32), Diagnostic> {
         let start_idx = ast.all_strings.len() as u32;
@@ -454,7 +461,7 @@ impl<'a> Parser<'a> {
             let val = self.get_string(id_token);
             if val != "system" {
                 return Err(Diagnostic::new(
-                    format!("expected version string, function call, or 'system', got '{}'", val),
+                    format!("expected version string, function call, or 'system', got '{val}'"),
                     id_token.position,
                     "valid versions are strings like \"1.0.0\", function calls like git() or path(), or the 'system' keyword",
                 ));
@@ -1041,14 +1048,14 @@ impl<'a> Parser<'a> {
 
         let start_val: u32 = start_s.parse().map_err(|_| {
             Diagnostic::new(
-                format!("invalid range start '{}'", start_s),
+                format!("invalid range start '{start_s}'"),
                 start_token.position,
                 "range bounds must be valid unsigned 32-bit numbers",
             )
         })?;
         let end_val: u32 = end_s.parse().map_err(|_| {
             Diagnostic::new(
-                format!("invalid range end '{}'", end_s),
+                format!("invalid range end '{end_s}'"),
                 end_token.position,
                 "range bounds must be valid unsigned 32-bit numbers",
             )
@@ -1058,7 +1065,7 @@ impl<'a> Parser<'a> {
             return Err(Diagnostic::new(
                 "invalid range values - start must be less than or equal to end",
                 start_pos,
-                format!("range {}..{} is reversed", start_val, end_val),
+                format!("range {start_val}..{end_val} is reversed"),
             ));
         }
 
@@ -1087,7 +1094,7 @@ impl<'a> Parser<'a> {
                 let s = self.get_string(token);
                 let val: u32 = s.parse().map_err(|_| {
                     Diagnostic::new(
-                        format!("invalid integer literal '{}'", s),
+                        format!("invalid integer literal '{s}'"),
                         token.position,
                         "integers must be valid unsigned 32-bit numbers",
                     )

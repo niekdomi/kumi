@@ -27,7 +27,7 @@ pub struct SymbolEntry {
     pub file_idx: u16,
 }
 
-/// Flat symbol table backed by HashMaps keyed on the symbol name.
+/// Flat symbol table backed by `HashMaps` keyed on the symbol name.
 ///
 /// Separate maps per kind so that a target and a mixin can share a name
 /// without conflict (different namespaces).
@@ -42,6 +42,12 @@ pub struct SymbolTable<'a> {
 pub struct DuplicateSymbol {
     pub existing: SymbolEntry,
     pub duplicate: SymbolEntry,
+}
+
+impl Default for SymbolTable<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> SymbolTable<'a> {
@@ -78,7 +84,7 @@ impl<'a> SymbolTable<'a> {
         self.table(kind).keys().copied()
     }
 
-    fn table(&self, kind: SymbolKind) -> &HashMap<&'a str, SymbolEntry> {
+    const fn table(&self, kind: SymbolKind) -> &HashMap<&'a str, SymbolEntry> {
         match kind {
             SymbolKind::Target => &self.targets,
             SymbolKind::Mixin => &self.mixins,
@@ -87,7 +93,7 @@ impl<'a> SymbolTable<'a> {
         }
     }
 
-    fn table_mut(&mut self, kind: SymbolKind) -> &mut HashMap<&'a str, SymbolEntry> {
+    const fn table_mut(&mut self, kind: SymbolKind) -> &mut HashMap<&'a str, SymbolEntry> {
         match kind {
             SymbolKind::Target => &mut self.targets,
             SymbolKind::Mixin => &mut self.mixins,

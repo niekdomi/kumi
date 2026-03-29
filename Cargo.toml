@@ -11,11 +11,21 @@ dialoguer = "0.12.0"
 memchr = "2.8.0"
 owo-colors = { version = "4.3.0", features = ["supports-colors"] }
 
-[profile.release]
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-opt-level = 3
-
 [dev-dependencies]
 tempfile = "3.27.0"
+
+[lints.clippy]
+nursery = { level = "deny", priority = -1 }
+option_if_let_else = "allow"
+pedantic = { level = "deny", priority = -1 }
+
+[lints.rust]
+ambiguous_negative_literals = "deny"
+# warnings = "deny"
+# let_underscore_drop = "deny"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+panic = "abort"
+codegen-units = 1

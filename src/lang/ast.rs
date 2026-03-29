@@ -20,7 +20,7 @@ use std::mem::size_of;
 /// error reporting, diagnostics, and tooling (LSP, formatter). The range
 /// covers the full syntactic extent of the node, from the first token to
 /// the last (inclusive of closing braces, semicolons, etc.).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NodeBase {
     /// Index of the start byte offset in source file
     pub start_idx: u32,
@@ -30,7 +30,7 @@ pub struct NodeBase {
 const _: () = assert!(size_of::<NodeBase>() == 8);
 
 impl NodeBase {
-    pub fn new(start_idx: u32, end_idx: u32) -> Self {
+    pub const fn new(start_idx: u32, end_idx: u32) -> Self {
         Self { start_idx, end_idx }
     }
 }
@@ -51,11 +51,11 @@ impl NodeBase {
 /// enabled: true;           // Boolean value
 /// type: executable;        // Identifier value
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Value<'a> {
     /// String literal: "hello", "path/to/file"
     String(&'a str),
-    /// Identifier: myapp, foo_bar
+    /// Identifier: `myapp`, `foo_bar`
     Identifier(&'a str),
     /// Integer literal: 42, 0, 1000
     Integer(u32),
@@ -82,7 +82,7 @@ const _: () = assert!(size_of::<Value>() == 24);
 /// sources: ["main.cpp", "utils.cpp", "helper.cpp"];
 /// @for module in [core, renderer, audio] { ... }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct List {
     pub base: NodeBase,
     /// Index of the start of list elements
@@ -107,7 +107,7 @@ const _: () = assert!(size_of::<List>() == 16);
 /// @for i in 0..10 { ... }      // 0, 1, 2, ..., 9
 /// @for worker in 1..8 { ... }  // 1, 2, 3, ..., 7
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
     pub base: NodeBase,
     /// Index of the start value
@@ -136,7 +136,7 @@ const _: () = assert!(size_of::<Range>() == 16);
 /// @if arch(x86_64, arm64) { ... }
 /// files: find("resources", "*.png");
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FunctionCall {
     pub base: NodeBase,
     /// Index of function name (platform, glob, arch, ...)
@@ -158,7 +158,7 @@ const _: () = assert!(size_of::<FunctionCall>() == 20);
 /// ```ebnf
 /// PrimaryExpr = FunctionCall | Identifier | Boolean | "(" LogicalExpr ")" ;
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrimaryExpr<'a> {
     FunctionCall(FunctionCall),
     /// Identifier or Boolean
@@ -212,7 +212,7 @@ pub enum OperandType {
 /// ```ebnf
 /// UnaryOperand = FunctionCall | Identifier | Boolean | "(" LogicalExpr ")" ;
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UnaryOperand {
     pub kind: OperandType,
     /// Index of the operand
@@ -234,7 +234,7 @@ const _: () = assert!(size_of::<UnaryOperand>() == 8);
 /// @if not platform(windows) { ... }
 /// @if not feature(networking) { ... }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UnaryExpr {
     pub base: NodeBase,
     /// True if prefixed with 'not'
@@ -260,7 +260,7 @@ const _: () = assert!(size_of::<UnaryExpr>() == 20);
 /// @if version == 2 { ... }
 /// @if arch(x86_64) { ... }  // Unary expression without comparison
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ComparisonExpr {
     pub base: NodeBase,
     /// Index of Left-hand side expression
@@ -289,7 +289,7 @@ const _: () = assert!(size_of::<ComparisonExpr>() == 24);
 /// @if config(debug) or option(FORCE_LOGGING) { ... }
 /// @if a and b and c { ... }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LogicalExpr {
     pub base: NodeBase,
     /// Index of the start of comparison operands
@@ -310,7 +310,7 @@ const _: () = assert!(size_of::<LogicalExpr>() == 20);
 /// Condition = LogicalExpr ;
 /// LogicalExpr = ComparisonExpr { ( "and" | "or" ) ComparisonExpr } ;
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Condition {
     /// a and b, x or y or z
     LogicalExpr(LogicalExpr),
@@ -334,7 +334,7 @@ const _: () = assert!(size_of::<Condition>() == 24);
 /// @for i in 0..10 { ... }           // Range
 /// @for file in glob("*.cpp") { ... } // FunctionCall
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Iterable {
     /// Explicit list of values
     List(List),
@@ -368,7 +368,7 @@ const _: () = assert!(size_of::<Iterable>() == 24);
 /// cxx_standard: 20;                          // Integer value
 /// warnings: "all", "extra", "pedantic";      // Multiple string values
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Property {
     pub base: NodeBase,
     /// Index of the function name (type, sources, defines, ...)
@@ -393,7 +393,7 @@ const _: () = assert!(size_of::<Property>() == 20);
 /// ```ebnf
 /// DependencyValue = String | Identifier | FunctionCall ;
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DependencyValue<'a> {
     /// Version string: "1.0.0", "^2.3.4"
     String(&'a str),
@@ -464,7 +464,7 @@ const _: () = assert!(size_of::<DependencySpec>() == 48);
 ///     choices: "debug", "info", "warning", "error";
 /// };
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OptionSpec<'a> {
     pub base: NodeBase,
     /// Index of the option name
@@ -521,7 +521,7 @@ const _: () = assert!(size_of::<Statement>() == 48);
 ///     license: "MIT";
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProjectDecl {
     pub base: NodeBase,
     /// Index of the project name
@@ -551,7 +551,7 @@ const _: () = assert!(size_of::<ProjectDecl>() == 20);
 ///     warnings-as-errors: true;
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WorkspaceDecl {
     pub base: NodeBase,
     /// Index of the start of workspace configuration
@@ -591,7 +591,7 @@ const _: () = assert!(size_of::<WorkspaceDecl>() == 16);
 ///     }
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TargetDecl {
     pub base: NodeBase,
     /// Index of the target name
@@ -627,7 +627,7 @@ const _: () = assert!(size_of::<TargetDecl>() == 28);
 ///     };
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DependenciesDecl {
     pub base: NodeBase,
     /// Index of the start of list of dependency specifications
@@ -659,7 +659,7 @@ const _: () = assert!(size_of::<DependenciesDecl>() == 16);
 ///     };
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OptionsDecl {
     pub base: NodeBase,
     /// Index of the start of build option specifications
@@ -693,7 +693,7 @@ const _: () = assert!(size_of::<OptionsDecl>() == 16);
 ///     }
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MixinDecl {
     pub base: NodeBase,
     /// Index of the mixin name
@@ -728,7 +728,7 @@ const _: () = assert!(size_of::<MixinDecl>() == 20);
 ///     debug-info: none;
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProfileDecl {
     pub base: NodeBase,
     /// Index of the profile name (debug, release, ...)
@@ -762,7 +762,7 @@ const _: () = assert!(size_of::<ProfileDecl>() == 28);
 ///     targets: myapp, mylib;
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InstallDecl {
     pub base: NodeBase,
     /// Index of the start of installation configuration
@@ -791,7 +791,7 @@ const _: () = assert!(size_of::<InstallDecl>() == 16);
 ///     license: "MIT";
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PackageDecl {
     pub base: NodeBase,
     /// Index of the start of package configuration
@@ -819,7 +819,7 @@ const _: () = assert!(size_of::<PackageDecl>() == 16);
 ///     phase: "prebuild";
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ScriptDecl {
     pub base: NodeBase,
     /// Index of the start of script properties
@@ -836,7 +836,7 @@ const _: () = assert!(size_of::<ScriptDecl>() == 16);
 /// Visibility modifier for target properties
 ///
 /// Controls how properties propagate to dependent targets, following
-/// CMake's model of transitive dependencies.
+/// `CMake`'s model of transitive dependencies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Visibility {
     /// Visible to this target and all consumers
@@ -873,7 +873,7 @@ pub enum Visibility {
 ///     }
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VisibilityBlock {
     pub base: NodeBase,
     /// Visibility level
@@ -892,8 +892,8 @@ const _: () = assert!(size_of::<VisibilityBlock>() == 20);
 /// Represents a conditional statement (if/else-if/else)
 ///
 /// Conditionals enable platform-specific and configuration-dependent builds.
-/// The else_branch can contain either more statements (for else block) or
-/// another IfStmt (for else-if chains).
+/// The `else_branch` can contain either more statements (for else block) or
+/// another `IfStmt` (for else-if chains).
 ///
 /// Grammar:
 /// ```ebnf
@@ -1002,7 +1002,7 @@ pub enum LoopControl {
 ///     sources: ${file};
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LoopControlStmt {
     pub base: NodeBase,
     /// Break or continue
@@ -1049,7 +1049,7 @@ pub enum DiagnosticLevel {
 ///
 /// @info "Configuring with ${project.name} v${project.version}";
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DiagnosticStmt {
     pub base: NodeBase,
     /// Message severity
@@ -1079,23 +1079,23 @@ pub struct Ast<'a> {
     //===----------------------------------------------------------------------===//
     // Side vectors (Structure of Arrays)
     //===----------------------------------------------------------------------===//
-    /// Storage for all ComparisonExpr nodes
+    /// Storage for all `ComparisonExpr` nodes
     pub all_comparison_exprs: Vec<ComparisonExpr>,
-    /// Storage for all DependencySpec nodes
+    /// Storage for all `DependencySpec` nodes
     pub all_dependencies: Vec<DependencySpec<'a>>,
-    /// Storage for all FunctionCall nodes
+    /// Storage for all `FunctionCall` nodes
     pub all_function_calls: Vec<FunctionCall>,
-    /// Storage for all LogicalExpr nodes
+    /// Storage for all `LogicalExpr` nodes
     pub all_logical_exprs: Vec<LogicalExpr>,
-    /// Storage for all OptionSpec nodes
+    /// Storage for all `OptionSpec` nodes
     pub all_options: Vec<OptionSpec<'a>>,
     /// Storage for all Property nodes
     pub all_properties: Vec<Property>,
     /// Storage for all Statement nodes
     pub all_statements: Vec<Statement>,
-    /// Storage for all UnaryExpr nodes
+    /// Storage for all `UnaryExpr` nodes
     pub all_unary_exprs: Vec<UnaryExpr>,
-    /// Storage for all UnaryOperand nodes
+    /// Storage for all `UnaryOperand` nodes
     pub all_unary_operands: Vec<UnaryOperand>,
     /// Storage for all Value nodes (literals and identifiers)
     pub all_values: Vec<Value<'a>>,

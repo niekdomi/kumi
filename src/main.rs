@@ -28,7 +28,7 @@ fn run_parser_test(filename: &str) {
     let source = match fs::read(filename) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("Error: Could not open file '{}': {}", filename, e);
+            eprintln!("Error: Could not open file '{filename}': {e}");
             std::process::exit(1);
         }
     };
@@ -111,7 +111,7 @@ fn run_parser_test(filename: &str) {
     println!("├─────────────────────────────────────────┤");
     println!("│ File:       {:<28}│", filename.split('/').next_back().unwrap_or(filename));
     println!("│ Size:       {:<7.2} MB{:<18}│", size_mb, "");
-    println!("│ Tokens:     {:<28}│", token_count);
+    println!("│ Tokens:     {token_count:<28}│");
     println!("│ AST Nodes:  {:<28}│", ast.statements.len());
     println!("╰─────────────────────────────────────────╯\n");
 
@@ -128,10 +128,10 @@ fn run_parser_test(filename: &str) {
     println!("╭─────────────────────────────────────────╮");
     println!("│ Performance Metrics                     │");
     println!("├─────────────────────────────────────────┤");
-    println!("│ Lexing:  {:>10.4} ms {:>10.2} MB/s  │", lex_ms, lex_throughput);
-    println!("│ Parsing: {:>10.4} ms {:>10.2} MB/s  │", parse_ms, parse_throughput);
-    println!("│ Check:   {:>10.4} ms {:>10.2} MB/s  │", check_ms, check_throughput);
-    println!("│ Total:   {:>10.4} ms {:>10.2} MB/s  │", total_ms, total_throughput);
+    println!("│ Lexing:  {lex_ms:>10.4} ms {lex_throughput:>10.2} MB/s  │");
+    println!("│ Parsing: {parse_ms:>10.4} ms {parse_throughput:>10.2} MB/s  │");
+    println!("│ Check:   {check_ms:>10.4} ms {check_throughput:>10.2} MB/s  │");
+    println!("│ Total:   {total_ms:>10.4} ms {total_throughput:>10.2} MB/s  │");
     println!("├─────────────────────────────────────────┤");
     println!("│ Lex Memory:   {:>13.2} MB          │", mem_after_lex - mem_before);
     println!("│ Parse Memory: {:>13.2} MB          │", mem_after_parse - mem_after_lex);
@@ -146,12 +146,11 @@ fn run_parser_test(filename: &str) {
 
 fn main() {
     // Intercept clap parsing to completely suppress default errors/help and enforce our own.
-    let cli = match Cli::try_parse() {
-        Ok(c) => c,
-        Err(_) => {
-            cli::args::print_help();
-            std::process::exit(1);
-        }
+    let cli = if let Ok(c) = Cli::try_parse() {
+        c
+    } else {
+        cli::args::print_help();
+        std::process::exit(1);
     };
 
     if cli.help || cli.command.is_none() {
@@ -193,38 +192,36 @@ fn main() {
         Commands::Init(args) => {
             check_help!(args, "init");
             if let Err(e) = cli::init::run(args) {
-                eprintln!("Error initializing project: {}", e);
+                eprintln!("Error initializing project: {e}");
                 std::process::exit(1);
             }
         }
         Commands::Add(args) => {
             check_help!(args, "add");
-            match args.name {
-                Some(name) => println!("Adding dependency: {}", name),
-                None => {
-                    eprintln!("Error: missing required argument <name>");
-                    cli::args::print_subcommand_help("add");
-                    std::process::exit(1);
-                }
+            if let Some(name) = args.name {
+                println!("Adding dependency: {name}")
+            } else {
+                eprintln!("Error: missing required argument <name>");
+                cli::args::print_subcommand_help("add");
+                std::process::exit(1);
             }
         }
         Commands::Update(args) => {
             check_help!(args, "update");
             if let Some(name) = args.name {
-                println!("Updating dependency: {}", name);
+                println!("Updating dependency: {name}");
             } else {
                 println!("Updating all dependencies");
             }
         }
         Commands::Remove(args) => {
             check_help!(args, "remove");
-            match args.name {
-                Some(name) => println!("Removing dependency: {}", name),
-                None => {
-                    eprintln!("Error: missing required argument <name>");
-                    cli::args::print_subcommand_help("remove");
-                    std::process::exit(1);
-                }
+            if let Some(name) = args.name {
+                println!("Removing dependency: {name}")
+            } else {
+                eprintln!("Error: missing required argument <name>");
+                cli::args::print_subcommand_help("remove");
+                std::process::exit(1);
             }
         }
         Commands::Fmt(args) => {
@@ -235,7 +232,7 @@ fn main() {
             check_help!(args, "serve");
             println!("Starting Kumi LSP Server...");
             if let Some(port) = args.port {
-                println!("  Listening on TCP port {}", port);
+                println!("  Listening on TCP port {port}");
             } else {
                 println!("  Using stdio transport");
             }
@@ -250,13 +247,12 @@ fn main() {
         }
         Commands::Search(args) => {
             check_help!(args, "search");
-            match args.query {
-                Some(query) => println!("Searching for packages matching: {}", query),
-                None => {
-                    eprintln!("Error: missing required argument <query>");
-                    cli::args::print_subcommand_help("search");
-                    std::process::exit(1);
-                }
+            if let Some(query) = args.query {
+                println!("Searching for packages matching: {query}")
+            } else {
+                eprintln!("Error: missing required argument <query>");
+                cli::args::print_subcommand_help("search");
+                std::process::exit(1);
             }
         }
     }

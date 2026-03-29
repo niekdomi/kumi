@@ -33,14 +33,14 @@ enum Language {
 }
 
 impl Language {
-    fn as_str(self) -> &'static str {
+    const fn as_str(self) -> &'static str {
         match self {
             Self::Cpp => "C++",
             Self::C => "C",
         }
     }
 
-    fn extension(self, is_header: bool) -> &'static str {
+    const fn extension(self, is_header: bool) -> &'static str {
         match (self, is_header) {
             (Self::Cpp, true) => "hpp",
             (Self::Cpp, false) => "cpp",
@@ -49,21 +49,21 @@ impl Language {
         }
     }
 
-    fn standards(self) -> &'static [&'static str] {
+    const fn standards(self) -> &'static [&'static str] {
         match self {
             Self::Cpp => &["11", "14", "17", "20", "23", "26"],
             Self::C => &["99", "11", "17", "23"],
         }
     }
 
-    fn default_standard_index(self) -> usize {
+    const fn default_standard_index(self) -> usize {
         match self {
             Self::Cpp => 4, // 23
             Self::C => 2,   // 17
         }
     }
 
-    fn standard_key(self) -> &'static str {
+    const fn standard_key(self) -> &'static str {
         match self {
             Self::Cpp => "cpp-standard",
             Self::C => "c-standard",
@@ -78,7 +78,7 @@ enum ProjectType {
 }
 
 impl ProjectType {
-    fn as_str(self) -> &'static str {
+    const fn as_str(self) -> &'static str {
         match self {
             Self::Executable => "executable",
             Self::Library => "static-library",
@@ -183,8 +183,8 @@ fn run_wizard(args: &InitArgs, default_name: String) -> WizardConfig {
     let type_idx = prompt_opt!(
         Select::with_theme(&theme)
             .with_prompt("Project type")
-            .default(if args.lib { 1 } else { 0 })
-            .items(&["Executable", "Library"])
+            .default(usize::from(args.lib))
+            .items(["Executable", "Library"])
             .interact_opt()
     );
 
@@ -192,7 +192,7 @@ fn run_wizard(args: &InitArgs, default_name: String) -> WizardConfig {
         Select::with_theme(&theme)
             .with_prompt("Language")
             .default(0)
-            .items(&["C++", "C"])
+            .items(["C++", "C"])
             .interact_opt()
     );
 

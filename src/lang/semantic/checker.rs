@@ -12,7 +12,10 @@
 //                       dependency specs, and conditions.
 
 use crate::diagnostics::Diagnostic;
-use crate::lang::ast::*;
+use crate::lang::ast::{
+    Ast, ComparisonExpr, Condition, DependenciesDecl, DependencyValue, Iterable, LoopControl,
+    MixinDecl, NodeBase, OperandType, OptionsDecl, Statement, UnaryOperand, Value,
+};
 use crate::lang::semantic::symbol_table::{DuplicateSymbol, SymbolEntry, SymbolKind, SymbolTable};
 use std::collections::HashMap;
 
@@ -82,7 +85,7 @@ use super::builtins::{
 // UPPER_SNAKE_CASE validation
 //===----------------------------------------------------------------------===//
 
-/// Check if a name is valid UPPER_SNAKE_CASE: A-Z, 0-9, _ only,
+/// Check if a name is valid `UPPER_SNAKE_CASE`: A-Z, 0-9, _ only,
 /// must start with A-Z or _, no leading/trailing/double underscores.
 #[inline]
 fn is_upper_snake_case(name: &str) -> bool {
@@ -98,7 +101,7 @@ fn is_upper_snake_case(name: &str) -> bool {
     true
 }
 
-/// Convert an identifier to UPPER_SNAKE_CASE for the help suggestion.
+/// Convert an identifier to `UPPER_SNAKE_CASE` for the help suggestion.
 fn to_upper_snake_case(name: &str) -> String {
     let mut result = String::with_capacity(name.len() + 4);
     let bytes = name.as_bytes();
@@ -127,6 +130,12 @@ pub struct Checker<'a> {
     symbols: SymbolTable<'a>,
     errors: Vec<Diagnostic>,
     file_idx: u16,
+}
+
+impl Default for Checker<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> Checker<'a> {
@@ -183,7 +192,7 @@ impl<'a> Checker<'a> {
                         self.errors.push(Diagnostic::new(
                             "duplicate project declaration",
                             decl.base.start_idx,
-                            format!("first project declaration at offset {}", project_pos),
+                            format!("first project declaration at offset {project_pos}"),
                         ));
                     }
                 }
@@ -200,15 +209,15 @@ impl<'a> Checker<'a> {
                             };
                             if cur_ver == first_ver && !cur_ver.is_empty() {
                                 self.errors.push(Diagnostic::new(
-                                    format!("dependency '{}' declared with same version", name),
+                                    format!("dependency '{name}' declared with same version"),
                                     dep.base.start_idx,
-                                    format!("first declared at offset {}", first_pos),
+                                    format!("first declared at offset {first_pos}"),
                                 ));
                             } else {
                                 self.errors.push(Diagnostic::new(
-                                    format!("duplicate dependency '{}'", name),
+                                    format!("duplicate dependency '{name}'"),
                                     dep.base.start_idx,
-                                    format!("first declared at offset {}", first_pos),
+                                    format!("first declared at offset {first_pos}"),
                                 ));
                             }
                         } else {
@@ -238,7 +247,7 @@ impl<'a> Checker<'a> {
         for stmt in ast.get_statements(start, end) {
             match stmt {
                 Statement::TargetDecl(decl) => {
-                    self.register_symbol(ast, decl.name_idx, decl.base, SymbolKind::Target)
+                    self.register_symbol(ast, decl.name_idx, decl.base, SymbolKind::Target);
                 }
                 Statement::MixinDecl(decl) => {
                     self.register_symbol(ast, decl.name_idx, decl.base, SymbolKind::Mixin);
@@ -274,26 +283,26 @@ impl<'a> Checker<'a> {
                 SymbolKind::Option => "option",
             };
             self.errors.push(Diagnostic::new(
-                format!("duplicate {} definition '{}'", kind_str, name),
+                format!("duplicate {kind_str} definition '{name}'"),
                 base.start_idx,
                 format!("first defined at offset {}", existing.position),
             ));
         }
     }
 
-    /// Validate option name: must be UPPER_SNAKE_CASE, must not shadow builtins.
+    /// Validate option name: must be `UPPER_SNAKE_CASE`, must not shadow builtins.
     fn validate_option_name(&mut self, name: &str, base: NodeBase) {
         if !is_upper_snake_case(name) {
             let suggestion = to_upper_snake_case(name);
             self.errors.push(Diagnostic::new(
-                format!("option name '{}' must be UPPER_SNAKE_CASE", name),
+                format!("option name '{name}' must be UPPER_SNAKE_CASE"),
                 base.start_idx,
-                format!("help: rename to '{}'", suggestion),
+                format!("help: rename to '{suggestion}'"),
             ));
         }
         if is_builtin_variable(name.to_ascii_lowercase().as_str()) || is_builtin_variable(name) {
             self.errors.push(Diagnostic::new(
-                format!("option name '{}' shadows a builtin variable", name),
+                format!("option name '{name}' shadows a builtin variable"),
                 base.start_idx,
                 "",
             ));
@@ -453,7 +462,7 @@ impl<'a> Checker<'a> {
                 let var_name = ast.get_string(stmt.variable_name_idx);
                 if loop_vars.contains(&var_name) {
                     self.errors.push(Diagnostic::new(
-                        format!("@for variable '{}' shadows an outer loop variable", var_name),
+                        format!("@for variable '{var_name}' shadows an outer loop variable"),
                         stmt.base.start_idx,
                         "consider using a different variable name",
                     ));
@@ -469,7 +478,7 @@ impl<'a> Checker<'a> {
                         LoopControl::Continue => "@continue",
                     };
                     self.errors.push(Diagnostic::new(
-                        format!("{} is only allowed inside @for loops", keyword),
+                        format!("{keyword} is only allowed inside @for loops"),
                         stmt.base.start_idx,
                         "",
                     ));
@@ -561,19 +570,18 @@ impl<'a> Checker<'a> {
                     "unreachable code",
                     pos,
                     format!(
-                        "code after @break/@continue at offset {} is never executed",
-                        control_pos
+                        "code after @break/@continue at offset {control_pos} is never executed"
                     ),
                 ));
                 // Only warn once per block
                 break;
             }
 
-            if let Statement::LoopControlStmt(lc) = stmt {
-                if !loop_vars.is_empty() {
-                    found_loop_control = true;
-                    control_pos = lc.base.start_idx;
-                }
+            if let Statement::LoopControlStmt(lc) = stmt
+                && !loop_vars.is_empty()
+            {
+                found_loop_control = true;
+                control_pos = lc.base.start_idx;
             }
 
             self.validate_statement(ast, stmt, ctx, loop_vars);
@@ -591,7 +599,7 @@ impl<'a> Checker<'a> {
             let mixin_name = ast.get_string(i);
             if seen.contains(&mixin_name) {
                 self.errors.push(Diagnostic::new(
-                    format!("duplicate mixin '{}' in with list", mixin_name),
+                    format!("duplicate mixin '{mixin_name}' in with list"),
                     decl_base.start_idx,
                     "",
                 ));
@@ -599,7 +607,7 @@ impl<'a> Checker<'a> {
                 seen.push(mixin_name);
                 if self.symbols.lookup(mixin_name, SymbolKind::Mixin).is_none() {
                     self.errors.push(Diagnostic::new(
-                        format!("undefined mixin '{}'", mixin_name),
+                        format!("undefined mixin '{mixin_name}'"),
                         decl_base.start_idx,
                         self.suggest_similar(mixin_name, SymbolKind::Mixin),
                     ));
@@ -666,13 +674,11 @@ impl<'a> Checker<'a> {
                             if first_mixin != mixin_name {
                                 self.errors.push(Diagnostic::new(
                                     format!(
-                                        "scalar property '{}' has conflicting values in mixin composition",
-                                        prop_name
+                                        "scalar property '{prop_name}' has conflicting values in mixin composition"
                                     ),
                                     decl_base.start_idx,
                                     format!(
-                                        "set in mixin '{}' and mixin '{}'",
-                                        first_mixin, mixin_name
+                                        "set in mixin '{first_mixin}' and mixin '{mixin_name}'"
                                     ),
                                 ));
                             }
@@ -712,11 +718,10 @@ impl<'a> Checker<'a> {
                     if first_mixin != mixin_name {
                         self.errors.push(Diagnostic::new(
                             format!(
-                                "scalar property '{}' has conflicting values in mixin composition",
-                                prop_name
+                                "scalar property '{prop_name}' has conflicting values in mixin composition"
                             ),
                             decl_base.start_idx,
-                            format!("set in mixin '{}' and mixin '{}'", first_mixin, mixin_name),
+                            format!("set in mixin '{first_mixin}' and mixin '{mixin_name}'"),
                         ));
                     }
                 } else {
@@ -726,20 +731,20 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// Find the MixinDecl in the AST by its name index.
+    /// Find the `MixinDecl` in the AST by its name index.
     fn find_mixin_decl(&self, ast: &Ast<'a>, name_idx: u32) -> Option<MixinDecl> {
         for stmt in &ast.statements {
-            if let Statement::MixinDecl(decl) = stmt {
-                if decl.name_idx == name_idx {
-                    return Some(*decl);
-                }
+            if let Statement::MixinDecl(decl) = stmt
+                && decl.name_idx == name_idx
+            {
+                return Some(*decl);
             }
         }
         for stmt in &ast.all_statements {
-            if let Statement::MixinDecl(decl) = stmt {
-                if decl.name_idx == name_idx {
-                    return Some(*decl);
-                }
+            if let Statement::MixinDecl(decl) = stmt
+                && decl.name_idx == name_idx
+            {
+                return Some(*decl);
             }
         }
         None
@@ -758,9 +763,9 @@ impl<'a> Checker<'a> {
             if merge_strategy(name) == MergeStrategy::Scalar {
                 if let Some(&first_pos) = seen_scalars.get(name) {
                     self.errors.push(Diagnostic::new(
-                        format!("duplicate property '{}'", name),
+                        format!("duplicate property '{name}'"),
                         prop.base.start_idx,
-                        format!("first set at offset {}", first_pos),
+                        format!("first set at offset {first_pos}"),
                     ));
                 } else {
                     seen_scalars.insert(name, prop.base.start_idx);
@@ -799,7 +804,7 @@ impl<'a> Checker<'a> {
                     }
                     None => {
                         self.errors.push(Diagnostic::new(
-                            format!("unknown dependency function '{}'", func_name),
+                            format!("unknown dependency function '{func_name}'"),
                             func.base.start_idx,
                             format!("available: {}", dep_function_names_list()),
                         ));
@@ -860,34 +865,34 @@ impl<'a> Checker<'a> {
             // If the left side is a builtin function/variable with known valid values,
             // check that the right side is in the allowed set.
             let valid_values = self.get_valid_values_for_operand(ast, &left.operand);
-            if !valid_values.is_empty() {
-                if let Some(rhs_str) = self.extract_string_value(ast, &right.operand) {
-                    // Strip quotes from the string literal
-                    let rhs_clean = rhs_str.trim_matches('"');
-                    if !valid_values.contains(&rhs_clean) {
-                        let pos = self.get_operand_position(ast, &right.operand);
-                        self.errors.push(Diagnostic::new(
-                            format!("invalid value \"{}\"", rhs_clean),
-                            pos,
-                            format!("valid values: {}", format_valid_values(valid_values)),
-                        ));
-                    }
+            if !valid_values.is_empty()
+                && let Some(rhs_str) = self.extract_string_value(ast, &right.operand)
+            {
+                // Strip quotes from the string literal
+                let rhs_clean = rhs_str.trim_matches('"');
+                if !valid_values.contains(&rhs_clean) {
+                    let pos = self.get_operand_position(ast, &right.operand);
+                    self.errors.push(Diagnostic::new(
+                        format!("invalid value \"{rhs_clean}\""),
+                        pos,
+                        format!("valid values: {}", format_valid_values(valid_values)),
+                    ));
                 }
             }
 
             // Also check left against right's valid values (e.g., "linux" == platform())
             let right_valid = self.get_valid_values_for_operand(ast, &right.operand);
-            if !right_valid.is_empty() {
-                if let Some(lhs_str) = self.extract_string_value(ast, &left.operand) {
-                    let lhs_clean = lhs_str.trim_matches('"');
-                    if !right_valid.contains(&lhs_clean) {
-                        let pos = self.get_operand_position(ast, &left.operand);
-                        self.errors.push(Diagnostic::new(
-                            format!("invalid value \"{}\"", lhs_clean),
-                            pos,
-                            format!("valid values: {}", format_valid_values(right_valid)),
-                        ));
-                    }
+            if !right_valid.is_empty()
+                && let Some(lhs_str) = self.extract_string_value(ast, &left.operand)
+            {
+                let lhs_clean = lhs_str.trim_matches('"');
+                if !right_valid.contains(&lhs_clean) {
+                    let pos = self.get_operand_position(ast, &left.operand);
+                    self.errors.push(Diagnostic::new(
+                        format!("invalid value \"{lhs_clean}\""),
+                        pos,
+                        format!("valid values: {}", format_valid_values(right_valid)),
+                    ));
                 }
             }
         }
@@ -909,10 +914,10 @@ impl<'a> Checker<'a> {
             }
             OperandType::Value => {
                 let val = &ast.all_values[operand.idx as usize];
-                if let Value::Identifier(name) = val {
-                    if let Some(var) = lookup_builtin_variable(name) {
-                        return var.valid_values;
-                    }
+                if let Value::Identifier(name) = val
+                    && let Some(var) = lookup_builtin_variable(name)
+                {
+                    return var.valid_values;
                 }
             }
             _ => {}
@@ -970,7 +975,7 @@ impl<'a> Checker<'a> {
                     }
                     None => {
                         self.errors.push(Diagnostic::new(
-                            format!("unknown function '{}'", name),
+                            format!("unknown function '{name}'"),
                             func.base.start_idx,
                             format!("available functions: {}", builtin_names_list()),
                         ));
@@ -1003,7 +1008,7 @@ impl<'a> Checker<'a> {
                 }
                 None => {
                     self.errors.push(Diagnostic::new(
-                        format!("unknown function '{}'", name),
+                        format!("unknown function '{name}'"),
                         func.base.start_idx,
                         format!("available functions: {}", builtin_names_list()),
                     ));
@@ -1021,10 +1026,8 @@ impl<'a> Checker<'a> {
         let mut best: Option<(&str, usize)> = None;
         for candidate in self.symbols.names(kind) {
             let dist = Self::edit_distance(name, candidate);
-            if dist <= 3 {
-                if best.is_none() || dist < best.unwrap().1 {
-                    best = Some((candidate, dist));
-                }
+            if dist <= 3 && (best.is_none() || dist < best.unwrap().1) {
+                best = Some((candidate, dist));
             }
         }
 
@@ -1032,7 +1035,7 @@ impl<'a> Checker<'a> {
         available.sort_unstable();
 
         if let Some((suggestion, _)) = best {
-            format!("did you mean '{}'?", suggestion)
+            format!("did you mean '{suggestion}'?")
         } else if !available.is_empty() {
             format!("available: {}", available.join(", "))
         } else {
@@ -1050,7 +1053,7 @@ impl<'a> Checker<'a> {
         for (i, &ca) in a.iter().enumerate() {
             curr[0] = i + 1;
             for (j, &cb) in b.iter().enumerate() {
-                let cost = if ca == cb { 0 } else { 1 };
+                let cost = usize::from(ca != cb);
                 curr[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(curr[j] + 1);
             }
             std::mem::swap(&mut prev, &mut curr);

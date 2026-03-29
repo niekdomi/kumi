@@ -18,8 +18,8 @@ const LOOKUP_TABLE: [CharProperties; 256] = {
     while i < 256 {
         let c = i as u8;
         let mut props = CharProperties {
-            is_alpha: matches!(c, b'a'..=b'z' | b'A'..=b'Z'),
-            is_digit: matches!(c, b'0'..=b'9'),
+            is_alpha: c.is_ascii_alphabetic(),
+            is_digit: c.is_ascii_digit(),
             is_ident: matches!(c, b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' | b' ' | b'_' | b'-'),
             is_space: matches!(c, b' ' | 0x09..=0x0D),
         };
@@ -33,21 +33,21 @@ const LOOKUP_TABLE: [CharProperties; 256] = {
 };
 
 #[inline(always)]
-pub fn is_alpha(c: u8) -> bool {
+pub const fn is_alpha(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_alpha
 }
 
 #[inline(always)]
-pub fn is_digit(c: u8) -> bool {
+pub const fn is_digit(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_digit
 }
 
 #[inline(always)]
-pub fn is_identifier(c: u8) -> bool {
+pub const fn is_identifier(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_ident
 }
 
 #[inline(always)]
-pub fn is_space(c: u8) -> bool {
+pub const fn is_space(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_space
 }

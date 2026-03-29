@@ -22,10 +22,10 @@ enum GroupColor {
 impl GroupColor {
     fn paint(self, text: &str) -> String {
         match self {
-            GroupColor::Cyan => paint!(text, Stream::Stdout, cyan).to_string(),
-            GroupColor::Green => paint!(text, Stream::Stdout, green).to_string(),
-            GroupColor::Yellow => paint!(text, Stream::Stdout, yellow).to_string(),
-            GroupColor::Magenta => paint!(text, Stream::Stdout, magenta).to_string(),
+            Self::Cyan => paint!(text, Stream::Stdout, cyan).to_string(),
+            Self::Green => paint!(text, Stream::Stdout, green).to_string(),
+            Self::Yellow => paint!(text, Stream::Stdout, yellow).to_string(),
+            Self::Magenta => paint!(text, Stream::Stdout, magenta).to_string(),
         }
     }
 }
@@ -203,12 +203,11 @@ pub fn print_help() {
 
 pub fn print_subcommand_help(name: &str) {
     let s = Stream::Stdout;
-    let (group, cmd) = match find_command(name) {
-        Some(found) => found,
-        None => {
-            print_help();
-            return;
-        }
+    let (group, cmd) = if let Some(found) = find_command(name) {
+        found
+    } else {
+        print_help();
+        return;
     };
 
     println!("{} — {}", paint!(cmd.name, s, bold), cmd.summary);
@@ -223,7 +222,7 @@ pub fn print_subcommand_help(name: &str) {
         let max_opt_len = cmd.options.iter().map(|(opt, _)| opt.len()).max().unwrap_or(0);
 
         for (opt, desc) in cmd.options {
-            let padded = format!("{:width$}", opt, width = max_opt_len);
+            let padded = format!("{opt:max_opt_len$}");
             println!("  {}   {}", paint!(&padded, s, green), paint!(desc, s, dimmed));
         }
     }
