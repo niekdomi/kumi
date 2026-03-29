@@ -221,6 +221,7 @@ pub const DEPENDENCY_FUNCTIONS: &[(&str, usize)] = &[("git", 1), ("path", 1), ("
 //===----------------------------------------------------------------------===//
 
 #[inline]
+#[must_use] 
 pub fn lookup_builtin(name: &str) -> Option<&'static BuiltinFunction> {
     BUILTIN_FUNCTIONS
         .binary_search_by_key(&name, |f| f.name)
@@ -229,6 +230,7 @@ pub fn lookup_builtin(name: &str) -> Option<&'static BuiltinFunction> {
 }
 
 #[inline]
+#[must_use] 
 pub fn lookup_builtin_variable(name: &str) -> Option<&'static BuiltinVariable> {
     BUILTIN_VARIABLES
         .binary_search_by_key(&name, |v| v.name)
@@ -237,11 +239,13 @@ pub fn lookup_builtin_variable(name: &str) -> Option<&'static BuiltinVariable> {
 }
 
 #[inline]
+#[must_use] 
 pub fn is_builtin_variable(name: &str) -> bool {
     lookup_builtin_variable(name).is_some()
 }
 
 #[inline]
+#[must_use] 
 pub fn lookup_dep_function(name: &str) -> Option<usize> {
     DEPENDENCY_FUNCTIONS
         .binary_search_by_key(&name, |&(n, _)| n)
@@ -253,15 +257,18 @@ pub fn lookup_dep_function(name: &str) -> Option<usize> {
 // Formatting helpers
 //===----------------------------------------------------------------------===//
 
+#[must_use] 
 pub fn builtin_names_list() -> String {
     BUILTIN_FUNCTIONS.iter().map(|f| f.name).collect::<Vec<_>>().join(", ")
 }
 
+#[must_use] 
 pub fn dep_function_names_list() -> String {
     DEPENDENCY_FUNCTIONS.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
 }
 
 /// Format a list of valid values for use in error messages.
+#[must_use] 
 pub fn format_valid_values(values: &[&str]) -> String {
     values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(", ")
 }

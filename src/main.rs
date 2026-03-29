@@ -199,7 +199,7 @@ fn main() {
         Commands::Add(args) => {
             check_help!(args, "add");
             if let Some(name) = args.name {
-                println!("Adding dependency: {name}")
+                println!("Adding dependency: {name}");
             } else {
                 eprintln!("Error: missing required argument <name>");
                 cli::args::print_subcommand_help("add");
@@ -217,7 +217,7 @@ fn main() {
         Commands::Remove(args) => {
             check_help!(args, "remove");
             if let Some(name) = args.name {
-                println!("Removing dependency: {name}")
+                println!("Removing dependency: {name}");
             } else {
                 eprintln!("Error: missing required argument <name>");
                 cli::args::print_subcommand_help("remove");
@@ -248,7 +248,7 @@ fn main() {
         Commands::Search(args) => {
             check_help!(args, "search");
             if let Some(query) = args.query {
-                println!("Searching for packages matching: {query}")
+                println!("Searching for packages matching: {query}");
             } else {
                 eprintln!("Error: missing required argument <query>");
                 cli::args::print_subcommand_help("search");

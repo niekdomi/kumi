@@ -139,6 +139,7 @@ impl Default for Checker<'_> {
 }
 
 impl<'a> Checker<'a> {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             symbols: SymbolTable::new(),

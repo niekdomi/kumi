@@ -30,6 +30,7 @@ pub struct NodeBase {
 const _: () = assert!(size_of::<NodeBase>() == 8);
 
 impl NodeBase {
+    #[must_use] 
     pub const fn new(start_idx: u32, end_idx: u32) -> Self {
         Self { start_idx, end_idx }
     }
@@ -421,7 +422,7 @@ const _: () = assert!(size_of::<DependencyValue>() == 24);
 ///     tag: "v1.90";
 /// };
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DependencySpec<'a> {
     pub base: NodeBase,
     /// Index of the dependency name (package identifier)
@@ -482,7 +483,7 @@ const _: () = assert!(size_of::<OptionSpec>() == 48);
 // Top-Level Declarations
 //===----------------------------------------------------------------------===//
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Statement {
     ProjectDecl(ProjectDecl),
     WorkspaceDecl(WorkspaceDecl),
@@ -912,7 +913,7 @@ const _: () = assert!(size_of::<VisibilityBlock>() == 20);
 ///     sources: "linux.cpp";
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IfStmt {
     pub base: NodeBase,
     /// Condition to evaluate
@@ -960,7 +961,7 @@ const _: () = assert!(size_of::<IfStmt>() == 48);
 ///     }
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ForStmt {
     pub base: NodeBase,
     /// Index of the loop variable name
@@ -1117,6 +1118,7 @@ pub struct Ast<'a> {
 }
 
 impl<'a> Ast<'a> {
+    #[must_use] 
     pub fn new(file_path: &'a str) -> Self {
         Self {
             file_path,

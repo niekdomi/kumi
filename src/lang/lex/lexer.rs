@@ -24,6 +24,7 @@ pub struct Lexer<'a> {
 
 impl<'lex_impl> Lexer<'lex_impl> {
     /// Constructs a lexer for the given input buffer.
+    #[must_use] 
     pub const fn new(input: &'lex_impl [u8]) -> Self {
         Self {
             input,
@@ -38,6 +39,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
     ///
     /// The returned vector contains tokens in the order they appear in the input.
     /// The `EndOfFile` token is always emitted as the last token.
+    #[must_use] 
     pub fn tokenize(mut self) -> (Vec<Token>, Vec<Diagnostic>) {
         self.tokens.reserve(self.input.len());
         let mut errors = Vec::new();
@@ -235,7 +237,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         if is_block {
             let rem = &self.input[self.position as usize..];
             if let Some(idx) = memmem::find(rem, b"*/") {
-                self.position += (idx + 2) as u32
+                self.position += (idx + 2) as u32;
             } else {
                 self.position = self.input.len() as u32;
                 return Err(Diagnostic::new("unterminated block comment", start_pos, ""));

@@ -16,6 +16,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    #[must_use] 
     pub const fn new(tokens: &'a [Token], source: &'a [u8]) -> Self {
         Self {
             tokens,
@@ -24,6 +25,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[must_use] 
     pub fn parse(mut self, file_path: &'a str) -> Ast<'a> {
         let mut ast = Ast::new(file_path);
 

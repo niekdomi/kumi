@@ -157,6 +157,7 @@ pub enum TokenType {
 impl TokenType {
     /// Returns true if this token type is a keyword (Project through False).
     #[inline(always)]
+    #[must_use] 
     pub const fn is_keyword(self) -> bool {
         (self as u8) >= (Self::Project as u8) && (self as u8) <= (Self::False as u8)
     }
