@@ -139,7 +139,7 @@ macro_rules! prompt_val {
 // Logic
 //===----------------------------------------------------------------------===//
 
-pub fn run(args: InitArgs) -> io::Result<()> {
+pub fn run(args: &InitArgs) -> io::Result<()> {
     let default_name = env::current_dir()?
         .file_name()
         .unwrap_or_default()
@@ -147,14 +147,14 @@ pub fn run(args: InitArgs) -> io::Result<()> {
         .into_owned();
 
     let config = if args.bare {
-        WizardConfig::from_args(&args, default_name)
+        WizardConfig::from_args(args, default_name)
     } else {
         println!("{}", "Initializing a new Kumi project".bold());
-        run_wizard(&args, default_name)
+        run_wizard(args, default_name)
     };
 
     create_project(&config)?;
-    let _ = init_git();
+    init_git();
 
     // Direct styling avoids the closure-lifetime issue
     let success_style = Style::new().green().bold();
@@ -282,7 +282,7 @@ fn create_project(cfg: &WizardConfig) -> io::Result<()> {
     Ok(())
 }
 
-fn init_git() -> io::Result<()> {
+fn init_git() {
     if !Path::new(".git").exists() {
         let _ = Command::new("git")
             .args(["-q", "init"])
@@ -290,5 +290,4 @@ fn init_git() -> io::Result<()> {
             .stderr(std::process::Stdio::null())
             .status();
     }
-    Ok(())
 }

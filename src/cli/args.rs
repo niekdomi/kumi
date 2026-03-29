@@ -203,9 +203,7 @@ pub fn print_help() {
 
 pub fn print_subcommand_help(name: &str) {
     let s = Stream::Stdout;
-    let (group, cmd) = if let Some(found) = find_command(name) {
-        found
-    } else {
+    let Some((group, cmd)) = find_command(name) else {
         print_help();
         return;
     };

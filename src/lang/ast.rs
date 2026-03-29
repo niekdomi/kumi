@@ -30,7 +30,6 @@ pub struct NodeBase {
 const _: () = assert!(size_of::<NodeBase>() == 8);
 
 impl NodeBase {
-    #[must_use] 
     pub const fn new(start_idx: u32, end_idx: u32) -> Self {
         Self { start_idx, end_idx }
     }
@@ -1118,7 +1117,6 @@ pub struct Ast<'a> {
 }
 
 impl<'a> Ast<'a> {
-    #[must_use] 
     pub fn new(file_path: &'a str) -> Self {
         Self {
             file_path,

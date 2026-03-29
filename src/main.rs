@@ -146,9 +146,7 @@ fn run_parser_test(filename: &str) {
 
 fn main() {
     // Intercept clap parsing to completely suppress default errors/help and enforce our own.
-    let cli = if let Ok(c) = Cli::try_parse() {
-        c
-    } else {
+    let Ok(cli) = Cli::try_parse() else {
         cli::args::print_help();
         std::process::exit(1);
     };
@@ -191,7 +189,7 @@ fn main() {
         }
         Commands::Init(args) => {
             check_help!(args, "init");
-            if let Err(e) = cli::init::run(args) {
+            if let Err(e) = cli::init::run(&args) {
                 eprintln!("Error initializing project: {e}");
                 std::process::exit(1);
             }

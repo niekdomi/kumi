@@ -33,25 +33,21 @@ const LOOKUP_TABLE: [CharProperties; 256] = {
 };
 
 #[inline(always)]
-#[must_use] 
 pub const fn is_alpha(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_alpha
 }
 
 #[inline(always)]
-#[must_use] 
 pub const fn is_digit(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_digit
 }
 
 #[inline(always)]
-#[must_use] 
 pub const fn is_identifier(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_ident
 }
 
 #[inline(always)]
-#[must_use] 
 pub const fn is_space(c: u8) -> bool {
     LOOKUP_TABLE[c as usize].is_space
 }

@@ -51,7 +51,6 @@ impl Default for SymbolTable<'_> {
 }
 
 impl<'a> SymbolTable<'a> {
-    #[must_use] 
     pub fn new() -> Self {
         Self {
             targets: HashMap::new(),
@@ -76,7 +75,6 @@ impl<'a> SymbolTable<'a> {
     }
 
     /// Look up a symbol by name and kind.
-    #[must_use] 
     pub fn lookup(&self, name: &str, kind: SymbolKind) -> Option<&SymbolEntry> {
         self.table(kind).get(name)
     }

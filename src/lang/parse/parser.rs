@@ -16,7 +16,6 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    #[must_use] 
     pub const fn new(tokens: &'a [Token], source: &'a [u8]) -> Self {
         Self {
             tokens,
@@ -25,7 +24,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    #[must_use] 
     pub fn parse(mut self, file_path: &'a str) -> Ast<'a> {
         let mut ast = Ast::new(file_path);
 
@@ -94,11 +92,12 @@ impl<'a> Parser<'a> {
         if self.peek(0).kind != kind {
             let peek_token = self.peek(0);
 
-            let mut error_pos = peek_token.position;
-            if kind == TokenType::Semicolon && self.position > 0 {
+            let error_pos = if kind == TokenType::Semicolon && self.position > 0 {
                 let prev_token = &self.tokens[self.position - 1];
-                error_pos = prev_token.position + prev_token.length;
-            }
+                prev_token.position + prev_token.length
+            } else {
+                peek_token.position
+            };
 
             let expected_str = match kind {
                 TokenType::LeftBrace => "{",
@@ -204,7 +203,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.peek(0).position;
         self.expect(keyword)?;
         self.expect(TokenType::LeftBrace)?;
-        let (start, end) = self.parse_properties(ast)?;
+        let (start, end) = self.parse_properties(ast);
         let close = self.expect(TokenType::RightBrace)?;
         let end_pos = self.end_of(close);
         Ok((start_pos, end_pos, start, end))
@@ -273,7 +272,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    fn parse_statement_block(&mut self, ast: &mut Ast<'a>) -> Result<(u32, u32), Diagnostic> {
+    fn parse_statement_block(&mut self, ast: &mut Ast<'a>) -> (u32, u32) {
         let start_idx = ast.all_statements.len() as u32;
 
         while self.peek(0).kind != TokenType::RightBrace
@@ -306,11 +305,11 @@ impl<'a> Parser<'a> {
         }
 
         let end_idx = ast.all_statements.len() as u32;
-        Ok((start_idx, end_idx))
+        (start_idx, end_idx)
     }
 
     #[inline(always)]
-    fn parse_properties(&mut self, ast: &mut Ast<'a>) -> Result<(u32, u32), Diagnostic> {
+    fn parse_properties(&mut self, ast: &mut Ast<'a>) -> (u32, u32) {
         let start_idx = ast.all_properties.len() as u32;
         while self.peek(0).kind != TokenType::RightBrace
             && self.peek(0).kind != TokenType::EndOfFile
@@ -324,7 +323,7 @@ impl<'a> Parser<'a> {
             }
         }
         let end_idx = ast.all_properties.len() as u32;
-        Ok((start_idx, end_idx))
+        (start_idx, end_idx)
     }
 
     #[inline(always)]
@@ -362,7 +361,7 @@ impl<'a> Parser<'a> {
         let name_idx = self.push_string(ast, self.get_string(name_token));
 
         self.expect(TokenType::LeftBrace)?;
-        let (property_start_idx, property_end_idx) = self.parse_properties(ast)?;
+        let (property_start_idx, property_end_idx) = self.parse_properties(ast);
         self.expect(TokenType::RightBrace)?;
         let end_pos = self.prev_end();
 
@@ -395,7 +394,7 @@ impl<'a> Parser<'a> {
         let (mixin_start_idx, mixin_end_idx) = self.parse_with_mixins(ast)?;
 
         self.expect(TokenType::LeftBrace)?;
-        let (body_start_idx, body_end_idx) = self.parse_statement_block(ast)?;
+        let (body_start_idx, body_end_idx) = self.parse_statement_block(ast);
         self.expect(TokenType::RightBrace)?;
         let end_pos = self.prev_end();
 
@@ -486,7 +485,7 @@ impl<'a> Parser<'a> {
         let mut option_start_idx = ast.all_properties.len() as u32;
         let mut option_end_idx = option_start_idx;
         if self.match_token(TokenType::LeftBrace) {
-            let (start, end) = self.parse_properties(ast)?;
+            let (start, end) = self.parse_properties(ast);
             option_start_idx = start;
             option_end_idx = end;
             self.expect(TokenType::RightBrace)?;
@@ -576,7 +575,7 @@ impl<'a> Parser<'a> {
         let mut constraint_end_idx = constraint_start_idx;
 
         if self.match_token(TokenType::LeftBrace) {
-            let (start, end) = self.parse_properties(ast)?;
+            let (start, end) = self.parse_properties(ast);
             constraint_start_idx = start;
             constraint_end_idx = end;
             self.expect(TokenType::RightBrace)?;
@@ -601,7 +600,7 @@ impl<'a> Parser<'a> {
         let name_idx = self.push_string(ast, self.get_string(name_token));
 
         self.expect(TokenType::LeftBrace)?;
-        let (body_start_idx, body_end_idx) = self.parse_statement_block(ast)?;
+        let (body_start_idx, body_end_idx) = self.parse_statement_block(ast);
         self.expect(TokenType::RightBrace)?;
         let end_pos = self.prev_end();
 
@@ -623,7 +622,7 @@ impl<'a> Parser<'a> {
         let (mixin_start_idx, mixin_end_idx) = self.parse_with_mixins(ast)?;
 
         self.expect(TokenType::LeftBrace)?;
-        let (property_start_idx, property_end_idx) = self.parse_properties(ast)?;
+        let (property_start_idx, property_end_idx) = self.parse_properties(ast);
         self.expect(TokenType::RightBrace)?;
         let end_pos = self.prev_end();
 
@@ -689,7 +688,7 @@ impl<'a> Parser<'a> {
         };
 
         self.expect(TokenType::LeftBrace)?;
-        let (property_start_idx, property_end_idx) = self.parse_properties(ast)?;
+        let (property_start_idx, property_end_idx) = self.parse_properties(ast);
         self.expect(TokenType::RightBrace)?;
         let end_pos = self.prev_end();
 
@@ -711,7 +710,7 @@ impl<'a> Parser<'a> {
         let condition = self.parse_condition(ast)?;
 
         self.expect(TokenType::LeftBrace)?;
-        let (then_start_idx, then_end_idx) = self.parse_statement_block(ast)?;
+        let (then_start_idx, then_end_idx) = self.parse_statement_block(ast);
         self.expect(TokenType::RightBrace)?;
 
         let mut else_start_idx = ast.all_statements.len() as u32;
@@ -728,7 +727,7 @@ impl<'a> Parser<'a> {
         } else if self.peek(0).kind == TokenType::AtElse {
             self.advance();
             self.expect(TokenType::LeftBrace)?;
-            let (start, end) = self.parse_statement_block(ast)?;
+            let (start, end) = self.parse_statement_block(ast);
             else_start_idx = start;
             else_end_idx = end;
             self.expect(TokenType::RightBrace)?;
@@ -756,7 +755,7 @@ impl<'a> Parser<'a> {
         let iterable = self.parse_iterable(ast)?;
 
         self.expect(TokenType::LeftBrace)?;
-        let (body_start_idx, body_end_idx) = self.parse_statement_block(ast)?;
+        let (body_start_idx, body_end_idx) = self.parse_statement_block(ast);
         self.expect(TokenType::RightBrace)?;
         let end_pos = self.prev_end();
 

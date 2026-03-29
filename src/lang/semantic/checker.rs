@@ -139,7 +139,6 @@ impl Default for Checker<'_> {
 }
 
 impl<'a> Checker<'a> {
-    #[must_use] 
     pub fn new() -> Self {
         Self {
             symbols: SymbolTable::new(),
@@ -206,7 +205,7 @@ impl<'a> Checker<'a> {
                             // Get current version string for comparison
                             let cur_ver = match &dep.value {
                                 DependencyValue::String(s) => *s,
-                                _ => "",
+                                DependencyValue::FunctionCall(_) => "",
                             };
                             if cur_ver == first_ver && !cur_ver.is_empty() {
                                 self.errors.push(Diagnostic::new(
@@ -224,7 +223,7 @@ impl<'a> Checker<'a> {
                         } else {
                             let ver = match &dep.value {
                                 DependencyValue::String(s) => *s,
-                                _ => "",
+                                DependencyValue::FunctionCall(_) => "",
                             };
                             seen_deps.insert(name, (dep.base.start_idx, ver));
                         }
@@ -485,11 +484,9 @@ impl<'a> Checker<'a> {
                     ));
                 }
             }
-            Statement::DiagnosticStmt(_) => {}
-            Statement::Property(_) => {
-                // Bare properties at top-level are unusual but not invalid
-                // (they become project-level settings).
-            }
+            // Bare properties at top-level are unusual but not invalid
+            // (they become project-level settings).
+            Statement::DiagnosticStmt(_) | Statement::Property(_) => {}
         }
     }
 
@@ -850,29 +847,29 @@ impl<'a> Checker<'a> {
                 self.validate_comparison_expr(ast, expr);
             }
             Condition::UnaryExpr(expr) => {
-                self.validate_unary_operand(ast, &expr.operand);
+                self.validate_unary_operand(ast, expr.operand);
             }
         }
     }
 
     fn validate_comparison_expr(&mut self, ast: &Ast<'a>, expr: &ComparisonExpr) {
         let left = &ast.all_unary_exprs[expr.left_idx as usize];
-        self.validate_unary_operand(ast, &left.operand);
+        self.validate_unary_operand(ast, left.operand);
 
         if let Some(right_idx) = expr.right_idx {
             let right = &ast.all_unary_exprs[right_idx as usize];
-            self.validate_unary_operand(ast, &right.operand);
+            self.validate_unary_operand(ast, right.operand);
 
             // If the left side is a builtin function/variable with known valid values,
             // check that the right side is in the allowed set.
-            let valid_values = self.get_valid_values_for_operand(ast, &left.operand);
+            let valid_values = self.get_valid_values_for_operand(ast, left.operand);
             if !valid_values.is_empty()
-                && let Some(rhs_str) = self.extract_string_value(ast, &right.operand)
+                && let Some(rhs_str) = self.extract_string_value(ast, right.operand)
             {
                 // Strip quotes from the string literal
                 let rhs_clean = rhs_str.trim_matches('"');
                 if !valid_values.contains(&rhs_clean) {
-                    let pos = self.get_operand_position(ast, &right.operand);
+                    let pos = self.get_operand_position(ast, right.operand);
                     self.errors.push(Diagnostic::new(
                         format!("invalid value \"{rhs_clean}\""),
                         pos,
@@ -882,13 +879,13 @@ impl<'a> Checker<'a> {
             }
 
             // Also check left against right's valid values (e.g., "linux" == platform())
-            let right_valid = self.get_valid_values_for_operand(ast, &right.operand);
+            let right_valid = self.get_valid_values_for_operand(ast, right.operand);
             if !right_valid.is_empty()
-                && let Some(lhs_str) = self.extract_string_value(ast, &left.operand)
+                && let Some(lhs_str) = self.extract_string_value(ast, left.operand)
             {
                 let lhs_clean = lhs_str.trim_matches('"');
                 if !right_valid.contains(&lhs_clean) {
-                    let pos = self.get_operand_position(ast, &left.operand);
+                    let pos = self.get_operand_position(ast, left.operand);
                     self.errors.push(Diagnostic::new(
                         format!("invalid value \"{lhs_clean}\""),
                         pos,
@@ -903,7 +900,7 @@ impl<'a> Checker<'a> {
     fn get_valid_values_for_operand(
         &self,
         ast: &Ast<'a>,
-        operand: &UnaryOperand,
+        operand: UnaryOperand,
     ) -> &'static [&'static str] {
         match operand.kind {
             OperandType::FunctionCall => {
@@ -921,21 +918,20 @@ impl<'a> Checker<'a> {
                     return var.valid_values;
                 }
             }
-            _ => {}
+            OperandType::LogicalExpr => {}
         }
         &[]
     }
 
     /// Extract a string literal from an operand (for value validation).
-    fn extract_string_value<'b>(&self, ast: &'b Ast<'a>, operand: &UnaryOperand) -> Option<&'b str>
+    fn extract_string_value<'b>(&self, ast: &'b Ast<'a>, operand: UnaryOperand) -> Option<&'b str>
     where
         'a: 'b,
     {
         if operand.kind == OperandType::Value {
             let val = &ast.all_values[operand.idx as usize];
             match val {
-                Value::String(s) => return Some(s),
-                Value::Identifier(s) => return Some(s),
+                Value::String(s) | Value::Identifier(s) => return Some(s),
                 _ => {}
             }
         }
@@ -943,7 +939,7 @@ impl<'a> Checker<'a> {
     }
 
     /// Get the source position of an operand for error reporting.
-    fn get_operand_position(&self, ast: &Ast<'a>, operand: &UnaryOperand) -> u32 {
+    fn get_operand_position(&self, ast: &Ast<'a>, operand: UnaryOperand) -> u32 {
         match operand.kind {
             OperandType::FunctionCall => {
                 ast.all_function_calls[operand.idx as usize].base.start_idx
@@ -952,7 +948,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn validate_unary_operand(&mut self, ast: &Ast<'a>, operand: &UnaryOperand) {
+    fn validate_unary_operand(&mut self, ast: &Ast<'a>, operand: UnaryOperand) {
         match operand.kind {
             OperandType::FunctionCall => {
                 let func = &ast.all_function_calls[operand.idx as usize];

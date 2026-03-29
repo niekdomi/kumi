@@ -15,7 +15,6 @@ pub struct DiagnosticPrinter<'a> {
 }
 
 impl<'a> DiagnosticPrinter<'a> {
-    #[must_use] 
     pub fn new(source: &'a str, filename: &'a str) -> Self {
         let mut files = SimpleFiles::new();
         let file_id = files.add(filename, source);

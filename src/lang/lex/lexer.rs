@@ -24,7 +24,6 @@ pub struct Lexer<'a> {
 
 impl<'lex_impl> Lexer<'lex_impl> {
     /// Constructs a lexer for the given input buffer.
-    #[must_use] 
     pub const fn new(input: &'lex_impl [u8]) -> Self {
         Self {
             input,
@@ -39,7 +38,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
     ///
     /// The returned vector contains tokens in the order they appear in the input.
     /// The `EndOfFile` token is always emitted as the last token.
-    #[must_use] 
     pub fn tokenize(mut self) -> (Vec<Token>, Vec<Diagnostic>) {
         self.tokens.reserve(self.input.len());
         let mut errors = Vec::new();
@@ -47,7 +45,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         loop {
             let pre_pos = self.position;
             match self.next_token() {
-                Ok(None) => continue,
+                Ok(None) => {}
                 Ok(Some(token)) => {
                     self.tokens.push(token);
 
@@ -234,8 +232,8 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Err(Diagnostic::new("unexpected character after '/'", start_pos, ""));
         };
 
+        let rem = &self.input[self.position as usize..];
         if is_block {
-            let rem = &self.input[self.position as usize..];
             if let Some(idx) = memmem::find(rem, b"*/") {
                 self.position += (idx + 2) as u32;
             } else {
@@ -243,7 +241,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 return Err(Diagnostic::new("unterminated block comment", start_pos, ""));
             }
         } else {
-            let rem = &self.input[self.position as usize..];
             match memchr(b'\n', rem) {
                 Some(idx) => self.position += idx as u32,
                 None => self.position = self.input.len() as u32,
@@ -431,23 +428,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
 
     #[inline(always)]
     fn lex_identifier_or_keyword(&mut self) -> Result<Token, Diagnostic> {
-        let start_pos = self.position;
-        let input = self.input;
-
-        while !self.at_end() && is_identifier(self.peek()) {
-            self.position += 1;
-        }
-
-        let text = &input[start_pos as usize..self.position as usize];
-
-        if text.is_empty() {
-            return Err(Diagnostic::new(
-                "unexpected character",
-                self.position,
-                "expected an identifier, keyword, or other valid token",
-            ));
-        }
-
         static KEYWORDS: &[(&[u8], TokenType)] = &[
             // Top-Level Declarations
             (b"project", TokenType::Project),
@@ -475,6 +455,23 @@ impl<'lex_impl> Lexer<'lex_impl> {
             (b"true", TokenType::True),
             (b"false", TokenType::False),
         ];
+
+        let start_pos = self.position;
+        let input = self.input;
+
+        while !self.at_end() && is_identifier(self.peek()) {
+            self.position += 1;
+        }
+
+        let text = &input[start_pos as usize..self.position as usize];
+
+        if text.is_empty() {
+            return Err(Diagnostic::new(
+                "unexpected character",
+                self.position,
+                "expected an identifier, keyword, or other valid token",
+            ));
+        }
 
         for &(keyword, tt) in KEYWORDS {
             if text == keyword {
