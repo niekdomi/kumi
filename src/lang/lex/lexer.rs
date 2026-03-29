@@ -115,7 +115,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
     /// neighboring tokens. Leading comments are attached to the next emitted
     /// (non-comment) token and trailing comments are attached to the previous
     /// emitted token if they appear on the same line as the end of that token.
-    #[inline(always)]
     fn next_token(&mut self) -> Result<Option<Token>, Diagnostic> {
         self.skip_whitespace();
 
@@ -171,10 +170,8 @@ impl<'lex_impl> Lexer<'lex_impl> {
     // Lexing Helpers
     //===------------------------------------------------------------------===//
 
-    #[inline(always)]
     fn lex_at(&mut self) -> Result<Token, Diagnostic> {
         static KEYWORDS: &[(&[u8], TokenType)] = &[
-            (b"@import", TokenType::AtImport),
             (b"@else-if", TokenType::AtElseIf),
             (b"@else", TokenType::AtElse),
             (b"@if", TokenType::AtIf),
@@ -204,7 +201,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '@'", start_pos, ""))
     }
 
-    #[inline(always)]
     fn lex_bang(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
 
@@ -221,7 +217,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '!'", start_pos, ""))
     }
 
-    #[inline(always)]
     fn lex_comment(&mut self) -> Result<(), Diagnostic> {
         let start_pos = self.position;
 
@@ -265,7 +260,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Ok(())
     }
 
-    #[inline(always)]
     fn lex_dot(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
 
@@ -282,7 +276,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '.'", start_pos, ""))
     }
 
-    #[inline(always)]
     fn lex_equal(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
 
@@ -299,7 +292,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         Err(Diagnostic::new("unexpected character after '='", start_pos, ""))
     }
 
-    #[inline(always)]
     fn lex_greater(&mut self) -> Token {
         let start_pos = self.position;
 
@@ -323,7 +315,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
-    #[inline(always)]
     fn lex_less(&mut self) -> Token {
         let start_pos = self.position;
 
@@ -347,7 +338,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
-    #[inline(always)]
     fn lex_number(&mut self) -> Token {
         let start_pos = self.position;
 
@@ -364,7 +354,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
-    #[inline(always)]
     fn lex_single_char(&mut self, kind: TokenType) -> Token {
         let position = self.position;
         self.advance();
@@ -377,7 +366,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         }
     }
 
-    #[inline(always)]
     fn lex_string(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
         self.advance();
@@ -407,7 +395,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                         return Err(Diagnostic::new(
                             "invalid escape sequence",
                             err_pos,
-                            "valid escapes: \", \\n, \\t, \\r, \\\\",
+                            "valid escapes: \\\", \\n, \\t, \\r, \\\\",
                         ));
                     }
                     self.advance(); // Consume escaped character
@@ -429,7 +417,6 @@ impl<'lex_impl> Lexer<'lex_impl> {
         })
     }
 
-    #[inline(always)]
     fn lex_identifier_or_keyword(&mut self) -> Result<Token, Diagnostic> {
         let start_pos = self.position;
         let input = self.input;
@@ -459,7 +446,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             (b"profile", TokenType::Profile),
             (b"install", TokenType::Install),
             (b"package", TokenType::Package),
-            (b"scripts", TokenType::Scripts),
+            (b"script", TokenType::Script),
             (b"with", TokenType::With),
             // Visibility Modifiers
             (b"public", TokenType::Public),

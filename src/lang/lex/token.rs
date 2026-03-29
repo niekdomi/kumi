@@ -31,14 +31,12 @@ pub enum TokenType {
     Mixin,
     /// `profile release { }`     - Named build configuration profile
     Profile,
-    /// `@import "file.kumi";`    - Import another Kumi configuration file
-    AtImport,
     /// `install { }`             - Installation configuration
     Install,
     /// `package { }`             - Packaging and publishing
     Package,
-    /// `scripts { }`             - Custom build hooks
-    Scripts,
+    /// `script { }`             - Custom build hooks
+    Script,
     /// `with`                    - Mixin (e.g., `target myapp with strict { }`)
     With,
 

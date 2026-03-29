@@ -1,5 +1,5 @@
 array_width = 80
-attr_fn_like_width = 90
+attr_fn_like_width = 80
 # blank_lines_lower_bound = 1 # unstable yet
 chain_width = 80
 # comment_width = 100 # unstable yet

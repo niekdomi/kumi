@@ -89,9 +89,9 @@ fn valid_nested_if() {
     check_ok(
         r#"
         target myapp {
-            @if platform("linux") {
+            @if platform() == "linux" {
                 defines: "LINUX";
-            } @else-if platform("windows") {
+            } @else-if platform() == "windows" {
                 defines: "WINDOWS";
             } @else {
                 defines: "OTHER";
@@ -169,6 +169,65 @@ fn valid_profile_with_mixin() {
         }
         profile release with lto {
             optimize: "3";
+        }
+    "#,
+    );
+}
+
+#[test]
+fn valid_multiple_workspace_blocks() {
+    // Multiple workspace blocks should merge without error
+    check_ok(
+        r#"
+        workspace {
+            build_dir: "build";
+        }
+        workspace {
+            output_dir: "dist";
+        }
+    "#,
+    );
+}
+
+#[test]
+fn valid_multiple_dependencies_blocks() {
+    // Multiple dependencies blocks should merge without error
+    check_ok(
+        r#"
+        dependencies {
+            fmt: "10.0";
+        }
+        dependencies {
+            spdlog: "1.12";
+        }
+    "#,
+    );
+}
+
+#[test]
+fn valid_multiple_options_blocks() {
+    // Multiple options blocks should merge without error
+    check_ok(
+        r#"
+        options {
+            ENABLE_TESTS: true;
+        }
+        options {
+            LOG_LEVEL: "info";
+        }
+    "#,
+    );
+}
+
+#[test]
+fn valid_multiple_script_blocks() {
+    check_ok(
+        r#"
+        script {
+            name: "prebuild";
+        }
+        script {
+            name: "postbuild";
         }
     "#,
     );
@@ -288,7 +347,6 @@ fn error_continue_outside_loop() {
 
 #[test]
 fn error_visibility_inside_for_at_top_level() {
-    // Visibility blocks parsed inside @for at top level should be caught by the checker.
     check_err(
         r#"
         @for x in [a, b] {
@@ -336,7 +394,6 @@ fn error_mixin_scalar_conflict() {
 
 #[test]
 fn valid_mixin_same_scalar_in_one_mixin() {
-    // Same mixin setting the same scalar is fine (it's not a conflict between mixins)
     check_ok(
         r#"
         mixin fast {
@@ -372,8 +429,8 @@ fn valid_known_function_in_condition() {
     check_ok(
         r#"
         target myapp {
-            @if platform("linux") {
-                defines: "LINUX";
+            @if has_feature("avx2") {
+                defines: "HAS_AVX2";
             }
         }
     "#,
@@ -408,76 +465,6 @@ fn valid_known_function_in_iterable() {
 }
 
 //===---------------------------------------------------------------------===//
-// Duplicate singleton declarations
-//===---------------------------------------------------------------------===//
-
-#[test]
-fn error_duplicate_workspace() {
-    check_err(
-        r#"
-        workspace { }
-        workspace { }
-    "#,
-        "duplicate workspace declaration",
-    );
-}
-
-#[test]
-fn error_duplicate_dependencies() {
-    check_err(
-        r#"
-        dependencies { }
-        dependencies { }
-    "#,
-        "duplicate dependencies declaration",
-    );
-}
-
-#[test]
-fn error_duplicate_options() {
-    check_err(
-        r#"
-        options { enable_tests: true; }
-        options { log_level: "info"; }
-    "#,
-        "duplicate options declaration",
-    );
-}
-
-#[test]
-fn error_duplicate_install() {
-    check_err(
-        r#"
-        install { }
-        install { }
-    "#,
-        "duplicate install declaration",
-    );
-}
-
-#[test]
-fn error_duplicate_package() {
-    check_err(
-        r#"
-        package { }
-        package { }
-    "#,
-        "duplicate package declaration",
-    );
-}
-
-#[test]
-fn error_duplicate_scripts() {
-    check_err(
-        r#"
-        scripts { }
-        scripts { }
-    "#,
-        "duplicate scripts declaration",
-    );
-}
-
-//===---------------------------------------------------------------------===//
 // Duplicate names
 //===---------------------------------------------------------------------===//
 
@@ -495,15 +482,30 @@ fn error_duplicate_dependency_name() {
 }
 
 #[test]
+fn error_duplicate_dependency_across_blocks() {
+    check_err(
+        r#"
+        dependencies {
+            fmt: "1.0";
+        }
+        dependencies {
+            fmt: "2.0";
+        }
+    "#,
+        "duplicate dependency 'fmt'",
+    );
+}
+
+#[test]
 fn error_duplicate_option_name() {
     check_err(
         r#"
         options {
-            enable_tests: true;
-            enable_tests: false;
+            ENABLE_TESTS: true;
+            ENABLE_TESTS: false;
         }
     "#,
-        "duplicate option definition 'enable_tests'",
+        "duplicate option definition 'ENABLE_TESTS'",
     );
 }
 
@@ -551,12 +553,25 @@ fn error_builtin_function_wrong_arg_count() {
     check_err(
         r#"
         target myapp {
-            @if platform() {
+            @if platform("linux") {
                 defines: "X";
             }
         }
     "#,
-        "function 'platform' expects 1 argument, found 0",
+        "function 'platform' expects 0 arguments, found 1",
+    );
+}
+
+#[test]
+fn valid_builtin_function_zero_args() {
+    check_ok(
+        r#"
+        target myapp {
+            @if platform() == "linux" {
+                defines: "LINUX";
+            }
+        }
+    "#,
     );
 }
 
@@ -649,7 +664,7 @@ fn error_project_inside_if() {
     check_err(
         r#"
         target myapp {
-            @if platform("linux") {
+            @if has_feature("x") {
                 project inner { }
             }
         }
@@ -736,40 +751,116 @@ fn error_mixin_scalar_conflict_in_visibility_blocks() {
 }
 
 //===---------------------------------------------------------------------===//
-// Import validation
+// Option naming validation
 //===---------------------------------------------------------------------===//
 
 #[test]
-fn error_duplicate_import() {
+fn error_option_not_upper_snake_case() {
     check_err(
         r#"
-        @import "common.kumi";
-        @import "common.kumi";
+        options {
+            enableTests: true;
+        }
     "#,
-        "duplicate import of 'common.kumi'",
+        "must be UPPER_SNAKE_CASE",
     );
 }
 
 #[test]
-fn error_import_inside_target() {
+fn error_option_lowercase() {
+    check_err(
+        r#"
+        options {
+            enable_tests: true;
+        }
+    "#,
+        "must be UPPER_SNAKE_CASE",
+    );
+}
+
+#[test]
+fn valid_option_upper_snake_case() {
+    check_ok(
+        r#"
+        options {
+            ENABLE_TESTS: true;
+        }
+    "#,
+    );
+}
+
+#[test]
+fn error_option_shadows_builtin() {
+    check_err(
+        r#"
+        options {
+            PLATFORM: "linux";
+        }
+    "#,
+        "shadows a builtin variable",
+    );
+}
+
+//===---------------------------------------------------------------------===//
+// Unreachable code detection
+//===---------------------------------------------------------------------===//
+
+#[test]
+fn warn_unreachable_after_break() {
     check_err(
         r#"
         target myapp {
-            @import "common.kumi";
+            @for x in [a, b] {
+                @break;
+                sources: "unreachable.cpp";
+            }
         }
     "#,
-        "@import is only allowed at the top level",
+        "unreachable code",
     );
 }
 
 #[test]
-fn error_import_inside_mixin() {
+fn warn_unreachable_after_continue() {
     check_err(
         r#"
-        mixin shared {
-            @import "common.kumi";
+        target myapp {
+            @for x in [a, b] {
+                @continue;
+                sources: "unreachable.cpp";
+            }
         }
     "#,
-        "@import is only allowed at the top level",
+        "unreachable code",
+    );
+}
+
+#[test]
+fn valid_break_at_end_of_loop() {
+    // No unreachable code if @break is the last statement
+    check_ok(
+        r#"
+        target myapp {
+            @for x in [a, b] {
+                sources: x;
+                @break;
+            }
+        }
+    "#,
+    );
+}
+
+//===---------------------------------------------------------------------===//
+// Dependency system() function
+//===---------------------------------------------------------------------===//
+
+#[test]
+fn valid_system_dependency() {
+    check_ok(
+        r#"
+        dependencies {
+            vulkan: system();
+        }
+    "#,
     );
 }

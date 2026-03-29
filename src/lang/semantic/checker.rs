@@ -5,16 +5,20 @@
 //
 // The checker runs in two phases:
 //   Phase 1 (collect): walk top-level statements and register all named
-//                      declarations into the symbol table. Detect duplicate
-//                      singleton blocks (project, workspace, dependencies, etc.).
+//                      declarations into the symbol table. Detect duplicates.
+//                      Validate option naming (UPPER_SNAKE_CASE, no shadowing).
 //   Phase 2 (validate): walk the full AST and validate references,
 //                       structural rules, property conflicts, function args,
-//                       and dependency specs.
+//                       dependency specs, and conditions.
 
 use crate::diagnostics::Diagnostic;
 use crate::lang::ast::*;
 use crate::lang::semantic::symbol_table::{DuplicateSymbol, SymbolEntry, SymbolKind, SymbolTable};
 use std::collections::HashMap;
+
+//===----------------------------------------------------------------------===//
+// Property merge strategies
+//===----------------------------------------------------------------------===//
 
 /// Property merge strategy determines how conflicting property values
 /// are handled during mixin composition.
@@ -44,6 +48,7 @@ const LIST_PROPERTIES: &[&str] = &[
     "system-include-dirs",
 ];
 
+#[inline]
 fn merge_strategy(name: &str) -> MergeStrategy {
     match LIST_PROPERTIES.binary_search(&name) {
         Ok(_) => MergeStrategy::Append,
@@ -51,8 +56,12 @@ fn merge_strategy(name: &str) -> MergeStrategy {
     }
 }
 
+//===----------------------------------------------------------------------===//
+// Context tracking
+//===----------------------------------------------------------------------===//
+
 /// Context tracks where we are in the AST tree during validation.
-/// Used to enforce structural rules (e.g. @break only inside @for).
+/// Used to enforce structural rules (e.g. visibility blocks only in targets).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Context {
     TopLevel,
@@ -60,44 +69,59 @@ enum Context {
     Mixin,
 }
 
-/// Known built-in functions that can appear in conditions and iterables,
-/// with their expected argument counts.
-const BUILTIN_FUNCTIONS: &[(&str, usize)] = &[
-    ("arch", 1),
-    ("config", 1),
-    ("files", 1),
-    ("glob", 1),
-    ("has_feature", 1),
-    ("option", 1),
-    ("path", 1),
-    ("platform", 1),
-];
+//===----------------------------------------------------------------------===//
+// Builtin registries (see builtins.rs)
+//===----------------------------------------------------------------------===//
 
-/// Known functions allowed in dependency values.
-/// Sorted alphabetically for binary search.
-const DEPENDENCY_FUNCTIONS: &[(&str, usize)] = &[("git", 1), ("path", 1)];
+use super::builtins::{
+    builtin_names_list, dep_function_names_list, format_valid_values, is_builtin_variable,
+    lookup_builtin, lookup_builtin_variable, lookup_dep_function,
+};
 
-fn lookup_builtin(name: &str) -> Option<usize> {
-    BUILTIN_FUNCTIONS
-        .binary_search_by_key(&name, |&(n, _)| n)
-        .ok()
-        .map(|i| BUILTIN_FUNCTIONS[i].1)
+//===----------------------------------------------------------------------===//
+// UPPER_SNAKE_CASE validation
+//===----------------------------------------------------------------------===//
+
+/// Check if a name is valid UPPER_SNAKE_CASE: A-Z, 0-9, _ only,
+/// must start with A-Z or _, no leading/trailing/double underscores.
+#[inline]
+fn is_upper_snake_case(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    if bytes.is_empty() {
+        return false;
+    }
+    for &b in bytes {
+        if !matches!(b, b'A'..=b'Z' | b'0'..=b'9' | b'_') {
+            return false;
+        }
+    }
+    true
 }
 
-fn lookup_dep_function(name: &str) -> Option<usize> {
-    DEPENDENCY_FUNCTIONS
-        .binary_search_by_key(&name, |&(n, _)| n)
-        .ok()
-        .map(|i| DEPENDENCY_FUNCTIONS[i].1)
+/// Convert an identifier to UPPER_SNAKE_CASE for the help suggestion.
+fn to_upper_snake_case(name: &str) -> String {
+    let mut result = String::with_capacity(name.len() + 4);
+    let bytes = name.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
+        if b.is_ascii_uppercase() && i > 0 {
+            let prev = bytes[i - 1];
+            // Insert _ before uppercase if preceded by lowercase or digit
+            if prev.is_ascii_lowercase() || prev.is_ascii_digit() {
+                result.push('_');
+            }
+        }
+        if b == b'-' {
+            result.push('_');
+        } else {
+            result.push(b.to_ascii_uppercase() as char);
+        }
+    }
+    result
 }
 
-fn builtin_names_list() -> String {
-    BUILTIN_FUNCTIONS.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
-}
-
-fn dep_function_names_list() -> String {
-    DEPENDENCY_FUNCTIONS.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
-}
+//===----------------------------------------------------------------------===//
+// Checker
+//===----------------------------------------------------------------------===//
 
 pub struct Checker<'a> {
     symbols: SymbolTable<'a>,
@@ -128,19 +152,9 @@ impl<'a> Checker<'a> {
     fn collect_declarations(&mut self, ast: &Ast<'a>) {
         let mut project_count = 0u32;
         let mut project_pos = 0u32;
-        let mut workspace_count = 0u32;
-        let mut workspace_pos = 0u32;
-        let mut dependencies_count = 0u32;
-        let mut dependencies_pos = 0u32;
-        let mut options_count = 0u32;
-        let mut options_pos = 0u32;
-        let mut install_count = 0u32;
-        let mut install_pos = 0u32;
-        let mut package_count = 0u32;
-        let mut package_pos = 0u32;
-        let mut scripts_count = 0u32;
-        let mut scripts_pos = 0u32;
-        let mut seen_imports: Vec<(&str, u32)> = Vec::new();
+
+        // Track merged dependencies for cross-block duplicate detection
+        let mut seen_deps: HashMap<&str, (u32, &str)> = HashMap::new();
 
         for stmt in &ast.statements {
             match stmt {
@@ -154,18 +168,11 @@ impl<'a> Checker<'a> {
                     self.register_symbol(ast, decl.name_idx, decl.base, SymbolKind::Profile);
                 }
                 Statement::OptionsDecl(decl) => {
+                    // Options blocks merge — register each option individually
                     for opt in ast.get_options(decl.option_start_idx, decl.option_end_idx) {
+                        let name = ast.get_string(opt.name_idx);
+                        self.validate_option_name(name, opt.base);
                         self.register_symbol(ast, opt.name_idx, opt.base, SymbolKind::Option);
-                    }
-                    options_count += 1;
-                    if options_count == 1 {
-                        options_pos = decl.base.start_idx;
-                    } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate options declaration",
-                            decl.base.start_idx,
-                            format!("first declared at offset {}", options_pos),
-                        ));
                     }
                 }
                 Statement::ProjectDecl(decl) => {
@@ -180,64 +187,37 @@ impl<'a> Checker<'a> {
                         ));
                     }
                 }
-                Statement::WorkspaceDecl(decl) => {
-                    workspace_count += 1;
-                    if workspace_count == 1 {
-                        workspace_pos = decl.base.start_idx;
-                    } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate workspace declaration",
-                            decl.base.start_idx,
-                            format!("first declared at offset {}", workspace_pos),
-                        ));
-                    }
-                }
                 Statement::DependenciesDecl(decl) => {
-                    dependencies_count += 1;
-                    if dependencies_count == 1 {
-                        dependencies_pos = decl.base.start_idx;
-                    } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate dependencies declaration",
-                            decl.base.start_idx,
-                            format!("first declared at offset {}", dependencies_pos),
-                        ));
-                    }
-                }
-                Statement::InstallDecl(decl) => {
-                    install_count += 1;
-                    if install_count == 1 {
-                        install_pos = decl.base.start_idx;
-                    } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate install declaration",
-                            decl.base.start_idx,
-                            format!("first declared at offset {}", install_pos),
-                        ));
-                    }
-                }
-                Statement::PackageDecl(decl) => {
-                    package_count += 1;
-                    if package_count == 1 {
-                        package_pos = decl.base.start_idx;
-                    } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate package declaration",
-                            decl.base.start_idx,
-                            format!("first declared at offset {}", package_pos),
-                        ));
-                    }
-                }
-                Statement::ScriptsDecl(decl) => {
-                    scripts_count += 1;
-                    if scripts_count == 1 {
-                        scripts_pos = decl.base.start_idx;
-                    } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate scripts declaration",
-                            decl.base.start_idx,
-                            format!("first declared at offset {}", scripts_pos),
-                        ));
+                    // Dependencies blocks merge — check for cross-block duplicates
+                    let deps = ast.get_dependencies(decl.dep_start_idx, decl.dep_end_idx);
+                    for dep in deps {
+                        let name = ast.get_string(dep.name_idx);
+                        if let Some(&(first_pos, first_ver)) = seen_deps.get(name) {
+                            // Get current version string for comparison
+                            let cur_ver = match &dep.value {
+                                DependencyValue::String(s) => *s,
+                                _ => "",
+                            };
+                            if cur_ver == first_ver && !cur_ver.is_empty() {
+                                self.errors.push(Diagnostic::new(
+                                    format!("dependency '{}' declared with same version", name),
+                                    dep.base.start_idx,
+                                    format!("first declared at offset {}", first_pos),
+                                ));
+                            } else {
+                                self.errors.push(Diagnostic::new(
+                                    format!("duplicate dependency '{}'", name),
+                                    dep.base.start_idx,
+                                    format!("first declared at offset {}", first_pos),
+                                ));
+                            }
+                        } else {
+                            let ver = match &dep.value {
+                                DependencyValue::String(s) => *s,
+                                _ => "",
+                            };
+                            seen_deps.insert(name, (dep.base.start_idx, ver));
+                        }
                     }
                 }
                 // Recurse into @if/@for to find nested declarations
@@ -247,18 +227,6 @@ impl<'a> Checker<'a> {
                 }
                 Statement::ForStmt(stmt) => {
                     self.collect_in_block(ast, stmt.body_start_idx, stmt.body_end_idx);
-                }
-                Statement::ImportStmt(import) => {
-                    let path = ast.get_string(import.path_idx).trim_matches('"');
-                    if let Some(&(_, first_pos)) = seen_imports.iter().find(|(p, _)| *p == path) {
-                        self.errors.push(Diagnostic::new(
-                            format!("duplicate import of '{}'", path),
-                            import.base.start_idx,
-                            format!("already imported at offset {}", first_pos),
-                        ));
-                    } else {
-                        seen_imports.push((path, import.base.start_idx));
-                    }
                 }
                 _ => {}
             }
@@ -309,6 +277,25 @@ impl<'a> Checker<'a> {
                 format!("duplicate {} definition '{}'", kind_str, name),
                 base.start_idx,
                 format!("first defined at offset {}", existing.position),
+            ));
+        }
+    }
+
+    /// Validate option name: must be UPPER_SNAKE_CASE, must not shadow builtins.
+    fn validate_option_name(&mut self, name: &str, base: NodeBase) {
+        if !is_upper_snake_case(name) {
+            let suggestion = to_upper_snake_case(name);
+            self.errors.push(Diagnostic::new(
+                format!("option name '{}' must be UPPER_SNAKE_CASE", name),
+                base.start_idx,
+                format!("help: rename to '{}'", suggestion),
+            ));
+        }
+        if is_builtin_variable(name.to_ascii_lowercase().as_str()) || is_builtin_variable(name) {
+            self.errors.push(Diagnostic::new(
+                format!("option name '{}' shadows a builtin variable", name),
+                base.start_idx,
+                "",
             ));
         }
     }
@@ -374,7 +361,7 @@ impl<'a> Checker<'a> {
                     ));
                 }
                 self.validate_mixin_refs(ast, decl.mixin_start_idx, decl.mixin_end_idx, decl.base);
-                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx, ctx);
+                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx);
             }
             Statement::ProjectDecl(decl) => {
                 if ctx != Context::TopLevel {
@@ -384,7 +371,7 @@ impl<'a> Checker<'a> {
                         "",
                     ));
                 }
-                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx, ctx);
+                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx);
             }
             Statement::WorkspaceDecl(decl) => {
                 if ctx != Context::TopLevel {
@@ -394,7 +381,7 @@ impl<'a> Checker<'a> {
                         "",
                     ));
                 }
-                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx, ctx);
+                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx);
             }
             Statement::DependenciesDecl(decl) => {
                 if ctx != Context::TopLevel {
@@ -424,7 +411,7 @@ impl<'a> Checker<'a> {
                         "",
                     ));
                 }
-                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx, ctx);
+                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx);
             }
             Statement::PackageDecl(decl) => {
                 if ctx != Context::TopLevel {
@@ -434,17 +421,17 @@ impl<'a> Checker<'a> {
                         "",
                     ));
                 }
-                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx, ctx);
+                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx);
             }
-            Statement::ScriptsDecl(decl) => {
+            Statement::ScriptDecl(decl) => {
                 if ctx != Context::TopLevel {
                     self.errors.push(Diagnostic::new(
-                        "scripts declarations are only allowed at the top level",
+                        "script declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
                     ));
                 }
-                self.validate_properties(ast, decl.script_start_idx, decl.script_end_idx, ctx);
+                self.validate_properties(ast, decl.property_start_idx, decl.property_end_idx);
             }
             Statement::VisibilityBlock(block) => {
                 if ctx != Context::Target && ctx != Context::Mixin {
@@ -454,12 +441,7 @@ impl<'a> Checker<'a> {
                         "",
                     ));
                 }
-                self.validate_properties(
-                    ast,
-                    block.property_start_idx,
-                    block.property_end_idx,
-                    ctx,
-                );
+                self.validate_properties(ast, block.property_start_idx, block.property_end_idx);
             }
             Statement::IfStmt(stmt) => {
                 self.validate_condition(ast, &stmt.condition);
@@ -493,15 +475,6 @@ impl<'a> Checker<'a> {
                     ));
                 }
             }
-            Statement::ImportStmt(import) => {
-                if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
-                        "@import is only allowed at the top level",
-                        import.base.start_idx,
-                        "",
-                    ));
-                }
-            }
             Statement::DiagnosticStmt(_) => {}
             Statement::Property(_) => {
                 // Bare properties at top-level are unusual but not invalid
@@ -521,8 +494,6 @@ impl<'a> Checker<'a> {
         // The SoA layout stores nested block contents before their parent
         // statements in all_statements. When iterating [start, end), we must
         // skip entries that belong to a nested sub-block to avoid double-processing.
-        //
-        // First pass: collect sub-block ranges owned by statements in this block.
         let stmts = ast.get_statements(start, end);
         let mut nested_ranges: Vec<(u32, u32)> = Vec::new();
         for stmt in stmts {
@@ -554,13 +525,58 @@ impl<'a> Checker<'a> {
             }
         }
 
+        // Detect unreachable code after @break/@continue
+        let mut found_loop_control = false;
+        let mut control_pos = 0u32;
+
         // Second pass: validate only direct children (not in a nested range).
         for (i, stmt) in stmts.iter().enumerate() {
             let abs_idx = start + i as u32;
             let is_nested = nested_ranges.iter().any(|&(ns, ne)| abs_idx >= ns && abs_idx < ne);
-            if !is_nested {
-                self.validate_statement(ast, stmt, ctx, loop_vars);
+            if is_nested {
+                continue;
             }
+
+            if found_loop_control {
+                // Get position of unreachable statement
+                let pos = match stmt {
+                    Statement::Property(p) => p.base.start_idx,
+                    Statement::TargetDecl(d) => d.base.start_idx,
+                    Statement::MixinDecl(d) => d.base.start_idx,
+                    Statement::ProfileDecl(d) => d.base.start_idx,
+                    Statement::ProjectDecl(d) => d.base.start_idx,
+                    Statement::WorkspaceDecl(d) => d.base.start_idx,
+                    Statement::DependenciesDecl(d) => d.base.start_idx,
+                    Statement::OptionsDecl(d) => d.base.start_idx,
+                    Statement::InstallDecl(d) => d.base.start_idx,
+                    Statement::PackageDecl(d) => d.base.start_idx,
+                    Statement::ScriptDecl(d) => d.base.start_idx,
+                    Statement::VisibilityBlock(b) => b.base.start_idx,
+                    Statement::IfStmt(s) => s.base.start_idx,
+                    Statement::ForStmt(s) => s.base.start_idx,
+                    Statement::LoopControlStmt(s) => s.base.start_idx,
+                    Statement::DiagnosticStmt(d) => d.base.start_idx,
+                };
+                self.errors.push(Diagnostic::new(
+                    "unreachable code",
+                    pos,
+                    format!(
+                        "code after @break/@continue at offset {} is never executed",
+                        control_pos
+                    ),
+                ));
+                // Only warn once per block
+                break;
+            }
+
+            if let Statement::LoopControlStmt(lc) = stmt {
+                if !loop_vars.is_empty() {
+                    found_loop_control = true;
+                    control_pos = lc.base.start_idx;
+                }
+            }
+
+            self.validate_statement(ast, stmt, ctx, loop_vars);
         }
     }
 
@@ -617,7 +633,6 @@ impl<'a> Checker<'a> {
         for i in mixin_start..mixin_end {
             let mixin_name = ast.get_string(i);
             if let Some(entry) = self.symbols.lookup(mixin_name, SymbolKind::Mixin) {
-                // Find the MixinDecl in the AST to get its body
                 let mixin_decl = self.find_mixin_decl(ast, entry.name_idx);
                 if let Some(decl) = mixin_decl {
                     self.collect_scalar_props_from_block(
@@ -655,7 +670,10 @@ impl<'a> Checker<'a> {
                                         prop_name
                                     ),
                                     decl_base.start_idx,
-                                    format!("set in mixin '{}' and mixin '{}'", first_mixin, mixin_name),
+                                    format!(
+                                        "set in mixin '{}' and mixin '{}'",
+                                        first_mixin, mixin_name
+                                    ),
                                 ));
                             }
                         } else {
@@ -710,7 +728,6 @@ impl<'a> Checker<'a> {
 
     /// Find the MixinDecl in the AST by its name index.
     fn find_mixin_decl(&self, ast: &Ast<'a>, name_idx: u32) -> Option<MixinDecl> {
-        // Search top-level statements
         for stmt in &ast.statements {
             if let Statement::MixinDecl(decl) = stmt {
                 if decl.name_idx == name_idx {
@@ -718,7 +735,6 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        // Search nested statements (inside @if/@for)
         for stmt in &ast.all_statements {
             if let Statement::MixinDecl(decl) = stmt {
                 if decl.name_idx == name_idx {
@@ -733,7 +749,7 @@ impl<'a> Checker<'a> {
     // Property validation
     //===------------------------------------------------------------------===//
 
-    fn validate_properties(&mut self, ast: &Ast<'a>, start: u32, end: u32, _ctx: Context) {
+    fn validate_properties(&mut self, ast: &Ast<'a>, start: u32, end: u32) {
         // Check for duplicate scalar properties within the same block.
         let mut seen_scalars: HashMap<&str, u32> = HashMap::new();
 
@@ -759,22 +775,8 @@ impl<'a> Checker<'a> {
 
     fn validate_dependencies(&mut self, ast: &Ast<'a>, decl: &DependenciesDecl) {
         let deps = ast.get_dependencies(decl.dep_start_idx, decl.dep_end_idx);
-        let mut seen: HashMap<&str, u32> = HashMap::new();
 
         for dep in deps {
-            let name = ast.get_string(dep.name_idx);
-
-            // Check for duplicate dependency names.
-            if let Some(&first_pos) = seen.get(name) {
-                self.errors.push(Diagnostic::new(
-                    format!("duplicate dependency '{}'", name),
-                    dep.base.start_idx,
-                    format!("first declared at offset {}", first_pos),
-                ));
-            } else {
-                seen.insert(name, dep.base.start_idx);
-            }
-
             // Validate function calls in dependency values.
             if let DependencyValue::FunctionCall(func) = &dep.value {
                 let func_name = ast.get_string(func.name_idx);
@@ -807,12 +809,7 @@ impl<'a> Checker<'a> {
 
             // Validate inline option properties for duplicates.
             if dep.option_start_idx < dep.option_end_idx {
-                self.validate_properties(
-                    ast,
-                    dep.option_start_idx,
-                    dep.option_end_idx,
-                    Context::TopLevel,
-                );
+                self.validate_properties(ast, dep.option_start_idx, dep.option_end_idx);
             }
         }
     }
@@ -825,12 +822,7 @@ impl<'a> Checker<'a> {
         for opt in ast.get_options(decl.option_start_idx, decl.option_end_idx) {
             // Validate constraint properties for duplicates.
             if opt.constraint_start_idx < opt.constraint_end_idx {
-                self.validate_properties(
-                    ast,
-                    opt.constraint_start_idx,
-                    opt.constraint_end_idx,
-                    Context::TopLevel,
-                );
+                self.validate_properties(ast, opt.constraint_start_idx, opt.constraint_end_idx);
             }
         }
     }
@@ -860,9 +852,97 @@ impl<'a> Checker<'a> {
     fn validate_comparison_expr(&mut self, ast: &Ast<'a>, expr: &ComparisonExpr) {
         let left = &ast.all_unary_exprs[expr.left_idx as usize];
         self.validate_unary_operand(ast, &left.operand);
+
         if let Some(right_idx) = expr.right_idx {
             let right = &ast.all_unary_exprs[right_idx as usize];
             self.validate_unary_operand(ast, &right.operand);
+
+            // If the left side is a builtin function/variable with known valid values,
+            // check that the right side is in the allowed set.
+            let valid_values = self.get_valid_values_for_operand(ast, &left.operand);
+            if !valid_values.is_empty() {
+                if let Some(rhs_str) = self.extract_string_value(ast, &right.operand) {
+                    // Strip quotes from the string literal
+                    let rhs_clean = rhs_str.trim_matches('"');
+                    if !valid_values.contains(&rhs_clean) {
+                        let pos = self.get_operand_position(ast, &right.operand);
+                        self.errors.push(Diagnostic::new(
+                            format!("invalid value \"{}\"", rhs_clean),
+                            pos,
+                            format!("valid values: {}", format_valid_values(valid_values)),
+                        ));
+                    }
+                }
+            }
+
+            // Also check left against right's valid values (e.g., "linux" == platform())
+            let right_valid = self.get_valid_values_for_operand(ast, &right.operand);
+            if !right_valid.is_empty() {
+                if let Some(lhs_str) = self.extract_string_value(ast, &left.operand) {
+                    let lhs_clean = lhs_str.trim_matches('"');
+                    if !right_valid.contains(&lhs_clean) {
+                        let pos = self.get_operand_position(ast, &left.operand);
+                        self.errors.push(Diagnostic::new(
+                            format!("invalid value \"{}\"", lhs_clean),
+                            pos,
+                            format!("valid values: {}", format_valid_values(right_valid)),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Get the valid values for an operand if it's a builtin function or variable.
+    fn get_valid_values_for_operand(
+        &self,
+        ast: &Ast<'a>,
+        operand: &UnaryOperand,
+    ) -> &'static [&'static str] {
+        match operand.kind {
+            OperandType::FunctionCall => {
+                let func = &ast.all_function_calls[operand.idx as usize];
+                let name = ast.get_string(func.name_idx);
+                if let Some(builtin) = lookup_builtin(name) {
+                    return builtin.valid_values;
+                }
+            }
+            OperandType::Value => {
+                let val = &ast.all_values[operand.idx as usize];
+                if let Value::Identifier(name) = val {
+                    if let Some(var) = lookup_builtin_variable(name) {
+                        return var.valid_values;
+                    }
+                }
+            }
+            _ => {}
+        }
+        &[]
+    }
+
+    /// Extract a string literal from an operand (for value validation).
+    fn extract_string_value<'b>(&self, ast: &'b Ast<'a>, operand: &UnaryOperand) -> Option<&'b str>
+    where
+        'a: 'b,
+    {
+        if operand.kind == OperandType::Value {
+            let val = &ast.all_values[operand.idx as usize];
+            match val {
+                Value::String(s) => return Some(s),
+                Value::Identifier(s) => return Some(s),
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// Get the source position of an operand for error reporting.
+    fn get_operand_position(&self, ast: &Ast<'a>, operand: &UnaryOperand) -> u32 {
+        match operand.kind {
+            OperandType::FunctionCall => {
+                ast.all_function_calls[operand.idx as usize].base.start_idx
+            }
+            _ => 0,
         }
     }
 
@@ -872,15 +952,15 @@ impl<'a> Checker<'a> {
                 let func = &ast.all_function_calls[operand.idx as usize];
                 let name = ast.get_string(func.name_idx);
                 match lookup_builtin(name) {
-                    Some(expected) => {
+                    Some(builtin) => {
                         let actual = (func.arg_end_idx - func.arg_start_idx) as usize;
-                        if actual != expected {
+                        if actual != builtin.arg_count {
                             self.errors.push(Diagnostic::new(
                                 format!(
                                     "function '{}' expects {} argument{}, found {}",
                                     name,
-                                    expected,
-                                    if expected == 1 { "" } else { "s" },
+                                    builtin.arg_count,
+                                    if builtin.arg_count == 1 { "" } else { "s" },
                                     actual
                                 ),
                                 func.base.start_idx,
@@ -905,15 +985,15 @@ impl<'a> Checker<'a> {
         if let Iterable::FunctionCall(func) = iterable {
             let name = ast.get_string(func.name_idx);
             match lookup_builtin(name) {
-                Some(expected) => {
+                Some(builtin) => {
                     let actual = (func.arg_end_idx - func.arg_start_idx) as usize;
-                    if actual != expected {
+                    if actual != builtin.arg_count {
                         self.errors.push(Diagnostic::new(
                             format!(
                                 "function '{}' expects {} argument{}, found {}",
                                 name,
-                                expected,
-                                if expected == 1 { "" } else { "s" },
+                                builtin.arg_count,
+                                if builtin.arg_count == 1 { "" } else { "s" },
                                 actual
                             ),
                             func.base.start_idx,

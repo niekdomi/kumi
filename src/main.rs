@@ -38,6 +38,7 @@ fn run_parser_test(filename: &str) {
     let start = Instant::now();
     let lexer = lang::lex::Lexer::new(&source);
     let (tokens, mut lex_errors) = lexer.tokenize();
+    let lex_ns = start.elapsed().as_nanos() as f64;
 
     let mut open_braces = Vec::new();
     for token in &tokens {
@@ -60,8 +61,6 @@ fn run_parser_test(filename: &str) {
     }
 
     lex_errors.sort_by_key(|e| e.position);
-
-    let lex_ns = start.elapsed().as_nanos() as f64;
 
     let source_str = std::str::from_utf8(&source).unwrap_or("");
     let printer = DiagnosticPrinter::new(source_str, filename);

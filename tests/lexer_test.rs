@@ -46,10 +46,9 @@ fn top_level_keywords() {
         ("options", TokenType::Options),
         ("mixin", TokenType::Mixin),
         ("profile", TokenType::Profile),
-        ("@import", TokenType::AtImport),
         ("install", TokenType::Install),
         ("package", TokenType::Package),
-        ("scripts", TokenType::Scripts),
+        ("script", TokenType::Script),
         ("with", TokenType::With),
     ];
 

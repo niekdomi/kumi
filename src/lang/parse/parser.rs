@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
                 | TokenType::Profile
                 | TokenType::Install
                 | TokenType::Package
-                | TokenType::Scripts
+                | TokenType::Script
                 | TokenType::AtIf
                 | TokenType::AtFor
                 | TokenType::AtBreak
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
             TokenType::Profile => self.parse_profile(ast),
             TokenType::Install => self.parse_install(ast),
             TokenType::Package => self.parse_package(ast),
-            TokenType::Scripts => self.parse_scripts(ast),
+            TokenType::Script => self.parse_script(ast),
 
             TokenType::AtIf => self.parse_if(ast),
             TokenType::AtFor => self.parse_for(ast),
@@ -237,8 +237,6 @@ impl<'a> Parser<'a> {
             TokenType::AtError | TokenType::AtWarning | TokenType::AtInfo | TokenType::AtDebug => {
                 self.parse_diagnostic(ast)
             }
-            TokenType::AtImport => self.parse_import(ast),
-
             TokenType::Identifier => {
                 if self.peek(1).kind == TokenType::Colon {
                     self.parse_property(ast).map(Statement::Property)
@@ -653,13 +651,13 @@ impl<'a> Parser<'a> {
     }
 
     #[inline(always)]
-    fn parse_scripts(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        let (start_pos, end_pos, script_start_idx, script_end_idx) =
-            self.parse_property_block(ast, TokenType::Scripts)?;
-        Ok(Statement::ScriptsDecl(ScriptsDecl {
+    fn parse_script(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
+        let (start_pos, end_pos, property_start_idx, property_end_idx) =
+            self.parse_property_block(ast, TokenType::Script)?;
+        Ok(Statement::ScriptDecl(ScriptDecl {
             base: NodeBase::new(start_pos, end_pos),
-            script_start_idx,
-            script_end_idx,
+            property_start_idx,
+            property_end_idx,
         }))
     }
 
@@ -817,20 +815,6 @@ impl<'a> Parser<'a> {
             base: NodeBase::new(start_pos, end_pos),
             level,
             message_idx,
-        }))
-    }
-
-    #[inline(always)]
-    fn parse_import(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
-        let start_pos = self.peek(0).position;
-        self.expect(TokenType::AtImport)?;
-        let path_token = self.expect(TokenType::String)?;
-        let path_idx = self.push_string(ast, self.get_string(path_token));
-        self.expect(TokenType::Semicolon)?;
-        let end_pos = self.prev_end();
-        Ok(Statement::ImportStmt(ImportStmt {
-            base: NodeBase::new(start_pos, end_pos),
-            path_idx,
         }))
     }
 

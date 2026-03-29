@@ -188,19 +188,20 @@ fn package_decl() {
 }
 
 #[test]
-fn scripts_decl() {
+fn script_decl() {
     let (_tokens, ast) = parse_ok(
         r#"
-        scripts {
-            prebuild: "python gen.py";
+        script {
+            name: "generate";
+            command: "python gen.py";
         }"#,
     );
     assert_eq!(ast.statements.len(), 1);
-    let Statement::ScriptsDecl(s) = ast.statements[0] else {
-        panic!("expected ScriptsDecl")
+    let Statement::ScriptDecl(s) = ast.statements[0] else {
+        panic!("expected ScriptDecl")
     };
-    let props = ast.get_properties(s.script_start_idx, s.script_end_idx);
-    assert_eq!(props.len(), 1);
+    let props = ast.get_properties(s.property_start_idx, s.property_end_idx);
+    assert_eq!(props.len(), 2);
 }
 
 //===---------------------------------------------------------------------===//
@@ -684,19 +685,6 @@ fn diagnostic_debug() {
 }
 
 //===---------------------------------------------------------------------===//
-// Import
-//===---------------------------------------------------------------------===//
-
-#[test]
-fn import_statement() {
-    let (_tokens, ast) = parse_ok(r#"@import "shared/common.kumi";"#);
-    let Statement::ImportStmt(i) = ast.statements[0] else {
-        panic!("expected ImportStmt")
-    };
-    assert_eq!(ast.get_string(i.path_idx), "\"shared/common.kumi\"");
-}
-
-//===---------------------------------------------------------------------===//
 // Properties
 //===---------------------------------------------------------------------===//
 
@@ -1042,13 +1030,12 @@ fn full_project_file() {
             defines: "PLATFORM_OTHER";
         }
 
-        @import "shared/common.kumi";"#,
+        "#,
     );
-    assert_eq!(ast.statements.len(), 6);
+    assert_eq!(ast.statements.len(), 5);
     assert!(matches!(ast.statements[0], Statement::ProjectDecl(_)));
     assert!(matches!(ast.statements[1], Statement::MixinDecl(_)));
     assert!(matches!(ast.statements[2], Statement::TargetDecl(_)));
     assert!(matches!(ast.statements[3], Statement::DependenciesDecl(_)));
     assert!(matches!(ast.statements[4], Statement::IfStmt(_)));
-    assert!(matches!(ast.statements[5], Statement::ImportStmt(_)));
 }

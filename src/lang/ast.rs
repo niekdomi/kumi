@@ -493,13 +493,12 @@ pub enum Statement {
     ProfileDecl(ProfileDecl),
     InstallDecl(InstallDecl),
     PackageDecl(PackageDecl),
-    ScriptsDecl(ScriptsDecl),
+    ScriptDecl(ScriptDecl),
     VisibilityBlock(VisibilityBlock),
     IfStmt(IfStmt),
     ForStmt(ForStmt),
     LoopControlStmt(LoopControlStmt),
     DiagnosticStmt(DiagnosticStmt),
-    ImportStmt(ImportStmt),
     Property(Property),
 }
 const _: () = assert!(size_of::<Statement>() == 48);
@@ -809,25 +808,26 @@ const _: () = assert!(size_of::<PackageDecl>() == 16);
 ///
 /// Grammar:
 /// ```ebnf
-/// ScriptsDecl = "scripts" "{" { PropertyAssignment } "}" ;
+/// ScriptDecl = "script" "{" { PropertyAssignment } "}" ;
 /// ```
 ///
 /// Example:
 /// ```kumi
-/// scripts {
-///     pre_build: "./setup.sh";
-///     post_build: "./cleanup.sh";
+/// script {
+///     name: "generate-headers";
+///     command: "python gen.py";
+///     phase: "prebuild";
 /// }
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ScriptsDecl {
+pub struct ScriptDecl {
     pub base: NodeBase,
-    /// Index of the start of build script hooks
-    pub script_start_idx: u32,
-    /// Index of the end of build script hooks
-    pub script_end_idx: u32,
+    /// Index of the start of script properties
+    pub property_start_idx: u32,
+    /// Index of the end of script properties
+    pub property_end_idx: u32,
 }
-const _: () = assert!(size_of::<ScriptsDecl>() == 16);
+const _: () = assert!(size_of::<ScriptDecl>() == 16);
 
 //===----------------------------------------------------------------------===//
 // Visibility Blocks
@@ -1058,29 +1058,6 @@ pub struct DiagnosticStmt {
     pub message_idx: u32,
 }
 const _: () = assert!(size_of::<DiagnosticStmt>() == 16);
-
-/// Represents an import statement
-///
-/// Imports declarations from another Kumi file, enabling modular
-/// build configurations.
-///
-/// Grammar:
-/// ```ebnf
-/// ImportDecl = "@import" String ";" ;
-/// ```
-///
-/// Examples:
-/// ```kumi
-/// @import "common/mixins.kumi";
-/// @import "../shared/options.kumi";
-/// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ImportStmt {
-    pub base: NodeBase,
-    /// Index of the import path string
-    pub path_idx: u32,
-}
-const _: () = assert!(size_of::<ImportStmt>() == 12);
 
 //===----------------------------------------------------------------------===//
 // Root AST
