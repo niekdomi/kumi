@@ -10,7 +10,7 @@ Pretty much WIP
 REQUIREMENTS
 ------------
 
-- Rust 1.85+
+- Rust 1.88.0+
 - Cargo
 
 
