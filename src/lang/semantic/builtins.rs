@@ -172,7 +172,7 @@ pub const BUILTIN_VARIABLES: &[BuiltinVariable] = &[
     BuiltinVariable {
         name: "config",
         var_type: BuiltinType::String,
-        valid_values: &["debug", "minsizerel", "release", "relwithdebinfo"],
+        valid_values: &["debug", "minSizeRelease", "release", "releaseWithDebugInfo"],
     },
     BuiltinVariable {
         name: "debug",
