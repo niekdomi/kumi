@@ -12,7 +12,7 @@ jobs:
   spellcheck:
     runs-on: ubuntu-latest
     name: Spellcheck
-    timeout-minutes: 1
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
@@ -26,30 +26,10 @@ jobs:
       - name: Check Formatting
         run: codebook-lsp lint .
 
-  build:
-    runs-on: ubuntu-latest
-    name: Build
-    timeout-minutes: 5
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build
-        run: cargo build --locked
-
   lint:
     runs-on: ubuntu-latest
     name: Lint
-    timeout-minutes: 1
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: read
@@ -72,25 +52,31 @@ jobs:
       - name: Run Clippy
         run: cargo clippy
 
-  # test:
-  #   runs-on: ubuntu-latest
-  #   name: Test & Coverage
-  #   timeout-minutes: 1
-  #   permissions:
-  #     contents: read
-  #     pull-requests: write
+  test:
+    runs-on: ubuntu-latest
+    name: Test & Coverage
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
 
-  #   if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft }}
 
-  #   steps:
-  #     - name: Setup Rust toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         components: llvm-tools-preview
-  #
-  #     - name: Cache dependencies
-  #       uses: Swatinem/rust-cache@v2
-  #
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      #       with:
+      #         components: llvm-tools-preview
+      #
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --locked
+
   #     - name: Install cargo-llvm-cov
   #       uses: taiki-e/install-action@cargo-llvm-cov
   #

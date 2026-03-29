@@ -49,8 +49,7 @@ fn valid_simple_project() {
         r#"
         project myapp {
             version: "1.0.0";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -63,8 +62,7 @@ fn valid_target_with_mixin() {
         }
         target myapp with strict {
             type: executable;
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -79,8 +77,7 @@ fn valid_for_loop_with_break() {
                 }
                 sources: file;
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -96,8 +93,7 @@ fn valid_nested_if() {
             } @else {
                 defines: "OTHER";
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -112,8 +108,7 @@ fn valid_visibility_in_target() {
             private {
                 sources: "src/lib.cpp";
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -125,8 +120,7 @@ fn valid_visibility_in_mixin() {
             public {
                 defines: "SHARED";
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -138,8 +132,7 @@ fn valid_multiple_list_properties() {
         target myapp {
             sources: "a.cpp";
             sources: "b.cpp";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -155,8 +148,7 @@ fn valid_multiple_mixins_no_scalar_conflict() {
         }
         target myapp with a, b {
             type: executable;
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -169,8 +161,7 @@ fn valid_profile_with_mixin() {
         }
         profile release with lto {
             optimize: "3";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -184,8 +175,7 @@ fn valid_multiple_workspace_blocks() {
         }
         workspace {
             output_dir: "dist";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -199,8 +189,7 @@ fn valid_multiple_dependencies_blocks() {
         }
         dependencies {
             spdlog: "1.12";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -214,8 +203,7 @@ fn valid_multiple_options_blocks() {
         }
         options {
             LOG_LEVEL: "info";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -228,8 +216,7 @@ fn valid_multiple_script_blocks() {
         }
         script {
             name: "postbuild";
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -242,8 +229,7 @@ fn error_duplicate_target() {
     check_err(
         r#"
         target myapp { }
-        target myapp { }
-    "#,
+        target myapp { }"#,
         "duplicate target definition 'myapp'",
     );
 }
@@ -253,8 +239,7 @@ fn error_duplicate_mixin() {
     check_err(
         r#"
         mixin strict { }
-        mixin strict { }
-    "#,
+        mixin strict { }"#,
         "duplicate mixin definition 'strict'",
     );
 }
@@ -264,8 +249,7 @@ fn error_duplicate_profile() {
     check_err(
         r#"
         profile release { }
-        profile release { }
-    "#,
+        profile release { }"#,
         "duplicate profile definition 'release'",
     );
 }
@@ -275,8 +259,7 @@ fn error_duplicate_project() {
     check_err(
         r#"
         project a { }
-        project b { }
-    "#,
+        project b { }"#,
         "duplicate project declaration",
     );
 }
@@ -289,8 +272,7 @@ fn error_duplicate_project() {
 fn error_undefined_mixin() {
     check_err(
         r#"
-        target myapp with nonexistent { }
-    "#,
+        target myapp with nonexistent { }"#,
         "undefined mixin 'nonexistent'",
     );
 }
@@ -299,8 +281,7 @@ fn error_undefined_mixin() {
 fn error_undefined_mixin_in_profile() {
     check_err(
         r#"
-        profile release with nonexistent { }
-    "#,
+        profile release with nonexistent { }"#,
         "undefined mixin 'nonexistent'",
     );
 }
@@ -310,8 +291,7 @@ fn error_undefined_mixin_suggests_similar() {
     let errors = check(
         r#"
         mixin strict { }
-        target myapp with stric { }
-    "#,
+        target myapp with stric { }"#,
     );
     assert!(errors.len() == 1);
     assert!(errors[0].contains("undefined mixin 'stric'"));
@@ -327,8 +307,7 @@ fn error_break_outside_loop() {
         r#"
         target myapp {
             @break;
-        }
-    "#,
+        }"#,
         "@break is only allowed inside @for loops",
     );
 }
@@ -339,8 +318,7 @@ fn error_continue_outside_loop() {
         r#"
         target myapp {
             @continue;
-        }
-    "#,
+        }"#,
         "@continue is only allowed inside @for loops",
     );
 }
@@ -353,8 +331,7 @@ fn error_visibility_inside_for_at_top_level() {
             public {
                 defines: "FOO";
             }
-        }
-    "#,
+        }"#,
         "visibility blocks are only allowed inside target or mixin declarations",
     );
 }
@@ -370,8 +347,7 @@ fn error_duplicate_scalar_property() {
         project myapp {
             version: "1.0";
             version: "2.0";
-        }
-    "#,
+        }"#,
         "duplicate property 'version'",
     );
 }
@@ -386,8 +362,7 @@ fn error_mixin_scalar_conflict() {
         mixin small {
             optimize: "size";
         }
-        target myapp with fast, small { }
-    "#,
+        target myapp with fast, small { }"#,
         "scalar property 'optimize' has conflicting values in mixin composition",
     );
 }
@@ -401,8 +376,7 @@ fn valid_mixin_same_scalar_in_one_mixin() {
         }
         target myapp with fast {
             type: executable;
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -418,8 +392,7 @@ fn error_unknown_function_in_condition() {
             @if nonexistent_func("arg") {
                 defines: "X";
             }
-        }
-    "#,
+        }"#,
         "unknown function 'nonexistent_func'",
     );
 }
@@ -432,8 +405,7 @@ fn valid_known_function_in_condition() {
             @if has_feature("avx2") {
                 defines: "HAS_AVX2";
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -445,8 +417,7 @@ fn error_unknown_function_in_iterable() {
             @for file in unknown_func("*.cpp") {
                 sources: file;
             }
-        }
-    "#,
+        }"#,
         "unknown function 'unknown_func'",
     );
 }
@@ -459,8 +430,7 @@ fn valid_known_function_in_iterable() {
             @for file in glob("src/*.cpp") {
                 sources: file;
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -475,8 +445,7 @@ fn error_duplicate_dependency_name() {
         dependencies {
             fmt: "1.0";
             fmt: "2.0";
-        }
-    "#,
+        }"#,
         "duplicate dependency 'fmt'",
     );
 }
@@ -490,8 +459,7 @@ fn error_duplicate_dependency_across_blocks() {
         }
         dependencies {
             fmt: "2.0";
-        }
-    "#,
+        }"#,
         "duplicate dependency 'fmt'",
     );
 }
@@ -503,8 +471,7 @@ fn error_duplicate_option_name() {
         options {
             ENABLE_TESTS: true;
             ENABLE_TESTS: false;
-        }
-    "#,
+        }"#,
         "duplicate option definition 'ENABLE_TESTS'",
     );
 }
@@ -514,8 +481,7 @@ fn error_duplicate_mixin_in_with_list() {
     check_err(
         r#"
         mixin a { }
-        target myapp with a, a { }
-    "#,
+        target myapp with a, a { }"#,
         "duplicate mixin 'a' in with list",
     );
 }
@@ -530,8 +496,7 @@ fn error_unknown_dependency_function() {
         r#"
         dependencies {
             foo: unknown_func("bar");
-        }
-    "#,
+        }"#,
         "unknown dependency function 'unknown_func'",
     );
 }
@@ -542,8 +507,7 @@ fn error_dependency_function_wrong_arg_count() {
         r#"
         dependencies {
             foo: git();
-        }
-    "#,
+        }"#,
         "function 'git' expects 1 argument, found 0",
     );
 }
@@ -556,8 +520,7 @@ fn error_builtin_function_wrong_arg_count() {
             @if platform("linux") {
                 defines: "X";
             }
-        }
-    "#,
+        }"#,
         "function 'platform' expects 0 arguments, found 1",
     );
 }
@@ -570,8 +533,7 @@ fn valid_builtin_function_zero_args() {
             @if platform() == "linux" {
                 defines: "LINUX";
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -589,8 +551,7 @@ fn error_for_variable_shadowing() {
                     sources: x;
                 }
             }
-        }
-    "#,
+        }"#,
         "@for variable 'x' shadows an outer loop variable",
     );
 }
@@ -605,8 +566,7 @@ fn error_target_inside_target() {
         r#"
         target outer {
             target inner { }
-        }
-    "#,
+        }"#,
         "target declarations are only allowed at the top level",
     );
 }
@@ -617,8 +577,7 @@ fn error_mixin_inside_target() {
         r#"
         target outer {
             mixin inner { }
-        }
-    "#,
+        }"#,
         "mixin declarations are only allowed at the top level",
     );
 }
@@ -629,8 +588,7 @@ fn error_profile_inside_target() {
         r#"
         target outer {
             profile inner { }
-        }
-    "#,
+        }"#,
         "profile declarations are only allowed at the top level",
     );
 }
@@ -641,8 +599,7 @@ fn error_project_inside_target() {
         r#"
         target outer {
             project inner { }
-        }
-    "#,
+        }"#,
         "project declarations are only allowed at the top level",
     );
 }
@@ -653,8 +610,7 @@ fn error_dependencies_inside_target() {
         r#"
         target outer {
             dependencies { }
-        }
-    "#,
+        }"#,
         "dependencies declarations are only allowed at the top level",
     );
 }
@@ -667,8 +623,7 @@ fn error_project_inside_if() {
             @if has_feature("x") {
                 project inner { }
             }
-        }
-    "#,
+        }"#,
         "project declarations are only allowed at the top level",
     );
 }
@@ -681,8 +636,7 @@ fn error_target_inside_for() {
             @for x in [a, b] {
                 target inner { }
             }
-        }
-    "#,
+        }"#,
         "target declarations are only allowed at the top level",
     );
 }
@@ -724,8 +678,7 @@ fn error_duplicate_scalar_in_dependency_options() {
                 tag: "v1";
                 tag: "v2";
             };
-        }
-    "#,
+        }"#,
         "duplicate property 'tag'",
     );
 }
@@ -744,8 +697,7 @@ fn error_mixin_scalar_conflict_in_visibility_blocks() {
                 optimize: "size";
             }
         }
-        target myapp with a, b { }
-    "#,
+        target myapp with a, b { }"#,
         "scalar property 'optimize' has conflicting values in mixin composition",
     );
 }
@@ -760,8 +712,7 @@ fn error_option_not_upper_snake_case() {
         r#"
         options {
             enableTests: true;
-        }
-    "#,
+        }"#,
         "must be UPPER_SNAKE_CASE",
     );
 }
@@ -772,8 +723,7 @@ fn error_option_lowercase() {
         r#"
         options {
             enable_tests: true;
-        }
-    "#,
+        }"#,
         "must be UPPER_SNAKE_CASE",
     );
 }
@@ -784,8 +734,7 @@ fn valid_option_upper_snake_case() {
         r#"
         options {
             ENABLE_TESTS: true;
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -795,8 +744,7 @@ fn error_option_shadows_builtin() {
         r#"
         options {
             PLATFORM: "linux";
-        }
-    "#,
+        }"#,
         "shadows a builtin variable",
     );
 }
@@ -814,8 +762,7 @@ fn warn_unreachable_after_break() {
                 @break;
                 sources: "unreachable.cpp";
             }
-        }
-    "#,
+        }"#,
         "unreachable code",
     );
 }
@@ -829,8 +776,7 @@ fn warn_unreachable_after_continue() {
                 @continue;
                 sources: "unreachable.cpp";
             }
-        }
-    "#,
+        }"#,
         "unreachable code",
     );
 }
@@ -845,8 +791,7 @@ fn valid_break_at_end_of_loop() {
                 sources: x;
                 @break;
             }
-        }
-    "#,
+        }"#,
     );
 }
 
@@ -860,7 +805,6 @@ fn valid_system_dependency() {
         r#"
         dependencies {
             vulkan: system();
-        }
-    "#,
+        }"#,
     );
 }
