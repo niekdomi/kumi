@@ -1,0 +1,40 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+categories:
+  - title: "📚 Documentation"
+    labels:
+      - "documentation"
+
+  - title: "✨ Features"
+    labels:
+      - "feature"
+      - "performance"
+
+  - title: "🔧 Fixes"
+    labels:
+      - "fix"
+
+  - title: "🛠️ Maintenance"
+    labels:
+      - "build"
+      - "chore"
+      - "pipeline"
+      - "refactor"
+
+  - title: "🧪 Tests"
+    labels:
+      - "test"
+
+category-template: "### $TITLE"
+change-template: "- $TITLE by @$AUTHOR (#$NUMBER)"
+change-title-escapes: '\<*_&'
+
+replacers:
+  - search: '/(build|chore|ci|docs|feat|fix|perf|refactor|test):\s+/gi'
+    replace: ""

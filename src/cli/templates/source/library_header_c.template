@@ -1,0 +1,6 @@
+#ifndef {PROJECT_NAME_UPPER}_H
+#define {PROJECT_NAME_UPPER}_H
+
+void {PROJECT_NAME}_greet();
+
+#endif // {PROJECT_NAME_UPPER}_H
