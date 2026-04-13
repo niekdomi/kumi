@@ -1,33 +1,33 @@
 use kumi::lang::lex::{Lexer, Token, TokenType};
 
-// Helper: lex input and return (tokens, errors). Tokens always include trailing EOF.
+/// Helper to lex input and return (tokens, errors). Tokens always include trailing EOF.
 fn lex(input: &str) -> (Vec<Token>, Vec<kumi::diagnostics::Diagnostic>) {
     let lexer = Lexer::new(input.as_bytes());
     lexer.tokenize()
 }
 
-// Helper: lex input, assert no errors, return tokens.
+/// Helper to lex input, assert no errors, return tokens.
 fn lex_ok(input: &str) -> Vec<Token> {
     let (tokens, errors) = lex(input);
     assert!(errors.is_empty(), "unexpected errors: {:?}", errors);
     tokens
 }
 
-// Helper: lex input that should produce exactly one token + EOF, return that token.
+/// Helper to lex input that should produce exactly one token + EOF, return that token.
 fn lex_single(input: &str) -> Token {
     let tokens = lex_ok(input);
     assert_eq!(tokens.len(), 2, "expected 1 token + EOF, got {}", tokens.len());
     tokens[0]
 }
 
-// Helper: lex input and assert at least one error, return first error message.
+/// Helper to lex input and assert at least one error, return first error message.
 fn lex_error(input: &str) -> kumi::diagnostics::Diagnostic {
     let (_, errors) = lex(input);
     assert!(!errors.is_empty(), "expected error but lexing succeeded");
     errors.into_iter().next().unwrap()
 }
 
-// Helper: extract token text from source.
+/// Helper to extract token text from source.
 fn text<'a>(source: &'a str, token: &Token) -> &'a str {
     &source[token.position as usize..(token.position + token.length) as usize]
 }
