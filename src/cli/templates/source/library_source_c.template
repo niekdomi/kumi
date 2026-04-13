@@ -1,0 +1,6 @@
+#include "{PROJECT_NAME}/{PROJECT_NAME}.h"
+#include <stdio.h>
+
+void {PROJECT_NAME}_greet() {
+    printf("Hello from {PROJECT_NAME}!\n");
+}

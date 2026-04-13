@@ -1,36 +1,32 @@
-// Valid example: Library with visibility blocks
+// Valid example: Library with mixin composition
 project mylib {
     version: "2.0.0";
     language: "c++";
 }
 
-target mylib {
-    type: static_library;
+mixin common-flags {
+    warnings: "all";
+    optimization: "O2";
+}
+
+target mylib with common-flags {
+    type: static-library;
+    cxx-standard: 23;
 
     public {
-        include_dirs: "include";
+        include-dirs: "include";
         headers: "mylib.hpp";
     }
 
     private {
         sources: "impl.cpp", "internal.cpp";
-        cxx_standard: 23;
     }
 
     interface {
         defines: "MYLIB_INTERFACE";
     }
-}
 
-mixin common_flags {
-    warnings: "all";
-    optimization: "O2";
-}
-
-@apply common_flags;
-
-@for file in glob("src/*.cpp") {
-    target mylib {
+    @for file in glob("src/*.cpp") {
         sources: file;
     }
 }

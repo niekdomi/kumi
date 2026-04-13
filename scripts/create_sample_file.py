@@ -33,7 +33,7 @@ def generate_kumi(mode="normal", size_mb=1.0):
             indent = ""
             for d in range(depth):
                 indent = "  " * d
-                block += f"{indent}@if platform(linux) {{\n"
+                block += f'{indent}@if platform() == "linux" {{\n'
             block += f'{indent}  target leaf_{i} {{ type: executable; sources: "main.cpp"; }}\n'
             for d in range(depth - 1, -1, -1):
                 indent = "  " * d
@@ -57,7 +57,7 @@ def generate_kumi(mode="normal", size_mb=1.0):
                     f"target service_{i} with base_cfg {{\n"
                     f"  type: executable;\n"
                     f'  sources: "services/{i}/*.cpp";\n'
-                    f"  @if arch(x86_64) {{\n"
+                    f'  @if arch() == "x86_64" {{\n'
                     f'    compile-options: "-march=native";\n'
                     f"  }}\n"
                     f"  @for lang in [en, de, fr] {{\n"

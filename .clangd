@@ -1,7 +1,0 @@
----
-CompileFlags:
-  CompilationDatabase: build/Debug
-  Compiler: clang
-
-Documentation:
-  CommentFormat: Doxygen

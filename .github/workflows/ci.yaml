@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+      - reopened
+      - synchronize
+
+jobs:
+  spellcheck:
+    runs-on: ubuntu-latest
+    name: Spellcheck
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install typstyle
+        uses: taiki-e/install-action@v2
+        with:
+          tool: codebook-lsp
+
+      - name: Check Formatting
+        run: codebook-lsp lint .
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run Clippy
+        run: cargo clippy
+
+  test:
+    runs-on: ubuntu-latest
+    name: Test & Coverage
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      #       with:
+      #         components: llvm-tools-preview
+      #
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --locked
+
+  #     - name: Install cargo-llvm-cov
+  #       uses: taiki-e/install-action@cargo-llvm-cov
+  #
+  #     - name: Run tests with coverage
+  #       run: cargo llvm-cov --locked --lcov --output-path lcov.info
+  #
+  #     - name: Generate coverage markdown summary
+  #       run: cargo llvm-cov --locked --no-run --summary-only 2>&1 | tee coverage.md
+  #
+  #     - name: Post coverage comment
+  #       if: github.event_name == 'pull_request'
+  #       uses: marocchino/sticky-pull-request-comment@v2
+  #       with:
+  #         header: coverage-report
+  #         path: coverage.md

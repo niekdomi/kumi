@@ -1,0 +1,15 @@
+project invalid_parse {
+    // Missing semicolon after version
+    version: "1.0.0"
+
+    // Invalid property list elements
+    sources: ["main.cpp", 42, "utils.cpp"];
+
+    // Invalid function argument missing closing parenthesis
+    defines: glob("src/*.cpp";
+    
+    // Invalid condition for if statement
+    @if foo == ; {
+        type: executable;
+    }
+}

@@ -1,0 +1,42 @@
+[package]
+name = "kumi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+
+[dependencies]
+bumpalo = "3.20.2"
+clap = { version = "4.5.60", features = ["derive"] }
+codespan-reporting = "0.13.1"
+dialoguer = "0.12.0"
+memchr = "2.8.0"
+owo-colors = { version = "4.3.0", features = ["supports-colors"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[lints.clippy]
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+inline_always = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+nursery = { level = "deny", priority = -1 }
+option_if_let_else = "allow"
+pedantic = { level = "deny", priority = -1 }
+similar_names = "allow"
+struct_excessive_bools = "allow"
+too_many_lines = "allow"
+unused_self = "allow"
+
+[lints.rust]
+ambiguous_negative_literals = "deny"
+# warnings = "deny"
+# let_underscore_drop = "deny"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+panic = "abort"
+codegen-units = 1
