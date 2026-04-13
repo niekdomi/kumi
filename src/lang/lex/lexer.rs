@@ -174,12 +174,14 @@ impl<'lex_impl> Lexer<'lex_impl> {
     #[inline(always)]
     fn lex_at(&mut self) -> Result<Token, Diagnostic> {
         static KEYWORDS: &[(&[u8], TokenType)] = &[
+            // Control Flow
             (b"@else-if", TokenType::AtElseIf),
             (b"@else", TokenType::AtElse),
             (b"@if", TokenType::AtIf),
             (b"@for", TokenType::AtFor),
             (b"@break", TokenType::AtBreak),
             (b"@continue", TokenType::AtContinue),
+            // Diagnostic Directives
             (b"@error", TokenType::AtError),
             (b"@warning", TokenType::AtWarning),
             (b"@info", TokenType::AtInfo),
