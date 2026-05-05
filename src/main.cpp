@@ -57,7 +57,7 @@ auto main(int argc, char** argv) -> int
     const auto mem_before = get_peak_memory_mb();
     const auto start_lex = std::chrono::high_resolution_clock::now();
 
-    auto tokens_result = lexer.tokenize();
+    auto [tokens, lex_errors] = std::move(lexer).tokenize();
 
     const auto end_lex = std::chrono::high_resolution_clock::now();
     const auto mem_after_lex = get_peak_memory_mb();
@@ -65,20 +65,13 @@ auto main(int argc, char** argv) -> int
     const auto duration_lex_us =
       std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex);
 
-    if (!tokens_result.has_value()) {
+    if (!lex_errors.empty()) {
         kumi::diagnostics::DiagnosticPrinter printer(source, filename);
-        const auto& lex_error = tokens_result.error();
-        // Convert LexError to ParseError for diagnostic printing
-        kumi::lang::ParseError parse_err{.message = lex_error.message,
-                                         .position = lex_error.position,
-                                         .label = lex_error.label,
-                                         .help = lex_error.help};
-        printer.print_error(parse_err);
+        printer.print_error(lex_errors.front());
         return 1;
     }
 
     // Display file info
-    const auto& tokens = *tokens_result;
     double size_mb = static_cast<double>(source.size()) / 1000000.0;
 
     std::println("╭─────────────────────────────────────────╮");

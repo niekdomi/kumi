@@ -11,8 +11,6 @@
 
 #pragma once
 
-#include "lang/support/arena.hpp"
-
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -31,7 +29,6 @@ struct DependenciesDecl;
 struct DiagnosticStmt;
 struct ForStmt;
 struct IfStmt;
-struct ImportStmt;
 struct InstallDecl;
 struct LogicalExpr;
 struct LoopControlStmt;
@@ -457,7 +454,6 @@ using Statement = std::variant<ProjectDecl,
                                ForStmt,
                                LoopControlStmt,
                                DiagnosticStmt,
-                               ImportStmt,
                                Property>;
 
 /// @brief Represents a project declaration
@@ -963,28 +959,6 @@ struct DiagnosticStmt final : public NodeBase
 
 static_assert(sizeof(DiagnosticStmt) == 12);
 
-/// @brief Represents an import statement
-///
-/// Imports declarations from another Kumi file, enabling modular
-/// build configurations.
-///
-/// Grammar:
-/// ```ebnf
-/// ImportDecl = "@import" String ";" ;
-/// ```
-///
-/// Examples:
-/// ```css
-/// @import "common/mixins.kumi";
-/// @import "../shared/options.kumi";
-/// ```
-struct ImportStmt final : public NodeBase
-{
-    std::uint32_t path_idx{}; ///< Index of the import path string
-};
-
-static_assert(sizeof(ImportStmt) == 8);
-
 //===----------------------------------------------------------------------===//
 // Root AST
 //===----------------------------------------------------------------------===//
@@ -997,8 +971,6 @@ static_assert(sizeof(ImportStmt) == 8);
 /// and reference them via start/end indices.
 struct AST final
 {
-    Arena string_storage; ///<  Arena allocator for all string data
-
     AST() = default;
     ~AST() = default;
     AST(AST&&) = default;

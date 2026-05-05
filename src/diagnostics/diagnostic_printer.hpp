@@ -45,7 +45,7 @@ class DiagnosticPrinter final
 
     /// @brief Prints a formatted error diagnostic to stderr
     /// @param error Parse error with position and message
-    auto print_error(const lang::ParseError& error) const -> void
+    auto print_error(const lang::Diagnostics& error) const -> void
     {
         // `error: unexpected token '}'`
         std::println(std::cerr,
@@ -59,7 +59,7 @@ class DiagnosticPrinter final
 
         const auto [line, column] = position_to_coordinates(error.position);
         print_location(line, column);
-        print_snippet(line, column, error.label, error.help);
+        print_snippet(line, column, error.help);
     }
 
   private:
@@ -128,10 +128,7 @@ class DiagnosticPrinter final
     /// @param column Column number where error occurred
     /// @param label Optional label for the error indicator
     /// @param help Optional help message
-    auto print_snippet(std::size_t line,
-                       std::size_t column,
-                       std::string_view label,
-                       std::string_view help) const -> void
+    auto print_snippet(std::size_t line, std::size_t column, std::string_view help) const -> void
     {
         const auto line_text = get_line(line);
         if (line_text.empty()) {
@@ -144,21 +141,19 @@ class DiagnosticPrinter final
         std::println(std::cerr, "{}{}│{}", color::BLUE, gutter_space, color::RESET);
 
         // `5 │ target myapp {`
-        std::println(
-          std::cerr, "{} {:>{}} │{} {}", color::BLUE, line, gutter_width, color::RESET, line_text);
+        // std::println(
+        //   std::cerr, "{} {:>{}} │{} {}", color::BLUE, line, gutter_width, color::RESET, line_text);
 
         // `│ ... ^ expected property or closing brace`
         std::print(std::cerr, "{}{}│{} ", color::BLUE, gutter_space, color::RESET);
         if (column > 1) {
             std::print(std::cerr, "{}", std::string(column - 1, ' '));
         }
-        std::println(std::cerr,
-                     "{}{}^{}{}{}",
-                     color::BOLD,
-                     color::RED,
-                     label.empty() ? "" : " ",
-                     label,
-                     color::RESET);
+        // std::println(std::cerr,
+        //              "{}{}^{}{}{}",
+        //              color::BOLD,
+        //              color::RED,
+        //              color::RESET);
 
         // `= help: valid properties include 'sources', 'defines', etc.`
         if (!help.empty()) {

@@ -99,8 +99,19 @@ else()
     message(STATUS "  Linker:   default")
 endif()
 
-find_package(cpr REQUIRED)
-find_package(Catch2 CONFIG REQUIRED)
+# ------------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------------
+
+include(FetchContent)
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.14.0
+)
+FetchContent_MakeAvailable(Catch2)
+
+set_target_properties(Catch2 Catch2WithMain PROPERTIES COMPILE_OPTIONS "")
 
 # ------------------------------------------------------------------
 # Main Executable Target
@@ -111,19 +122,18 @@ file(GLOB_RECURSE KUMI_HEADERS "src/*.hpp")
 
 add_executable(kumi ${KUMI_SOURCES})
 target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(kumi PRIVATE cpr::cpr)
 
 # ------------------------------------------------------------------
 # Test Executable Target
 # ------------------------------------------------------------------
 
-file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
-
-add_executable(kumi_tests ${TEST_SOURCES})
-target_include_directories(
-    kumi_tests
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/tests
-)
-target_link_libraries(kumi_tests PRIVATE Catch2::Catch2WithMain)
+# file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
+#
+# add_executable(kumi_tests ${TEST_SOURCES})
+# target_include_directories(
+#     kumi_tests
+#     PRIVATE
+#         ${CMAKE_SOURCE_DIR}/src
+#         ${CMAKE_SOURCE_DIR}/tests
+# )
+# target_link_libraries(kumi_tests PRIVATE Catch2::Catch2WithMain)

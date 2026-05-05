@@ -1,57 +1,25 @@
-.PHONY: all run clean conan test clean lint lint-diff check-format format
-
-# -----------------------------
-# Build Configuration
-# -----------------------------
-# Default preset, override with `make BUILD_TYPE=Release`
-BUILD_TYPE ?= Debug
-CMAKE_PRESET := conan-$(shell echo $(BUILD_TYPE) | tr A-Z a-z)
-
-TARGET := build/$(BUILD_TYPE)
-CONAN_STAMP := build/.conan.$(BUILD_TYPE).stamp
-BUILD_STAMP := build/.build.$(BUILD_TYPE).$(ENABLE_COVERAGE).stamp
+.PHONY: build release clean test lint lint-diff check-format format
 
 SOURCES := $(shell find src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) ! -path "*/build/*")
-SOURCES_CMAKE := $(shell find src tests . -name 'CMakeLists.txt')
 
 # -----------------------------
 # Build Targets
 # -----------------------------
-all: $(BUILD_STAMP)
+build:
+	@mkdir -p build && \
+		CC=clang CXX=clang++ cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && \
+		cmake --build build --parallel
 
-$(BUILD_STAMP): $(SOURCES) $(SOURCES_CMAKE) $(CONAN_STAMP)
-	@echo "Building project ($(BUILD_TYPE))..."
-	@if [ -f CMakeUserPresets.json ]; then \
-		echo "Using CMake presets..."; \
-		cmake --preset $(CMAKE_PRESET); \
-		cmake --build --preset $(CMAKE_PRESET); \
-	else \
-		echo "CMakeUserPresets.json not found, using traditional CMake..."; \
-		mkdir -p $(TARGET); \
-		cmake -S . -B $(TARGET) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_TOOLCHAIN_FILE=$(TARGET)/conan_toolchain.cmake; \
-		cmake --build $(TARGET); \
-	fi
-	@touch $@
-	@echo "Build complete."
+release:
+	@mkdir -p build/release && \
+		CC=clang CXX=clang++ cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release && \
+		cmake --build build/release --parallel
 
-CONAN_CMD := conan
-$(CONAN_STAMP): conanfile.txt
-	$(call check_tool,$(CONAN_CMD))
-	@echo "Running Conan ($(BUILD_TYPE))..."
-	@$(CONAN_CMD) install . \
-		--profile:host=clang.profile \
-		--profile:build=clang.profile \
-		--build=missing \
-		-s build_type=$(BUILD_TYPE)
-	@touch $@
-
-conan: $(CONAN_STAMP)
-
-test: $(BUILD_STAMP)
-	@$(TARGET)/kumi_tests
+test: build
+	@build/kumi_tests
 
 clean:
-	@rm -rf build CMakeFiles CMakeCache.txt CMakeUserPresets.json .cache
+	@rm -rf build CMakeFiles CMakeCache.txt .cache
 
 # -----------------------------
 # Utility Targets
@@ -59,13 +27,10 @@ clean:
 CLANG_TIDY_CMD := clang-tidy
 RUN_CLANG_TIDY_CMD := run-clang-tidy
 CLANG_FORMAT_CMD := clang-format
-GERSEMI_CMD := gersemi
 
-LINT_COMMON_FLAGS = -p build/$(BUILD_TYPE)/ -quiet
+LINT_COMMON_FLAGS = -p build/ -quiet
 LINT_TIDY_FLAGS = -warnings-as-errors='*'
 LINT_CPUS ?= $(shell nproc)
-
-GERSEMI_FLAGS = --list-expansion=favour-expansion --no-warn-about-unknown-commands
 
 # Function to check for tool existence
 # Usage: $(call check_tool, tool_name)
@@ -139,9 +104,8 @@ lint-diff:
 
 check-format:
 	$(call check_tool,$(CLANG_FORMAT_CMD))
-	$(call check_tool,$(GERSEMI_CMD))
 	@echo "Checking code formatting..."
-	@if $(CLANG_FORMAT_CMD) --dry-run --Werror $(SOURCES) && $(GERSEMI_CMD) --check --diff --color $(GERSEMI_FLAGS) $(SOURCES_CMAKE); then \
+	@if $(CLANG_FORMAT_CMD) --dry-run --Werror $(SOURCES); then \
 		echo "✓ All files are properly formatted"; \
 	else \
 		exit 1; \
@@ -149,8 +113,6 @@ check-format:
 
 format:
 	$(call check_tool,$(CLANG_FORMAT_CMD))
-	$(call check_tool,$(GERSEMI_CMD))
 	@echo "Formatting code..."
 	@$(CLANG_FORMAT_CMD) -i $(SOURCES)
-	@$(GERSEMI_CMD) -i $(GERSEMI_FLAGS) $(SOURCES_CMAKE)
 	@echo "✓ Code formatting complete"

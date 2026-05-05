@@ -7,7 +7,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string_view>
 
 namespace kumi::lang {
 
@@ -35,10 +34,9 @@ enum class TokenType : std::uint8_t
     OPTIONS,      ///< `options { }`             - User-configurable build options
     MIXIN,        ///< `mixin strict { }`        - Reusable property sets
     PROFILE,      ///< `profile release { }`     - Named build configuration profile
-    AT_IMPORT,    ///< `@import "file.kumi";`    - Import another Kumi configuration file
     INSTALL,      ///< `install { }`             - Installation configuration
     PACKAGE,      ///< `package { }`             - Packaging and publishing
-    SCRIPTS,      ///< `scripts { }`             - Custom build hooks
+    SCRIPT,       ///< `script { }`              - Custom build hooks
     WITH,         ///< `with`                    - Mixin (e.g., `target myapp with strict { }`)
 
     //===-----------------------------------------------------------------===//
@@ -117,7 +115,6 @@ enum class TokenType : std::uint8_t
     NUMBER,     ///< Integer literal - `123`, `42`, `0`
     TRUE,       ///< Boolean literal - `true`
     FALSE,      ///< Boolean literal - `false`
-    COMMENT,    ///< TODO: REMOVE
 
     //===-----------------------------------------------------------------===//
     // Special
@@ -128,17 +125,21 @@ enum class TokenType : std::uint8_t
 
 /// @brief Represents a single lexical token
 ///
-/// Contains the token type, its textual value, and source location information
-/// for error reporting and debugging.
+/// Tokens store position and length into the source buffer rather than a
+/// string_view slice. Use `source.substr(token.position, token.length)` to
+/// recover the text. `leading` and `trailing` are comment attachment points:
+/// a non-zero value stores `(comment_start_pos + 1)` so that 0 can serve as
+/// the "none" sentinel.
 struct Token final
 {
-    // TODO(domi): Handle comments ()
-    std::string_view value;   ///< Textual value. String literals include quotes (e.g., `"hello"`)
-    std::uint32_t position{}; ///< Starting position in source text
-    TokenType type{};         ///< Type of the token
+    std::uint32_t position{}; ///< Byte offset of the first character
+    std::uint32_t length{};   ///< Number of bytes in the token
+    std::uint32_t leading{};  ///< Leading comment: 0 = none, else (pos + 1)
+    std::uint32_t trailing{}; ///< Trailing comment: 0 = none, else (pos + 1)
+    TokenType kind{};         ///< Token kind
 };
 
-static_assert(sizeof(Token) == 24);
+static_assert(sizeof(Token) == 20);
 
 } // namespace kumi::lang
 

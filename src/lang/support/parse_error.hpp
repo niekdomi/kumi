@@ -14,11 +14,10 @@
 namespace kumi::lang {
 
 /// @brief Represents a parsing error with position, inline message, and help section
-struct ParseError final
+struct Diagnostics final
 {
     std::string message;    ///< Main error message
     std::uint32_t position; ///< Position in source where the indicator (`^`) will point
-    std::string label;      ///< Message displayed after the caret indicator
     std::string help;       ///< Detailed help or suggestion
 };
 
@@ -26,20 +25,16 @@ struct ParseError final
 /// @tparam T Expected return type
 /// @param message Main error message
 /// @param position Source position for the caret
-/// @param label Message to show next to the caret
 /// @param help Suggestion or help text to show
 /// @return Unexpected ParseError
 template<typename T>
 [[nodiscard]]
-auto error(std::string_view message,
-           std::uint32_t position,
-           std::string_view label = "",
-           std::string_view help = "") -> std::expected<T, ParseError>
+auto error(std::string_view message, std::uint32_t position, std::string_view help = "")
+  -> std::expected<T, Diagnostics>
 {
-    return std::unexpected(ParseError{
+    return std::unexpected(Diagnostics{
       .message = std::string(message),
       .position = position,
-      .label = std::string(label),
       .help = std::string(help),
     });
 }
