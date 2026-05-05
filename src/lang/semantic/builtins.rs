@@ -49,7 +49,7 @@ pub struct BuiltinVariable {
 // Builtin function registry
 //===----------------------------------------------------------------------===//
 
-/// Sorted alphabetically by name for binary search.
+/// Builtin functions usable as bare identifiers in conditions.
 pub const BUILTIN_FUNCTIONS: &[BuiltinFunction] = &[
     BuiltinFunction {
         name: "arch",
@@ -145,7 +145,6 @@ pub const BUILTIN_FUNCTIONS: &[BuiltinFunction] = &[
 //===----------------------------------------------------------------------===//
 
 /// Builtin variables usable as bare identifiers in conditions.
-/// Sorted alphabetically by name for binary search.
 pub const BUILTIN_VARIABLES: &[BuiltinVariable] = &[
     BuiltinVariable {
         name: "arch",

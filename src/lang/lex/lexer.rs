@@ -4,13 +4,6 @@ use crate::lang::lex::token::{Token, TokenType};
 use memchr::{memchr, memmem};
 
 /// Lexical analyzer that converts a byte-slice input into a stream of Tokens.
-///
-/// The lexer is a single-pass, position-based tokenizer. It supports
-/// single-character tokens, multi-character operators, numbers, strings,
-/// identifiers/keywords, and both line and block comments.
-///
-/// Note: comments are used to set leading/trailing comment positions on
-/// tokens rather than being emitted as separate tokens by this lexer.
 pub struct Lexer<'a> {
     /// Input buffer being tokenized
     input: &'a [u8],
@@ -47,9 +40,11 @@ impl<'lex_impl> Lexer<'lex_impl> {
             match self.next_token() {
                 Ok(None) => {}
                 Ok(Some(token)) => {
+                    let kind = token.kind;
+
                     self.tokens.push(token);
 
-                    if token.kind == TokenType::EndOfFile {
+                    if kind == TokenType::EndOfFile {
                         break;
                     }
                 }
@@ -127,9 +122,11 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 leading: 0,
                 trailing: 0,
             };
+
             if let Some(pos) = self.first_leading_comment_pos.take() {
                 token.leading = pos + 1;
             }
+
             return Ok(Some(token));
         }
 
@@ -226,6 +223,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
     fn lex_comment(&mut self) -> Result<(), Diagnostic> {
         let start_pos = self.position;
 
+        // Classify comment type...
         let is_block = if self.match_string(b"//") {
             false
         } else if self.match_string(b"/*") {
@@ -234,24 +232,27 @@ impl<'lex_impl> Lexer<'lex_impl> {
             return Err(Diagnostic::new("unexpected character after '/'", start_pos, ""));
         };
 
-        let rem = &self.input[self.position as usize..];
+        // Scan...
+        let remaining = &self.input[self.position as usize..];
+
         if is_block {
-            if let Some(idx) = memmem::find(rem, b"*/") {
-                self.position += (idx + 2) as u32;
+            if let Some(end_marker) = memmem::find(remaining, b"*/") {
+                self.position += (end_marker + 2) as u32
             } else {
                 self.position = self.input.len() as u32;
                 return Err(Diagnostic::new("unterminated block comment", start_pos, ""));
             }
         } else {
-            match memchr(b'\n', rem) {
+            match memchr(b'\n', remaining) {
                 Some(idx) => self.position += idx as u32,
                 None => self.position = self.input.len() as u32,
             }
         }
 
-        // Classify and attach
+        // Attach to token stream...
         if let Some(last) = self.tokens.last_mut() {
             let between = &self.input[(last.position + last.length) as usize..start_pos as usize];
+
             if between.contains(&b'\n') {
                 self.first_leading_comment_pos.get_or_insert(start_pos);
             } else {
@@ -406,7 +407,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                         return Err(Diagnostic::new(
                             "invalid escape sequence",
                             err_pos,
-                            "valid escapes: \\\", \\n, \\t, \\r, \\\\",
+                            r#"valid escapes: \", \n, \t, \r, \\"#,
                         ));
                     }
                     self.advance(); // Consume escaped character

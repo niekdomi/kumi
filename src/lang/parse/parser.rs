@@ -703,7 +703,7 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     fn parse_if(&mut self, ast: &mut Ast<'a>) -> Result<Statement, Diagnostic> {
         let start_pos = self.peek(0).position;
-        // When called from @else-if branch, AtIf was not emitted — only skip if present
+        // When called from @else-if branch, AtIf was not emitted - only skip if present
         if self.peek(0).kind == TokenType::AtIf {
             self.advance();
         }
