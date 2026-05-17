@@ -1,17 +1,11 @@
 /// @file main.cpp
 /// @brief Entry point for the Kumi build tool
 
-#include "lang/lex/lexer.hpp"
-// #include "lang/parse/parser.hpp"
-#include "diagnostics/diagnostic_printer.hpp"
-#include "lang/ast/ast.hpp"
-
-#include <chrono>
-#include <fstream>
-#include <iostream>
-#include <print>
-#include <sstream>
-#include <string>
+import std;
+import kumi.lang.lex;
+// import kumi.lang.parse;
+import kumi.diagnostics;
+import kumi.lang.ast;
 
 namespace {
 auto get_peak_memory_mb() -> double

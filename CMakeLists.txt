@@ -1,4 +1,12 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 4.1.2)
+
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_MODULE_STD ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_COLOR_DIAGNOSTICS ON)
+
 project(
     kumi
     VERSION 0.1.0
@@ -6,12 +14,6 @@ project(
     LANGUAGES
         CXX
 )
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_VERIFY_INTERFACE_HEADER_SETS ON)
-set(CMAKE_COLOR_DIAGNOSTICS ON)
 
 # This warning is a false positive
 if(CMAKE_TOOLCHAIN_FILE)
@@ -38,7 +40,7 @@ add_compile_options(
     # -Werror
     -Wpedantic
     -Wdeprecated
-    #
+
     # Safety
     -Wnon-virtual-dtor
     -Wsuggest-override
@@ -47,7 +49,7 @@ add_compile_options(
     -Wconsumed
     -Wthread-safety
     -Wformat=2
-    #
+
     # Type Safety & Performance
     -Wconversion
     -Wcast-align
@@ -56,17 +58,17 @@ add_compile_options(
     -Wdouble-promotion
     -Wcast-function-type
     -Wzero-as-null-pointer-constant
-    #
+
     # Logical & Control Flow
     -Wimplicit-fallthrough
     -Wshadow-all
     -Wunreachable-code-aggressive
     -Wloop-analysis
     -Wcovered-switch-default
-    #
+
     # Cross-Platform
     -Wpoison-system-directories
-    #
+
     # Ignore non-standard C++ features
     -Wno-gnu-statement-expression
     -Wno-gnu-case-range
@@ -117,11 +119,16 @@ set_target_properties(Catch2 Catch2WithMain PROPERTIES COMPILE_OPTIONS "")
 # Main Executable Target
 # ------------------------------------------------------------------
 
-file(GLOB_RECURSE KUMI_SOURCES "src/*.cpp")
-file(GLOB_RECURSE KUMI_HEADERS "src/*.hpp")
+file(GLOB_RECURSE KUMI_MODULES "src/*.cppm")
+list(FILTER KUMI_MODULES EXCLUDE REGEX ".*/lang/parse/parser\\.cppm$")
 
-add_executable(kumi ${KUMI_SOURCES})
+add_executable(kumi src/main.cpp)
 target_include_directories(kumi PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_sources(kumi
+    PRIVATE
+        FILE_SET CXX_MODULES
+        FILES ${KUMI_MODULES}
+)
 
 # ------------------------------------------------------------------
 # Test Executable Target

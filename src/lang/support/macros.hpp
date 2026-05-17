@@ -6,13 +6,13 @@ namespace kumi::lang {
 
 /// @brief Macro for propagating errors in std::expected contexts
 ///
-/// Usage: `[auto result = ]TRY(function_that_returns_expected());`
+/// Usage: `[auto result = ]TRY(foo());`
 /// If the expected contains an error, it returns early with that error.
 #define TRY(expr__)                                                                                \
     ({                                                                                             \
         auto&& result__ = (expr__);                                                                \
         if (!result__.has_value()) [[unlikely]] {                                                  \
-            return std::unexpected(result__.error());                                              \
+            return std::unexpected(std::move(result__).error());                                   \
         }                                                                                          \
         std::move(result__).value();                                                               \
     })

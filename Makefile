@@ -1,18 +1,18 @@
 .PHONY: build release clean test lint lint-diff check-format format
 
-SOURCES := $(shell find src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) ! -path "*/build/*")
+SOURCES := $(shell find src tests -type f \( -name '*.cpp' -o -name '*.cppm' \) ! -path "*/build/*")
 
 # -----------------------------
 # Build Targets
 # -----------------------------
 build:
-	@mkdir -p build && \
-		CC=clang CXX=clang++ cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && \
-		cmake --build build --parallel
+	@mkdir -p build/debug && \
+		CC=clang CXX=clang++ cmake -G Ninja -Wno-dev -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug && \
+		cmake --build build/debug --parallel
 
 release:
 	@mkdir -p build/release && \
-		CC=clang CXX=clang++ cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release && \
+		CC=clang CXX=clang++ cmake -G Ninja -Wno-dev -S . -B build/release -DCMAKE_BUILD_TYPE=Release && \
 		cmake --build build/release --parallel
 
 test: build
@@ -24,11 +24,10 @@ clean:
 # -----------------------------
 # Utility Targets
 # -----------------------------
-CLANG_TIDY_CMD := clang-tidy
 RUN_CLANG_TIDY_CMD := run-clang-tidy
 CLANG_FORMAT_CMD := clang-format
 
-LINT_COMMON_FLAGS = -p build/ -quiet
+LINT_COMMON_FLAGS = -p build/debug -quiet
 LINT_TIDY_FLAGS = -warnings-as-errors='*'
 LINT_CPUS ?= $(shell nproc)
 
@@ -42,64 +41,22 @@ define check_tool
 fi
 endef
 
-ifdef SOURCES_TO_LINT
-	FILES_TO_LINT := $(SOURCES_TO_LINT)
-else ifeq ($(LINT_FILES),source)
-	FILES_TO_LINT := $(shell find src tests -name '*.cpp' ! -path "*/build/*")
-else ifeq ($(LINT_FILES),header)
-	FILES_TO_LINT := $(shell find src tests -name '*.hpp' ! -path "*/build/*")
-else
-	FILES_TO_LINT := $(SOURCES)
-endif
-
-# Use `make lint LINT_FILES=header/source` to lint either one
 lint:
 	$(call check_tool,$(RUN_CLANG_TIDY_CMD))
-	$(call check_tool,$(CLANG_TIDY_CMD))
 	@echo "Linting with $(LINT_CPUS) cores"
-	@if [ -z "$(FILES_TO_LINT)" ]; then \
-		echo "No files to lint (LINT_FILES='$(LINT_FILES)')."; \
-		exit 0; \
-	fi
-
-	@if [ "$(LINT_FILES)" = "source" ] || [ -z "$(LINT_FILES)" ]; then \
-		SOURCE_FILES="$$(echo '$(FILES_TO_LINT)' | tr ' ' '\n' | grep '\.cpp$$')"; \
-		if [ -n "$$SOURCE_FILES" ]; then \
-			echo "Running clang-tidy on source files..."; \
-			echo "$$SOURCE_FILES" | xargs $(RUN_CLANG_TIDY_CMD) $(LINT_COMMON_FLAGS) $(LINT_TIDY_FLAGS) -j $(LINT_CPUS) || exit 1; \
-		fi; \
-	fi
-
-	@if [ "$(LINT_FILES)" = "header" ] || [ -z "$(LINT_FILES)" ]; then \
-		HEADER_FILES="$$(echo '$(FILES_TO_LINT)' | tr ' ' '\n' | grep '\.hpp$$')"; \
-		if [ -n "$$HEADER_FILES" ]; then \
-			echo "Running clang-tidy on headers..."; \
-			echo "$$HEADER_FILES" | xargs -r -P $(LINT_CPUS) -n 1 $(CLANG_TIDY_CMD) $(LINT_COMMON_FLAGS) $(LINT_TIDY_FLAGS) || exit 1; \
-		fi; \
-	fi
-
+	@$(RUN_CLANG_TIDY_CMD) $(LINT_COMMON_FLAGS) $(LINT_TIDY_FLAGS) -j $(LINT_CPUS) $(SOURCES) || exit 1
 	@echo "✓ Linting complete"
 
 lint-diff:
 	$(call check_tool,$(RUN_CLANG_TIDY_CMD))
-	$(call check_tool,$(CLANG_TIDY_CMD))
 	@echo "Linting changed files compared to main branch..."
-	@CHANGED_FILES=$$(git diff --name-only --diff-filter=ACM main...HEAD | grep -E '\.(cpp|hpp)$$' || true); \
+	@CHANGED_FILES=$$(git diff --name-only --diff-filter=ACM main...HEAD | grep -E '\.(cpp|cppm)$$' || true); \
 	if [ -z "$$CHANGED_FILES" ]; then \
 		echo "No C++ files changed."; \
 		exit 0; \
 	fi; \
 	echo "Files to lint: $$CHANGED_FILES"; \
-	SOURCES=$$(echo "$$CHANGED_FILES" | grep '\.cpp$$' || true); \
-	HEADERS=$$(echo "$$CHANGED_FILES" | grep '\.hpp$$' || true); \
-	if [ -n "$$SOURCES" ]; then \
-		echo "Running clang-tidy on changed source files..."; \
-		$(RUN_CLANG_TIDY_CMD) $(LINT_COMMON_FLAGS) $(LINT_TIDY_FLAGS) -j $(LINT_CPUS) $$SOURCES || exit 1; \
-	fi; \
-	if [ -n "$$HEADERS" ]; then \
-		echo "Running clang-tidy on changed headers..."; \
-		echo "$$HEADERS" | xargs -r -P $(LINT_CPUS) -n 1 $(CLANG_TIDY_CMD) $(LINT_COMMON_FLAGS) $(LINT_TIDY_FLAGS) || exit 1; \
-	fi; \
+	$(RUN_CLANG_TIDY_CMD) $(LINT_COMMON_FLAGS) $(LINT_TIDY_FLAGS) -j $(LINT_CPUS) $$CHANGED_FILES || exit 1; \
 	echo "✓ Linting complete"
 
 check-format:
