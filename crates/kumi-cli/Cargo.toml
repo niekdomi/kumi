@@ -1,0 +1,23 @@
+[package]
+name = "kumi-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "kumi"
+path = "src/main.rs"
+
+[dependencies]
+kumi-diagnostics.workspace = true
+kumi-syntax.workspace = true
+kumi-semantics.workspace = true
+kumi-build.workspace = true
+kumi-pkg.workspace = true
+kumi-tools.workspace = true
+clap.workspace = true
+dialoguer.workspace = true
+owo-colors.workspace = true
+
+[lints]
+workspace = true

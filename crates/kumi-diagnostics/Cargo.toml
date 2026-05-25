@@ -1,0 +1,12 @@
+[package]
+name = "kumi-diagnostics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+codespan-reporting.workspace = true
+owo-colors.workspace = true
+
+[lints]
+workspace = true

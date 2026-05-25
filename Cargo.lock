@@ -279,16 +279,69 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
-name = "kumi"
+name = "kumi-build"
+version = "0.1.0"
+dependencies = [
+ "kumi-diagnostics",
+ "kumi-semantics",
+ "kumi-syntax",
+]
+
+[[package]]
+name = "kumi-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dialoguer",
+ "kumi-build",
+ "kumi-diagnostics",
+ "kumi-pkg",
+ "kumi-semantics",
+ "kumi-syntax",
+ "kumi-tools",
+ "owo-colors",
+]
+
+[[package]]
+name = "kumi-diagnostics"
+version = "0.1.0"
+dependencies = [
+ "codespan-reporting",
+ "owo-colors",
+]
+
+[[package]]
+name = "kumi-pkg"
+version = "0.1.0"
+dependencies = [
+ "kumi-diagnostics",
+ "kumi-syntax",
+]
+
+[[package]]
+name = "kumi-semantics"
+version = "0.1.0"
+dependencies = [
+ "kumi-diagnostics",
+ "kumi-syntax",
+]
+
+[[package]]
+name = "kumi-syntax"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
- "clap",
- "codespan-reporting",
- "dialoguer",
+ "kumi-diagnostics",
  "memchr",
- "owo-colors",
- "tempfile",
+]
+
+[[package]]
+name = "kumi-tools"
+version = "0.1.0"
+dependencies = [
+ "kumi-diagnostics",
+ "kumi-semantics",
+ "kumi-syntax",
 ]
 
 [[package]]

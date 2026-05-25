@@ -5,6 +5,13 @@ project myapp {
     author: "John Doe";
 }
 
+target myapp2 {
+    @for x in [a, b] {
+        @continue;
+        sources: "unreachable.cpp";
+    }
+}
+
 target myapp {
     type: executable;
     sources: "main.cpp", "utils.cpp";

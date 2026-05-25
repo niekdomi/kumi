@@ -1,21 +1,31 @@
-[package]
-name = "kumi"
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88.0"
 
-[dependencies]
+[workspace.dependencies]
+# Internal crates (path dependencies, referenced as `dep.workspace = true`)
+kumi-diagnostics = { path = "crates/kumi-diagnostics" }
+kumi-syntax = { path = "crates/kumi-syntax" }
+kumi-semantics = { path = "crates/kumi-semantics" }
+kumi-build = { path = "crates/kumi-build" }
+kumi-pkg = { path = "crates/kumi-pkg" }
+kumi-tools = { path = "crates/kumi-tools" }
+
+# Third-party (single source of truth for versions across the workspace)
 bumpalo = "3.20.2"
 clap = { version = "4.5.60", features = ["derive"] }
 codespan-reporting = "0.13.1"
 dialoguer = "0.12.0"
 memchr = "2.8.0"
 owo-colors = { version = "4.3.0", features = ["supports-colors"] }
-
-[dev-dependencies]
 tempfile = "3.27.0"
 
-[lints.clippy]
+[workspace.lints.clippy]
 cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
 inline_always = "allow"
@@ -30,10 +40,8 @@ struct_excessive_bools = "allow"
 too_many_lines = "allow"
 unused_self = "allow"
 
-[lints.rust]
+[workspace.lints.rust]
 ambiguous_negative_literals = "deny"
-# warnings = "deny"
-# let_underscore_drop = "deny"
 
 [profile.release]
 opt-level = 3
