@@ -19,8 +19,10 @@ pub enum SymbolKind {
 pub struct SymbolEntry {
     /// Index into the AST's `all_strings` for the symbol name.
     pub name_idx: u32,
-    /// Byte offset of the declaration (for "first defined here" errors).
+    /// Start byte offset of the declaration (for "first defined here" errors).
     pub position: u32,
+    /// End byte offset of the declaration (exclusive), for underlining its header.
+    pub end: u32,
     /// What kind of symbol this is.
     pub kind: SymbolKind,
     /// Which file this symbol was defined in (index into the file list).

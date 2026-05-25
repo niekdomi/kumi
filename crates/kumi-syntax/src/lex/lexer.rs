@@ -199,7 +199,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             }
         }
 
-        Err(Diagnostic::new("unexpected character after '@'", start_pos, ""))
+        Err(Diagnostic::error("unexpected character after '@'", start_pos, ""))
     }
 
     #[inline(always)]
@@ -216,7 +216,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             });
         }
 
-        Err(Diagnostic::new("unexpected character after '!'", start_pos, ""))
+        Err(Diagnostic::error("unexpected character after '!'", start_pos, ""))
     }
 
     #[inline(always)]
@@ -229,7 +229,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         } else if self.match_string(b"/*") {
             true
         } else {
-            return Err(Diagnostic::new("unexpected character after '/'", start_pos, ""));
+            return Err(Diagnostic::error("unexpected character after '/'", start_pos, ""));
         };
 
         // Scan...
@@ -240,7 +240,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                 self.position += (end_marker + 2) as u32;
             } else {
                 self.position = self.input.len() as u32;
-                return Err(Diagnostic::new("unterminated block comment", start_pos, ""));
+                return Err(Diagnostic::error("unterminated block comment", start_pos, ""));
             }
         } else {
             match memchr(b'\n', remaining) {
@@ -279,7 +279,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             });
         }
 
-        Err(Diagnostic::new("unexpected character after '.'", start_pos, ""))
+        Err(Diagnostic::error("unexpected character after '.'", start_pos, ""))
     }
 
     #[inline(always)]
@@ -296,7 +296,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
             });
         }
 
-        Err(Diagnostic::new("unexpected character after '='", start_pos, ""))
+        Err(Diagnostic::error("unexpected character after '='", start_pos, ""))
     }
 
     #[inline(always)]
@@ -384,12 +384,12 @@ impl<'lex_impl> Lexer<'lex_impl> {
 
         while self.peek() != b'"' {
             if self.at_end() {
-                return Err(Diagnostic::new("unterminated string literal", start_pos, ""));
+                return Err(Diagnostic::error("unterminated string literal", start_pos, ""));
             }
 
             match self.peek() {
                 b'\n' | b'\r' => {
-                    return Err(Diagnostic::new("unterminated string literal", start_pos, ""));
+                    return Err(Diagnostic::error("unterminated string literal", start_pos, ""));
                 }
                 b'\\' => {
                     self.advance(); // Consume '\'
@@ -404,7 +404,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
                         if self.peek() == b'"' {
                             self.advance();
                         }
-                        return Err(Diagnostic::new(
+                        return Err(Diagnostic::error(
                             "invalid escape sequence",
                             err_pos,
                             r#"valid escapes: \", \n, \t, \r, \\"#,
@@ -469,7 +469,7 @@ impl<'lex_impl> Lexer<'lex_impl> {
         let text = &input[start_pos as usize..self.position as usize];
 
         if text.is_empty() {
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 "unexpected character",
                 self.position,
                 "expected an identifier, keyword, or other valid token",

@@ -34,9 +34,9 @@ fn check_err(input: &str, expected_substr: &str) {
     );
 }
 
-//===---------------------------------------------------------------------===//
-// Valid programs (no errors expected)
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Valid programs
+//===----------------------------------------------------------------------===//
 
 #[test]
 fn valid_empty_file() {
@@ -76,6 +76,22 @@ fn valid_for_loop_with_break() {
                     @break;
                 }
                 sources: file;
+            }
+        }"#,
+    );
+}
+
+#[test]
+fn valid_nested_if_without_else() {
+    check_ok(
+        r#"
+        target myapp {
+            @if platform() == "linux" {
+                defines: "LINUX";
+            } @else-if platform() == "windows" {
+                defines: "WINDOWS";
+            } @else-if platform() == "macos" {
+                defines: "MACOS";
             }
         }"#,
     );
@@ -220,6 +236,29 @@ fn valid_multiple_script_blocks() {
     );
 }
 
+#[test]
+fn valid_bunch_of_properties_without_brackets() {
+    check_ok(
+        r#"
+        target myapp {
+            sources:
+                "src/file.cpp",
+                "src/file2.cpp",
+                "src/file3.cpp";
+        }"#,
+    );
+}
+
+#[test]
+fn valid_bunch_of_properties_with_brackets() {
+    check_ok(
+        r#"
+        target myapp {
+            sources: ["src/file.cpp", "src/file2.cpp", "src/file3.cpp"];
+        }"#,
+    );
+}
+
 //===---------------------------------------------------------------------===//
 // Duplicate declarations
 //===---------------------------------------------------------------------===//
@@ -336,9 +375,9 @@ fn error_visibility_inside_for_at_top_level() {
     );
 }
 
-//===---------------------------------------------------------------------===//
-// Property conflicts
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Properties and its values
+//===----------------------------------------------------------------------===//
 
 #[test]
 fn error_duplicate_scalar_property() {
@@ -364,6 +403,18 @@ fn error_mixin_scalar_conflict() {
         }
         target myapp with fast, small { }"#,
         "scalar property 'optimize' has conflicting values in mixin composition",
+    );
+}
+
+#[test]
+fn error_duplicated_source_file() {
+    check_err(
+        r#"
+        target myapp {
+            sources: "src/file.cpp";
+            sources: "src/file.cpp";
+        }"#,
+        "duplicate source file 'src/file.cpp'",
     );
 }
 

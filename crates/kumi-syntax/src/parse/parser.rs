@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
                 TokenType::String => "string",
                 TokenType::Number => "number",
                 _ => {
-                    return Err(Diagnostic::new(
+                    return Err(Diagnostic::error(
                         format!("expected '{:?}', got '{}'", kind, self.get_string(peek_token)),
                         error_pos,
                         "",
@@ -122,7 +122,7 @@ impl<'a> Parser<'a> {
             };
 
             let value = self.get_string(peek_token);
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 format!("expected {expected_str}, got {value}"),
                 error_pos,
                 "",
@@ -158,7 +158,7 @@ impl<'a> Parser<'a> {
             Ok(self.advance())
         } else {
             let token = self.peek(0);
-            Err(Diagnostic::new(
+            Err(Diagnostic::error(
                 format!("expected identifier or keyword, got '{}'", self.get_string(token)),
                 token.position,
                 "identifiers must start with a letter or underscore, followed by letters or digits",
@@ -250,7 +250,7 @@ impl<'a> Parser<'a> {
                     self.parse_property(ast).map(Statement::Property)
                 } else {
                     let token = self.advance();
-                    Err(Diagnostic::new(
+                    Err(Diagnostic::error(
                         format!("unexpected identifier '{}'", self.get_string(token)),
                         token.position,
                         "expected a top-level declaration (project, target, mixin) or a statement (if, for, or property)",
@@ -259,7 +259,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let token = self.advance();
-                Err(Diagnostic::new(
+                Err(Diagnostic::error(
                     format!(
                         "unexpected token '{}' - expected a declaration or statement",
                         self.get_string(token)
@@ -333,12 +333,15 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::Colon)?;
 
         let value_start_idx = ast.all_values.len() as u32;
-        let val = self.parse_value(ast)?;
-        ast.all_values.push(val);
-
-        while self.match_token(TokenType::Comma) {
-            let val = self.parse_value(ast)?;
-            ast.all_values.push(val);
+        // Values may be written comma-separated (`a, b`) or as an explicit
+        // bracketed list (`[a, b]`); both produce the same flat value range.
+        if self.match_token(TokenType::LeftBracket) {
+            if self.peek(0).kind != TokenType::RightBracket {
+                self.parse_value_sequence(ast)?;
+            }
+            self.expect(TokenType::RightBracket)?;
+        } else {
+            self.parse_value_sequence(ast)?;
         }
         let value_end_idx = ast.all_values.len() as u32;
 
@@ -351,6 +354,18 @@ impl<'a> Parser<'a> {
             value_start_idx,
             value_end_idx,
         })
+    }
+
+    /// Parse one or more comma-separated values into `ast.all_values`.
+    #[inline(always)]
+    fn parse_value_sequence(&mut self, ast: &mut Ast<'a>) -> Result<(), Diagnostic> {
+        let val = self.parse_value(ast)?;
+        ast.all_values.push(val);
+        while self.match_token(TokenType::Comma) {
+            let val = self.parse_value(ast)?;
+            ast.all_values.push(val);
+        }
+        Ok(())
     }
 
     #[inline(always)]
@@ -461,7 +476,7 @@ impl<'a> Parser<'a> {
             let id_token = self.expect(TokenType::Identifier)?;
             let val = self.get_string(id_token);
             if val != "system" {
-                return Err(Diagnostic::new(
+                return Err(Diagnostic::error(
                     format!("expected version string, function call, or 'system', got '{val}'"),
                     id_token.position,
                     "valid versions are strings like \"1.0.0\", function calls like git() or path(), or the 'system' keyword",
@@ -475,7 +490,7 @@ impl<'a> Parser<'a> {
                 arg_end_idx: ast.all_values.len() as u32,
             })
         } else {
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 "expected version string, number, or 'system' keyword for dependency value",
                 self.peek(0).position,
                 "example: package: \"1.2.3\" or package: path(\"../pkg\") or package: system",
@@ -680,7 +695,7 @@ impl<'a> Parser<'a> {
             Visibility::Interface
         } else {
             let token = self.peek(0);
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 "expected visibility level (public, private, or interface)",
                 token.position,
                 "",
@@ -777,7 +792,7 @@ impl<'a> Parser<'a> {
             LoopControl::Continue
         } else {
             let token = self.peek(0);
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 format!("expected '@break' or '@continue', got '{}'", self.get_string(token)),
                 token.position,
                 "loop control statements must be used inside @for loops",
@@ -804,7 +819,7 @@ impl<'a> Parser<'a> {
             DiagnosticLevel::Debug
         } else {
             let token = self.peek(0);
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 format!(
                     "expected diagnostic level (@error, @warning, etc), got '{}'",
                     self.get_string(token)
@@ -1001,7 +1016,7 @@ impl<'a> Parser<'a> {
         }
 
         let token = self.peek(0);
-        Err(Diagnostic::new(
+        Err(Diagnostic::error(
             format!(
                 "expected list '[...]', range 'start..end', or function call, got '{}'",
                 self.get_string(token)
@@ -1048,14 +1063,14 @@ impl<'a> Parser<'a> {
         let end_s = self.get_string(end_token);
 
         let start_val: u32 = start_s.parse().map_err(|_| {
-            Diagnostic::new(
+            Diagnostic::error(
                 format!("invalid range start '{start_s}'"),
                 start_token.position,
                 "range bounds must be valid unsigned 32-bit numbers",
             )
         })?;
         let end_val: u32 = end_s.parse().map_err(|_| {
-            Diagnostic::new(
+            Diagnostic::error(
                 format!("invalid range end '{end_s}'"),
                 end_token.position,
                 "range bounds must be valid unsigned 32-bit numbers",
@@ -1063,7 +1078,7 @@ impl<'a> Parser<'a> {
         })?;
 
         if start_val > end_val {
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::error(
                 "invalid range values - start must be less than or equal to end",
                 start_pos,
                 format!("range {start_val}..{end_val} is reversed"),
@@ -1094,7 +1109,7 @@ impl<'a> Parser<'a> {
                 let token = self.advance();
                 let s = self.get_string(token);
                 let val: u32 = s.parse().map_err(|_| {
-                    Diagnostic::new(
+                    Diagnostic::error(
                         format!("invalid integer literal '{s}'"),
                         token.position,
                         "integers must be valid unsigned 32-bit numbers",
@@ -1112,7 +1127,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let token = self.peek(0);
-                Err(Diagnostic::new(
+                Err(Diagnostic::error(
                     format!("expected a value, got '{}'", self.get_string(token)),
                     token.position,
                     "Valid values: \"string\", number, true, false, or identifier",

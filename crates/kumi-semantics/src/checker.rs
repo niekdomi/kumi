@@ -161,9 +161,10 @@ impl<'a> Checker<'a> {
     fn collect_declarations(&mut self, ast: &Ast<'a>) {
         let mut project_count = 0u32;
         let mut project_pos = 0u32;
+        let mut project_end = 0u32;
 
         // Track merged dependencies for cross-block duplicate detection
-        let mut seen_deps: HashMap<&str, (u32, &str)> = HashMap::new();
+        let mut seen_deps: HashMap<&str, (u32, u32, &str)> = HashMap::new();
 
         for stmt in &ast.statements {
             match stmt {
@@ -188,12 +189,22 @@ impl<'a> Checker<'a> {
                     project_count += 1;
                     if project_count == 1 {
                         project_pos = decl.base.start_idx;
+                        project_end = decl.base.end_idx;
                     } else {
-                        self.errors.push(Diagnostic::new(
-                            "duplicate project declaration",
-                            decl.base.start_idx,
-                            format!("first project declaration at offset {project_pos}"),
-                        ));
+                        self.errors.push(
+                            Diagnostic::error(
+                                "duplicate project declaration",
+                                decl.base.start_idx,
+                                "only one project declaration is allowed",
+                            )
+                            .with_end(decl.base.end_idx)
+                            .with_label("duplicate declaration")
+                            .with_secondary(
+                                project_pos,
+                                project_end,
+                                "first declared here",
+                            ),
+                        );
                     }
                 }
                 Statement::DependenciesDecl(decl) => {
@@ -201,31 +212,35 @@ impl<'a> Checker<'a> {
                     let deps = ast.get_dependencies(decl.dep_start_idx, decl.dep_end_idx);
                     for dep in deps {
                         let name = ast.get_string(dep.name_idx);
-                        if let Some(&(first_pos, first_ver)) = seen_deps.get(name) {
+                        if let Some(&(first_start, first_end, first_ver)) = seen_deps.get(name) {
                             // Get current version string for comparison
                             let cur_ver = match &dep.value {
                                 DependencyValue::String(s) => *s,
                                 DependencyValue::FunctionCall(_) => "",
                             };
-                            if cur_ver == first_ver && !cur_ver.is_empty() {
-                                self.errors.push(Diagnostic::new(
+                            let (message, help) = if cur_ver == first_ver && !cur_ver.is_empty() {
+                                (
                                     format!("dependency '{name}' declared with same version"),
-                                    dep.base.start_idx,
-                                    format!("first declared at offset {first_pos}"),
-                                ));
+                                    "remove the duplicate declaration",
+                                )
                             } else {
-                                self.errors.push(Diagnostic::new(
+                                (
                                     format!("duplicate dependency '{name}'"),
-                                    dep.base.start_idx,
-                                    format!("first declared at offset {first_pos}"),
-                                ));
-                            }
+                                    "each dependency must be declared once",
+                                )
+                            };
+                            self.errors.push(
+                                Diagnostic::error(message, dep.base.start_idx, help)
+                                    .with_end(dep.base.end_idx)
+                                    .with_label("redeclared here")
+                                    .with_secondary(first_start, first_end, "first declared here"),
+                            );
                         } else {
                             let ver = match &dep.value {
                                 DependencyValue::String(s) => *s,
                                 DependencyValue::FunctionCall(_) => "",
                             };
-                            seen_deps.insert(name, (dep.base.start_idx, ver));
+                            seen_deps.insert(name, (dep.base.start_idx, dep.base.end_idx, ver));
                         }
                     }
                 }
@@ -272,6 +287,7 @@ impl<'a> Checker<'a> {
         let entry = SymbolEntry {
             name_idx,
             position: base.start_idx,
+            end: base.end_idx,
             kind,
             file_idx: self.file_idx,
         };
@@ -282,11 +298,20 @@ impl<'a> Checker<'a> {
                 SymbolKind::Profile => "profile",
                 SymbolKind::Option => "option",
             };
-            self.errors.push(Diagnostic::new(
-                format!("duplicate {kind_str} definition '{name}'"),
-                base.start_idx,
-                format!("first defined at offset {}", existing.position),
-            ));
+            self.errors.push(
+                Diagnostic::error(
+                    format!("duplicate {kind_str} definition '{name}'"),
+                    base.start_idx,
+                    format!("each {kind_str} must have a unique name"),
+                )
+                .with_end(base.end_idx)
+                .with_label("duplicate definition")
+                .with_secondary(
+                    existing.position,
+                    existing.end,
+                    "first defined here",
+                ),
+            );
         }
     }
 
@@ -294,14 +319,14 @@ impl<'a> Checker<'a> {
     fn validate_option_name(&mut self, name: &str, base: NodeBase) {
         if !is_upper_snake_case(name) {
             let suggestion = to_upper_snake_case(name);
-            self.errors.push(Diagnostic::new(
+            self.errors.push(Diagnostic::error(
                 format!("option name '{name}' must be UPPER_SNAKE_CASE"),
                 base.start_idx,
                 format!("help: rename to '{suggestion}'"),
             ));
         }
         if is_builtin_variable(name.to_ascii_lowercase().as_str()) || is_builtin_variable(name) {
-            self.errors.push(Diagnostic::new(
+            self.errors.push(Diagnostic::error(
                 format!("option name '{name}' shadows a builtin variable"),
                 base.start_idx,
                 "",
@@ -330,7 +355,7 @@ impl<'a> Checker<'a> {
         match stmt {
             Statement::TargetDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "target declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -347,7 +372,7 @@ impl<'a> Checker<'a> {
             }
             Statement::MixinDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "mixin declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -363,7 +388,7 @@ impl<'a> Checker<'a> {
             }
             Statement::ProfileDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "profile declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -374,7 +399,7 @@ impl<'a> Checker<'a> {
             }
             Statement::ProjectDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "project declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -384,7 +409,7 @@ impl<'a> Checker<'a> {
             }
             Statement::WorkspaceDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "workspace declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -394,7 +419,7 @@ impl<'a> Checker<'a> {
             }
             Statement::DependenciesDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "dependencies declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -404,7 +429,7 @@ impl<'a> Checker<'a> {
             }
             Statement::OptionsDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "options declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -414,7 +439,7 @@ impl<'a> Checker<'a> {
             }
             Statement::InstallDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "install declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -424,7 +449,7 @@ impl<'a> Checker<'a> {
             }
             Statement::PackageDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "package declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -434,7 +459,7 @@ impl<'a> Checker<'a> {
             }
             Statement::ScriptDecl(decl) => {
                 if ctx != Context::TopLevel {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "script declarations are only allowed at the top level",
                         decl.base.start_idx,
                         "",
@@ -444,7 +469,7 @@ impl<'a> Checker<'a> {
             }
             Statement::VisibilityBlock(block) => {
                 if ctx != Context::Target && ctx != Context::Mixin {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         "visibility blocks are only allowed inside target or mixin declarations",
                         block.base.start_idx,
                         "",
@@ -461,7 +486,7 @@ impl<'a> Checker<'a> {
                 self.validate_iterable(ast, &stmt.iterable);
                 let var_name = ast.get_string(stmt.variable_name_idx);
                 if loop_vars.contains(&var_name) {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         format!("@for variable '{var_name}' shadows an outer loop variable"),
                         stmt.base.start_idx,
                         "consider using a different variable name",
@@ -477,7 +502,7 @@ impl<'a> Checker<'a> {
                         LoopControl::Break => "@break",
                         LoopControl::Continue => "@continue",
                     };
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         format!("{keyword} is only allowed inside @for loops"),
                         stmt.base.start_idx,
                         "",
@@ -535,6 +560,8 @@ impl<'a> Checker<'a> {
         // Detect unreachable code after @break/@continue
         let mut found_loop_control = false;
         let mut control_pos = 0u32;
+        let mut control_end = 0u32;
+        let mut control_kw = "";
 
         // Second pass: validate only direct children (not in a nested range).
         for (i, stmt) in stmts.iter().enumerate() {
@@ -564,13 +591,15 @@ impl<'a> Checker<'a> {
                     Statement::LoopControlStmt(s) => s.base.start_idx,
                     Statement::DiagnosticStmt(d) => d.base.start_idx,
                 };
-                self.errors.push(Diagnostic::warning(
-                    "unreachable code",
-                    pos,
-                    format!(
-                        "code after @break/@continue at offset {control_pos} is never executed"
-                    ),
-                ));
+                self.errors.push(
+                    Diagnostic::warning("unreachable code", pos, "")
+                        .with_label("never executed")
+                        .with_secondary(
+                            control_pos,
+                            control_end,
+                            format!("nothing runs after this {control_kw}"),
+                        ),
+                );
                 // Only warn once per block
                 break;
             }
@@ -580,6 +609,11 @@ impl<'a> Checker<'a> {
             {
                 found_loop_control = true;
                 control_pos = lc.base.start_idx;
+                control_end = lc.base.end_idx;
+                control_kw = match lc.control {
+                    LoopControl::Break => "@break",
+                    LoopControl::Continue => "@continue",
+                };
             }
 
             self.validate_statement(ast, stmt, ctx, loop_vars);
@@ -596,7 +630,7 @@ impl<'a> Checker<'a> {
         for i in start..end {
             let mixin_name = ast.get_string(i);
             if seen.contains(&mixin_name) {
-                self.errors.push(Diagnostic::new(
+                self.errors.push(Diagnostic::error(
                     format!("duplicate mixin '{mixin_name}' in with list"),
                     decl_base.start_idx,
                     "",
@@ -604,7 +638,7 @@ impl<'a> Checker<'a> {
             } else {
                 seen.push(mixin_name);
                 if self.symbols.lookup(mixin_name, SymbolKind::Mixin).is_none() {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         format!("undefined mixin '{mixin_name}'"),
                         decl_base.start_idx,
                         self.suggest_similar(mixin_name, SymbolKind::Mixin),
@@ -670,7 +704,7 @@ impl<'a> Checker<'a> {
                     if merge_strategy(prop_name) == MergeStrategy::Scalar {
                         if let Some(&(_, first_mixin)) = seen.get(prop_name) {
                             if first_mixin != mixin_name {
-                                self.errors.push(Diagnostic::new(
+                                self.errors.push(Diagnostic::error(
                                     format!(
                                         "scalar property '{prop_name}' has conflicting values in mixin composition"
                                     ),
@@ -714,7 +748,7 @@ impl<'a> Checker<'a> {
             if merge_strategy(prop_name) == MergeStrategy::Scalar {
                 if let Some(&(_, first_mixin)) = seen.get(prop_name) {
                     if first_mixin != mixin_name {
-                        self.errors.push(Diagnostic::new(
+                        self.errors.push(Diagnostic::error(
                             format!(
                                 "scalar property '{prop_name}' has conflicting values in mixin composition"
                             ),
@@ -754,19 +788,28 @@ impl<'a> Checker<'a> {
 
     fn validate_properties(&mut self, ast: &Ast<'a>, start: u32, end: u32) {
         // Check for duplicate scalar properties within the same block.
-        let mut seen_scalars: HashMap<&str, u32> = HashMap::new();
+        let mut seen_scalars: HashMap<&str, (u32, u32)> = HashMap::new();
 
         for prop in ast.get_properties(start, end) {
             let name = ast.get_string(prop.name_idx);
             if merge_strategy(name) == MergeStrategy::Scalar {
-                if let Some(&first_pos) = seen_scalars.get(name) {
-                    self.errors.push(Diagnostic::new(
-                        format!("duplicate property '{name}'"),
-                        prop.base.start_idx,
-                        format!("first set at offset {first_pos}"),
-                    ));
+                if let Some(&(first_start, first_end)) = seen_scalars.get(name) {
+                    self.errors.push(
+                        Diagnostic::error(
+                            format!("duplicate property '{name}'"),
+                            prop.base.start_idx,
+                            format!("'{name}' may only be set once"),
+                        )
+                        .with_end(prop.base.end_idx)
+                        .with_label("set again here")
+                        .with_secondary(
+                            first_start,
+                            first_end,
+                            "first set here",
+                        ),
+                    );
                 } else {
-                    seen_scalars.insert(name, prop.base.start_idx);
+                    seen_scalars.insert(name, (prop.base.start_idx, prop.base.end_idx));
                 }
             }
         }
@@ -787,7 +830,7 @@ impl<'a> Checker<'a> {
                     Some(expected) => {
                         let actual = (func.arg_end_idx - func.arg_start_idx) as usize;
                         if actual != expected {
-                            self.errors.push(Diagnostic::new(
+                            self.errors.push(Diagnostic::error(
                                 format!(
                                     "function '{}' expects {} argument{}, found {}",
                                     func_name,
@@ -801,7 +844,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                     None => {
-                        self.errors.push(Diagnostic::new(
+                        self.errors.push(Diagnostic::error(
                             format!("unknown dependency function '{func_name}'"),
                             func.base.start_idx,
                             format!("available: {}", dep_function_names_list()),
@@ -870,7 +913,7 @@ impl<'a> Checker<'a> {
                 let rhs_clean = rhs_str.trim_matches('"');
                 if !valid_values.contains(&rhs_clean) {
                     let pos = self.get_operand_position(ast, right.operand);
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         format!("invalid value \"{rhs_clean}\""),
                         pos,
                         format!("valid values: {}", format_valid_values(valid_values)),
@@ -886,7 +929,7 @@ impl<'a> Checker<'a> {
                 let lhs_clean = lhs_str.trim_matches('"');
                 if !right_valid.contains(&lhs_clean) {
                     let pos = self.get_operand_position(ast, left.operand);
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         format!("invalid value \"{lhs_clean}\""),
                         pos,
                         format!("valid values: {}", format_valid_values(right_valid)),
@@ -957,7 +1000,7 @@ impl<'a> Checker<'a> {
                     Some(builtin) => {
                         let actual = (func.arg_end_idx - func.arg_start_idx) as usize;
                         if actual != builtin.arg_count {
-                            self.errors.push(Diagnostic::new(
+                            self.errors.push(Diagnostic::error(
                                 format!(
                                     "function '{}' expects {} argument{}, found {}",
                                     name,
@@ -971,7 +1014,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                     None => {
-                        self.errors.push(Diagnostic::new(
+                        self.errors.push(Diagnostic::error(
                             format!("unknown function '{name}'"),
                             func.base.start_idx,
                             format!("available functions: {}", builtin_names_list()),
@@ -990,7 +1033,7 @@ impl<'a> Checker<'a> {
                 Some(builtin) => {
                     let actual = (func.arg_end_idx - func.arg_start_idx) as usize;
                     if actual != builtin.arg_count {
-                        self.errors.push(Diagnostic::new(
+                        self.errors.push(Diagnostic::error(
                             format!(
                                 "function '{}' expects {} argument{}, found {}",
                                 name,
@@ -1004,7 +1047,7 @@ impl<'a> Checker<'a> {
                     }
                 }
                 None => {
-                    self.errors.push(Diagnostic::new(
+                    self.errors.push(Diagnostic::error(
                         format!("unknown function '{name}'"),
                         func.base.start_idx,
                         format!("available functions: {}", builtin_names_list()),

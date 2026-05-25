@@ -46,7 +46,7 @@ fn run_parser_test(filename: &str) {
         } else if token.kind == kumi_syntax::lex::TokenType::RightBrace
             && open_braces.pop().is_none()
         {
-            lex_errors.push(Diagnostic::new(
+            lex_errors.push(Diagnostic::error(
                 "unexpected closing brace",
                 token.position,
                 "check for extra punctuation",
@@ -54,7 +54,7 @@ fn run_parser_test(filename: &str) {
         }
     }
     for pos in open_braces {
-        lex_errors.push(Diagnostic::new(
+        lex_errors.push(Diagnostic::error(
             "unclosed brace",
             pos,
             "ensure scopes are correctly closed",
