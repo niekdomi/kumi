@@ -26,8 +26,13 @@ impl<'a> Parser<'a> {
 
     pub fn parse(mut self, file_path: &'a str) -> Ast<'a> {
         let mut ast = Ast::new(file_path);
+        ast.source = self.source;
 
         while self.peek(0).kind != TokenType::EndOfFile {
+            if self.peek(0).kind == TokenType::Semicolon {
+                self.skip_redundant_semicolons(&mut ast);
+                continue;
+            }
             match self.parse_statement(&mut ast) {
                 Ok(stmt) => ast.statements.push(stmt),
                 Err(err) => {
@@ -78,6 +83,22 @@ impl<'a> Parser<'a> {
             }
             self.advance();
         }
+    }
+
+    /// Consume a run of redundant `;` at a statement/declaration boundary,
+    /// emitting a single warning for the run (C++/Rust tolerate stray semicolons;
+    /// Rust warns). Only call where a statement or declaration is expected.
+    #[inline(always)]
+    fn skip_redundant_semicolons(&mut self, ast: &mut Ast<'a>) {
+        let start = self.peek(0).position;
+        let mut end = start;
+        while self.peek(0).kind == TokenType::Semicolon {
+            let tok = self.advance();
+            end = tok.position + tok.length;
+        }
+        ast.errors.push(
+            Diagnostic::warning("redundant ';'", start, "remove the extra semicolon").with_end(end),
+        );
     }
 
     #[inline(always)]
@@ -278,6 +299,11 @@ impl<'a> Parser<'a> {
         while self.peek(0).kind != TokenType::RightBrace
             && self.peek(0).kind != TokenType::EndOfFile
         {
+            if self.peek(0).kind == TokenType::Semicolon {
+                self.skip_redundant_semicolons(ast);
+                continue;
+            }
+
             let kind = self.peek(0).kind;
             let next_kind = self.peek(1).kind;
 
@@ -314,6 +340,10 @@ impl<'a> Parser<'a> {
         while self.peek(0).kind != TokenType::RightBrace
             && self.peek(0).kind != TokenType::EndOfFile
         {
+            if self.peek(0).kind == TokenType::Semicolon {
+                self.skip_redundant_semicolons(ast);
+                continue;
+            }
             match self.parse_property(ast) {
                 Ok(prop) => ast.all_properties.push(prop),
                 Err(err) => {

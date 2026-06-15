@@ -992,7 +992,7 @@ fn empty_file() {
 }
 
 //===---------------------------------------------------------------------===//
-// Complex / Integration
+// Others
 //===---------------------------------------------------------------------===//
 
 #[test]
@@ -1038,4 +1038,25 @@ fn full_project_file() {
     assert!(matches!(ast.statements[2], Statement::TargetDecl(_)));
     assert!(matches!(ast.statements[3], Statement::DependenciesDecl(_)));
     assert!(matches!(ast.statements[4], Statement::IfStmt(_)));
+}
+
+#[test]
+fn needless_semicolon() {
+    let (_tokens, ast) = parse(
+        r#"
+        project myapp {
+            version: "1.0.0";;;
+        };
+        "#,
+    );
+
+    assert!(matches!(ast.statements.first(), Some(Statement::ProjectDecl(_))));
+
+    // One warning per run of stray `;`: the `;;` after the value, and `;` after `}`
+    assert_eq!(ast.errors.len(), 2, "diagnostics: {:?}", ast.errors);
+    assert!(
+        ast.errors.iter().all(|e| e.message.as_ref() == "redundant ';'"),
+        "diagnostics: {:?}",
+        ast.errors
+    );
 }

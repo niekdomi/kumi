@@ -15,7 +15,7 @@ use crate::symbol_table::{DuplicateSymbol, SymbolEntry, SymbolKind, SymbolTable}
 use kumi_diagnostics::Diagnostic;
 use kumi_syntax::ast::{
     Ast, ComparisonExpr, Condition, DependenciesDecl, DependencyValue, Iterable, LoopControl,
-    MixinDecl, NodeBase, OperandType, OptionsDecl, Statement, UnaryOperand, Value,
+    MixinDecl, NodeBase, OperandType, OptionsDecl, Property, Statement, UnaryOperand, Value,
 };
 use std::collections::HashMap;
 
@@ -369,6 +369,7 @@ impl<'a> Checker<'a> {
                     Context::Target,
                     loop_vars,
                 );
+                self.validate_sources(ast, decl.body_start_idx, decl.body_end_idx);
             }
             Statement::MixinDecl(decl) => {
                 if ctx != Context::TopLevel {
@@ -512,6 +513,100 @@ impl<'a> Checker<'a> {
             // Bare properties at top-level are unusual but not invalid
             // (they become project-level settings).
             Statement::DiagnosticStmt(_) | Statement::Property(_) => {}
+        }
+    }
+
+    /// Detect the same source file being listed more than once within one scope
+    /// (semantic.md §Source Validation). Exact-string match only; glob patterns
+    /// are not expanded.
+    ///
+    /// A scope is a block's own direct `sources` plus its visibility blocks (all
+    /// unconditional). `@for` bodies and each `@if`/`@else` branch open a fresh,
+    /// independent scope — so duplicates within one loop body are caught, while
+    /// the same file in mutually exclusive branches is not flagged.
+    fn validate_sources(&mut self, ast: &Ast<'a>, start: u32, end: u32) {
+        let stmts = ast.get_statements(start, end);
+
+        // Statements inside a nested @if/@for body live in this range too; skip
+        // them here and recurse into those branches as their own scopes.
+        let mut nested_ranges: Vec<(u32, u32)> = Vec::new();
+        for stmt in stmts {
+            match stmt {
+                Statement::IfStmt(s) => {
+                    if s.then_start_idx < s.then_end_idx {
+                        nested_ranges.push((s.then_start_idx, s.then_end_idx));
+                    }
+                    if s.else_start_idx < s.else_end_idx {
+                        nested_ranges.push((s.else_start_idx, s.else_end_idx));
+                    }
+                }
+                Statement::ForStmt(s) => {
+                    if s.body_start_idx < s.body_end_idx {
+                        nested_ranges.push((s.body_start_idx, s.body_end_idx));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let mut seen: HashMap<&'a str, (u32, u32)> = HashMap::new();
+        for (i, stmt) in stmts.iter().enumerate() {
+            let abs_idx = start + i as u32;
+            if nested_ranges.iter().any(|&(ns, ne)| abs_idx >= ns && abs_idx < ne) {
+                continue;
+            }
+            match stmt {
+                Statement::Property(prop) => self.check_source_property(ast, prop, &mut seen),
+                Statement::VisibilityBlock(block) => {
+                    for prop in ast.get_properties(block.property_start_idx, block.property_end_idx)
+                    {
+                        self.check_source_property(ast, prop, &mut seen);
+                    }
+                }
+                Statement::IfStmt(s) => {
+                    self.validate_sources(ast, s.then_start_idx, s.then_end_idx);
+                    self.validate_sources(ast, s.else_start_idx, s.else_end_idx);
+                }
+                Statement::ForStmt(s) => {
+                    self.validate_sources(ast, s.body_start_idx, s.body_end_idx);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Record each string value of a `sources` property; on a repeat, underline
+    /// the offending value and point a secondary label at the first occurrence.
+    fn check_source_property(
+        &mut self,
+        ast: &Ast<'a>,
+        prop: &Property,
+        seen: &mut HashMap<&'a str, (u32, u32)>,
+    ) {
+        if ast.get_string(prop.name_idx) != "sources" {
+            return;
+        }
+        for &val in &ast.all_values[prop.value_start_idx as usize..prop.value_end_idx as usize] {
+            let Value::String(src) = val else { continue };
+            let (start, end) = ast.str_span(src);
+            if let Some(&(first_start, first_end)) = seen.get(src) {
+                self.errors.push(
+                    Diagnostic::error(
+                        format!("duplicate source file '{}'", src.trim_matches('"')),
+                        start,
+                        "remove the duplicate entry",
+                    )
+                    .with_end(end)
+                    .with_label("included again here")
+                    .with_secondary(
+                        first_start,
+                        first_end,
+                        "first included here",
+                    ),
+                );
+            } else {
+                seen.insert(src, (start, end));
+            }
         }
     }
 

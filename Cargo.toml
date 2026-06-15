@@ -5,18 +5,16 @@ members = ["crates/*"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.88.0"
+rust-version = "1.93.0"
 
 [workspace.dependencies]
-# Internal crates (path dependencies, referenced as `dep.workspace = true`)
-kumi-diagnostics = { path = "crates/kumi-diagnostics" }
-kumi-syntax = { path = "crates/kumi-syntax" }
-kumi-semantics = { path = "crates/kumi-semantics" }
 kumi-build = { path = "crates/kumi-build" }
+kumi-diagnostics = { path = "crates/kumi-diagnostics" }
 kumi-pkg = { path = "crates/kumi-pkg" }
+kumi-semantics = { path = "crates/kumi-semantics" }
+kumi-syntax = { path = "crates/kumi-syntax" }
 kumi-tools = { path = "crates/kumi-tools" }
 
-# Third-party (single source of truth for versions across the workspace)
 bumpalo = "3.20.2"
 clap = { version = "4.5.60", features = ["derive"] }
 codespan-reporting = "0.13.1"
@@ -26,15 +24,21 @@ owo-colors = { version = "4.3.0", features = ["supports-colors"] }
 tempfile = "3.27.0"
 
 [workspace.lints.clippy]
+complexity = { level = "deny", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+style = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+
 cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
 inline_always = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 must_use_candidate = "allow"
-nursery = { level = "deny", priority = -1 }
 option_if_let_else = "allow"
-pedantic = { level = "deny", priority = -1 }
 similar_names = "allow"
 struct_excessive_bools = "allow"
 too_many_lines = "allow"
@@ -45,6 +49,7 @@ ambiguous_negative_literals = "deny"
 
 [profile.release]
 opt-level = 3
+strip = "symbols"
 lto = "fat"
 panic = "abort"
 codegen-units = 1

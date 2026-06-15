@@ -1112,6 +1112,9 @@ pub struct Ast<'a> {
     /// References the path to the source file this AST represents. Used for
     /// error reporting and import resolution.
     pub file_path: &'a str,
+    /// The original source buffer. Lexed string slices (names, string/identifier
+    /// values) point into this, so a slice's byte span can be recovered from it.
+    pub source: &'a [u8],
     /// Storage for parse and semantic errors encountered
     pub errors: Vec<kumi_diagnostics::Diagnostic>,
 }
@@ -1152,6 +1155,18 @@ impl<'a> Ast<'a> {
     /// Retrieves a string by index
     pub fn get_string(&self, idx: u32) -> &'a str {
         self.all_strings[idx as usize]
+    }
+
+    /// Byte range `(start, end)` of `s` within [`source`](Self::source).
+    ///
+    /// `s` must be a slice of `source` (true for every lexed string/identifier
+    /// value); the range is recovered from the slice's pointer offset.
+    pub fn str_span(&self, s: &str) -> (u32, u32) {
+        let base = self.source.as_ptr() as usize;
+        let ptr = s.as_ptr() as usize;
+        debug_assert!(ptr >= base && ptr + s.len() <= base + self.source.len());
+        let start = ptr.saturating_sub(base) as u32;
+        (start, start + s.len() as u32)
     }
 
     /// Retrieves a value by index
