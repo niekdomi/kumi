@@ -1,0 +1,100 @@
+(* Kumi grammar (ISO EBNF), describing the syntax of a single .kumi file.
+   Multi-file composition (workspace members, dependencies) is a semantic concern
+   layered on top of this grammar; see semantic.md.
+
+   Lexical notes:
+   - Line comments (// ...) and block comments (/* ... */) may appear between any
+     two tokens and are discarded.
+   - A redundant ';' is tolerated as an empty statement wherever a statement,
+     property, dependency, or option may appear. It is reported as a warning,
+     not an error.
+   - String interpolation (${identifier}) is resolved from string contents after
+     parsing and is not part of the syntactic grammar; see semantic.md. *)
+
+(* Top-Level Structure *)
+KumiFile            = { Statement } ;
+Statement           = ProjectDecl
+                    | WorkspaceDecl
+                    | TargetDecl
+                    | DependenciesDecl
+                    | OptionsDecl
+                    | MixinDecl
+                    | ProfileDecl
+                    | InstallDecl
+                    | PackageDecl
+                    | ScriptDecl
+                    | IfStmt
+                    | ForStmt
+                    | LoopControlStmt
+                    | VisibilityBlock
+                    | PropertyAssignment
+                    | DiagnosticStmt ;
+
+(* Declarations *)
+ProjectDecl         = "project" Identifier "{" { PropertyAssignment } "}" ;
+WorkspaceDecl       = "workspace" "{" { PropertyAssignment } "}" ;
+TargetDecl          = "target" Identifier [ "with" MixinList ] "{" { Statement } "}" ;
+MixinList           = Identifier { "," Identifier } ;
+
+DependenciesDecl    = "dependencies" "{" { DependencySpec } "}" ;
+DependencySpec      = Identifier [ "?" ] ":" DependencyValue [ "{" { PropertyAssignment } "}" ] ";" ;
+DependencyValue     = String | FunctionCall ;
+
+OptionsDecl         = "options" "{" { OptionSpec } "}" ;
+OptionSpec          = Identifier ":" Value [ "{" { PropertyAssignment } "}" ] ";" ;
+
+MixinDecl           = "mixin" Identifier "{" { Statement } "}" ;
+ProfileDecl         = "profile" Identifier [ "with" MixinList ] "{" { PropertyAssignment } "}" ;
+InstallDecl         = "install" "{" { PropertyAssignment } "}" ;
+PackageDecl         = "package" "{" { PropertyAssignment } "}" ;
+ScriptDecl          = "script" "{" { PropertyAssignment } "}" ;
+
+(* Control Flow *)
+IfStmt              = "@if" Condition "{" { Statement } "}"
+                      { "@else-if" Condition "{" { Statement } "}" }
+                      [ "@else" "{" { Statement } "}" ] ;
+ForStmt             = "@for" Identifier "in" Iterable "{" { Statement } "}" ;
+LoopControlStmt     = ( "@break" | "@continue" ) ";" ;
+Iterable            = List | Range | FunctionCall ;
+
+(* Visibility *)
+VisibilityBlock     = ( "public" | "private" | "interface" ) "{" { PropertyAssignment } "}" ;
+
+(* Properties *)
+PropertyAssignment  = Name ":" ValueList ";" ;
+ValueList           = Value { "," Value }
+                    | "[" [ Value { "," Value } ] "]" ;
+Name                = Identifier | Keyword ;
+
+(* Expressions & Conditions *)
+Condition           = ComparisonExpr { ( "and" | "or" ) ComparisonExpr } ;
+ComparisonExpr      = UnaryExpr [ ComparisonOp UnaryExpr ] ;
+ComparisonOp        = "==" | "!=" | "<" | ">" | "<=" | ">=" ;
+UnaryExpr           = [ "not" ] ( FunctionCall | Value | "(" Condition ")" ) ;
+
+(* Values & Literals *)
+Value               = String | Number | Boolean | Identifier ;
+List                = "[" [ Value { "," Value } ] "]" ;
+Range               = Number ".." Number ;
+FunctionCall        = Identifier "(" [ Value { "," Value } ] ")" ;
+
+(* Directives *)
+DiagnosticStmt      = ( "@error" | "@warning" | "@info" | "@debug" ) String ";" ;
+
+(* Tokens *)
+Identifier          = ( Letter | "_" ) { Letter | Digit | "_" | "-" } ;
+Keyword             = "project" | "workspace" | "target" | "dependencies" | "options"
+                    | "mixin" | "profile" | "install" | "package" | "script" | "with"
+                    | "public" | "private" | "interface" | "in" | "and" | "or" | "not"
+                    | "true" | "false" ;
+String              = '"' { Character } '"' ;
+Number              = Digit { Digit } ;
+Boolean             = "true" | "false" ;
+
+(* Lexical primitives *)
+Letter              = ? "a" through "z" or "A" through "Z" ? ;
+Digit               = ? "0" through "9" ? ;
+Character           = ? any Unicode character except '"' ? ;
+Comment             = LineComment | BlockComment ;
+LineComment         = "//" { ? any character except newline ? } ;
+BlockComment        = "/*" { ? any character ? } "*/" ;
